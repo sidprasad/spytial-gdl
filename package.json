@@ -1,5 +1,5 @@
 {
-  "name": "spytial-mermaid",
+  "name": "spytial-graph",
   "version": "0.2.0-prototype",
   "description": "spytial-graph — a small graph notation with inline spatial @annotations, rendered as live SpyTial constraint diagrams in Markdown or anywhere.",
   "type": "module",

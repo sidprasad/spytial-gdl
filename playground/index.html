@@ -177,7 +177,7 @@
             </div>
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
-                    <textarea id="mermaid-input" class="code" spellcheck="false"
+                    <textarea id="source-input" class="code" spellcheck="false"
                         placeholder="Start -> Build&#10;Build -> Test&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
                 </div>
             </div>
@@ -277,7 +277,7 @@ c -> a : r3
         };
 
         // ─── Element refs / state ───────────────────────────────────────
-        const mermaidEl = document.getElementById('mermaid-input');
+        const sourceEl = document.getElementById('source-input');
         const graphEl = document.getElementById('graph');
         const statusEl = document.getElementById('status');
         const applyBtn = document.getElementById('apply-btn');
@@ -308,7 +308,7 @@ c -> a : r3
             document.documentElement.setAttribute('data-theme', theme);
             graphEl.setAttribute('theme', theme === 'dark' ? 'dark' : 'light');
             document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
-            try { localStorage.setItem('spytial-mermaid-theme', theme); } catch (e) {}
+            try { localStorage.setItem('spytial-graph-theme', theme); } catch (e) {}
         }
         document.getElementById('theme-btn').onclick = () => {
             const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -319,7 +319,7 @@ c -> a : r3
         function b64e(s) { return btoa(unescape(encodeURIComponent(s))); }
         function b64d(s) { return decodeURIComponent(escape(atob(s))); }
         function writeHash() {
-            const payload = JSON.stringify({ m: mermaidEl.value });
+            const payload = JSON.stringify({ m: sourceEl.value });
             history.replaceState(null, '', '#g=' + b64e(payload));
         }
         function readHash() {
@@ -343,7 +343,7 @@ c -> a : r3
         document.getElementById('example-select').addEventListener('change', (e) => {
             const src = EXAMPLES[e.target.value];
             if (!src) return;
-            mermaidEl.value = src;
+            sourceEl.value = src;
             apply();
             e.target.selectedIndex = 0;
         });
@@ -354,7 +354,7 @@ c -> a : r3
             document.getElementById('conflict-hint').style.display = 'none';
             writeHash();
 
-            const src = mermaidEl.value.trim();
+            const src = sourceEl.value.trim();
             if (!src) { setStatus('Write a graph to render.', 'error'); return; }
 
             let result;
@@ -447,7 +447,7 @@ c -> a : r3
 
         window.addEventListener('load', async () => {
             let theme = 'light';
-            try { theme = localStorage.getItem('spytial-mermaid-theme') || 'light'; } catch (e) {}
+            try { theme = localStorage.getItem('spytial-graph-theme') || 'light'; } catch (e) {}
             applyTheme(theme);
 
             try { await waitForEngine(); }
@@ -456,7 +456,7 @@ c -> a : r3
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
             const shared = readHash();
-            mermaidEl.value = shared && shared.m != null ? shared.m : EXAMPLES.flowchart;
+            sourceEl.value = shared && shared.m != null ? shared.m : EXAMPLES.flowchart;
 
             applyBtn.disabled = false;
             setStatus('Ready — edit and press Apply (⌘⏎).', 'info');

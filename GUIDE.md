@@ -10,7 +10,7 @@ no build step, no server beyond static hosting.
 Add one line to any page that renders your Markdown:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-mermaid/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
 ```
 
 Then write a fenced block, the way you'd write `mermaid`:
@@ -30,7 +30,7 @@ Wiring it yourself instead of the drop-in tag:
 
 ```html
 <script type="module">
-  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-mermaid/src/markdown.js';
+  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-graph/src/markdown.js';
   autoRender();
 </script>
 ```
