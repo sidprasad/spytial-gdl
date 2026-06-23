@@ -34,10 +34,8 @@
 
   <div class="panel">
     <div class="col">
-      <h2>mermaid source</h2>
+      <h2>spytial-graph source (mermaid + inline @annotations)</h2>
       <pre id="source"></pre>
-      <h2>registered specs (by class)</h2>
-      <pre id="specs"></pre>
     </div>
     <div class="col">
       <h2>rendered (standard webcola-cnd-graph)</h2>
@@ -48,45 +46,21 @@
   </div>
 
   <script type="module">
-    import { registerSpec, clearRegistry, renderMermaid, mountGraph } from '../src/index.js';
+    import { renderMermaid, mountGraph } from '../src/index.js';
 
-    // ── Specs (registered per class; renderMermaid merges those used) ────
-    // 'tree' contributes: children below their parent, 'left' edges point
-    // left, 'right' edges point right. Note `tree_edge` is a selector-only
-    // relation (every edge between two tree nodes); it isn't drawn twice.
-    const treeSpec = `
-constraints:
-  - orientation: { selector: tree_edge, directions: [below] }
-  - orientation: { selector: left,  directions: [left] }
-  - orientation: { selector: right, directions: [right] }
-`;
-
-    // Directives now take effect — the standard renderer draws them. Here we
-    // tint the root node (this had NO effect in the old post-nudge renderer).
-    const rootSpec = `
-directives:
-  - atomColor: { selector: root, value: "#ffe7b3" }
-`;
-
-    // Contradicts 'tree': forces edges ABOVE while tree forces them BELOW.
-    // Spytial reports the clash; the element gets the `unsat` attribute.
-    const unsatSpec = `
-constraints:
-  - orientation: { selector: tree_edge, directions: [above] }
-`;
-
-    // Group constraints — each draws a rectangle around its members.
-    const leftSubtreeSpec = `
-constraints:
-  - group: { selector: leftSubtree, name: 'left subtree' }
-`;
-    const rightSubtreeSpec = `
-constraints:
-  - group: { selector: rightSubtree, name: 'right subtree' }
-`;
+    // ── Inline @annotations live in the source itself ───────────────────
+    // The spatial operations are part of the diagram now: children below their
+    // parent ('tree_edge' is the selector-only relation between two tree nodes),
+    // 'left' edges point left, 'right' edges point right, and the root is tinted
+    // by a directive. No separate rules block, no registry.
+    const TREE_ANNOTATIONS = `
+@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=left,  directions=[left])
+@orientation(selector=right, directions=[right])
+@atomColor(selector=root, value='#ffe7b3')`;
 
     // ── Source: a small binary tree with one shared child (D) ───────────
-    const source = `
+    const baseGraph = `
 graph TD
     A -->|left| B
     A -->|right| C
@@ -95,12 +69,21 @@ graph TD
     C -->|left| D
     C -->|right| F
     class A,B,C,D,E,F tree
-    class A root
-`;
+    class A root`;
 
-    document.getElementById('source').textContent = source.trim();
-    document.getElementById('specs').textContent =
-      '// tree\n' + treeSpec.trim() + '\n\n// root\n' + rootSpec.trim();
+    const satSource = baseGraph + '\n' + TREE_ANNOTATIONS;
+
+    // Add a contradicting annotation: forces edges ABOVE while the tree forces
+    // them BELOW. Spytial reports the clash; the element gets `unsat`.
+    const unsatSource = satSource + '\n@orientation(selector=tree_edge, directions=[above])';
+
+    // B's subtree (B, E) → leftSubtree; C's subtree (C, F) → rightSubtree.
+    // D is shared, so it belongs to neither group. @group draws a rectangle.
+    const groupsSource = baseGraph +
+      '\n    class B,E leftSubtree\n    class C,F rightSubtree' +
+      '\n' + TREE_ANNOTATIONS +
+      `\n@group(selector=leftSubtree, name='left subtree')` +
+      `\n@group(selector=rightSubtree, name='right subtree')`;
 
     const statusEl = document.getElementById('status');
     const setStatus = (msg, ok) => {
@@ -112,43 +95,22 @@ graph TD
     let graphEl;
 
     async function runSat() {
-      clearRegistry();
-      registerSpec('tree', treeSpec);
-      registerSpec('root', rootSpec);
-      await runOnce('satisfiable', source);
+      await runOnce('satisfiable', satSource);
     }
 
     async function runUnsat() {
-      clearRegistry();
-      registerSpec('tree', treeSpec);
-      registerSpec('root', rootSpec);
-      registerSpec('pathological', unsatSpec);
-      const unsatSource = source.replace(
-        'class A,B,C,D,E,F tree',
-        'class A,B,C,D,E,F tree\n    class A,B,C,D,E,F pathological'
-      );
       await runOnce('unsat', unsatSource);
     }
 
     async function runGroups() {
-      clearRegistry();
-      registerSpec('tree', treeSpec);
-      registerSpec('root', rootSpec);
-      registerSpec('leftSubtree', leftSubtreeSpec);
-      registerSpec('rightSubtree', rightSubtreeSpec);
-      // B's subtree (B, E) → leftSubtree; C's subtree (C, F) → rightSubtree.
-      // D is shared, so it belongs to neither group.
-      const groupsSource = source.replace(
-        'class A,B,C,D,E,F tree',
-        'class A,B,C,D,E,F tree\n    class B,E leftSubtree\n    class C,F rightSubtree'
-      );
       await runOnce('groups', groupsSource);
     }
 
     async function runOnce(mode, src) {
+      document.getElementById('source').textContent = src.trim();
       try {
-        // No explicit `rules` → renderMermaid merges the registered specs for
-        // whichever classes appear in this source.
+        // The spatial operations come from the inline @annotations in `src` —
+        // renderMermaid extracts and compiles them automatically.
         const result = await renderMermaid(graphEl, src);
         if (result.reason) { setStatus(`[${mode}] ${result.reason}`, false); return; }
 

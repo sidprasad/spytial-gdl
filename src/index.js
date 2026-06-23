@@ -4,6 +4,7 @@
 // Pipeline (Shape A — webcola-cnd-graph owns both layout AND drawing):
 //
 //   mermaid source
+//     → annotations.js    extract inline @orientation(...) → { source, specYaml }
 //     → parse.js          { nodes, edges, classesPerNode }
 //     → relationalize.js  { atoms, relations, hiddenRelations }
 //     → JSONDataInstance + SGraphQueryEvaluator + parseLayoutSpec
@@ -19,10 +20,11 @@
 // WebCola, so the mermaid library itself is no longer a dependency.
 
 import { parseFlowchart } from './parse.js';
-import { registerSpec, clearRegistry, mergeSpecsForClasses } from './registry.js';
+import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } from './registry.js';
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
+import { extractAnnotations } from './annotations.js';
 
-export { registerSpec, clearRegistry, mergeSpecsForClasses };
+export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations };
 
 function getSpytialCore() {
   const s =
@@ -72,17 +74,25 @@ function blankDefaultLabels(layout) {
   }
 }
 
-// Resolve the layout-rules YAML: an explicit `opts.rules` string wins; otherwise
-// merge any specs registered (via registerSpec) for the classes used in this
-// source, plus an optional `opts.extraSpec`. Empty rules are fine — Spytial
-// still produces a faithful default diagram.
-function resolveRules(parsed, opts) {
-  if (typeof opts.rules === 'string') return opts.rules;
+// Resolve the layout-rules YAML by merging every source of constraints, in order:
+//   1. specs registered (via registerSpec) for the classes used in this source,
+//      plus an optional `opts.extraSpec`
+//   2. inline `@annotation` spec compiled from the diagram source (`annoYaml`)
+//   3. an explicit `opts.rules` string (advanced escape hatch)
+// Inline annotations are the primary authoring model, but all sources compose;
+// the merge is the shared concat used by the class registry. Empty rules are
+// fine — Spytial still produces a faithful default diagram.
+function resolveRules(parsed, opts, annoYaml) {
   const usedClasses = new Set();
   for (const cs of parsed.classesPerNode.values()) {
     for (const c of cs) usedClasses.add(c);
   }
-  return mergeSpecsForClasses(Array.from(usedClasses), opts.extraSpec);
+  const registryYaml = mergeSpecsForClasses(Array.from(usedClasses), opts.extraSpec);
+  return mergeSpecStrings([
+    registryYaml,
+    annoYaml,
+    typeof opts.rules === 'string' ? opts.rules : '',
+  ]);
 }
 
 // Inject `hideField` directives for the selector-only relations so they stay
@@ -103,11 +113,12 @@ function hideRelations(spec, hiddenRelations) {
 // standard constraint-layout pipeline.
 //
 //   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
-//   source   — mermaid flowchart text
+//   source   — mermaid flowchart text, optionally with inline `@orientation(...)`
+//              spatial annotations (see annotations.js)
 //   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
 //
-// Returns { applied, layout, error, selectorErrors, parsed, data, rules,
-//           hiddenRelations }.
+// Returns { applied, layout, error, selectorErrors, annotationErrors, parsed,
+//           data, instance, rules, hiddenRelations }.
 export async function renderMermaid(graphEl, source, opts = {}) {
   if (!graphEl || typeof graphEl.renderLayout !== 'function') {
     throw new Error(
@@ -122,9 +133,14 @@ export async function renderMermaid(graphEl, source, opts = {}) {
     if (!fn) throw new Error(`spytial-mermaid: spytial-core is missing ${name}; need spytial-core ≥ 2.9`);
   }
 
-  const parsed = parseFlowchart(source);
+  // 0. lift inline `@orientation(...)` annotations out of the source before
+  //    parsing the flowchart; they compile to a layout spec, not graph syntax.
+  const { source: cleanSource, specYaml: annoYaml, errors: annotationErrors } =
+    extractAnnotations(source);
+
+  const parsed = parseFlowchart(cleanSource);
   if (parsed.nodes.size === 0) {
-    return { applied: false, reason: 'no nodes parsed from source', parsed };
+    return { applied: false, reason: 'no nodes parsed from source', parsed, annotationErrors };
   }
 
   // 1. mermaid → relational data instance (+ which relations are selector-only)
@@ -137,7 +153,7 @@ export async function renderMermaid(graphEl, source, opts = {}) {
   evaluator.initialize({ sourceData: instance });
 
   // 3. layout rules (YAML) → parsed spec, then hide the selector-only relations
-  const rules = resolveRules(parsed, opts);
+  const rules = resolveRules(parsed, opts, annoYaml);
   let spec;
   try {
     spec = parseLayoutSpec(rules || '');
@@ -168,5 +184,5 @@ export async function renderMermaid(graphEl, source, opts = {}) {
     applied = true;
   }
 
-  return { applied, layout, error, selectorErrors, parsed, data, instance, rules, hiddenRelations };
+  return { applied, layout, error, selectorErrors, annotationErrors, parsed, data, instance, rules, hiddenRelations };
 }

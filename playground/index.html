@@ -70,25 +70,9 @@
         .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--border); border-radius: 3px; transition: background .12s; }
         .splitter:hover::after { background: var(--accent); }
 
-        /* ─── Left: editor column with Diagram / Rules tabs ─────────────── */
-        .editor-tabs {
-            display: flex; gap: 2px; padding: 8px 10px 0; flex: 0 0 auto;
-            border-bottom: 1px solid var(--border);
-        }
-        .editor-tabs button {
-            font: inherit; font-size: 13px; font-weight: 550;
-            background: transparent; color: var(--ink-soft);
-            border: none; border-bottom: 2px solid transparent;
-            padding: 8px 12px 9px; cursor: pointer; border-radius: 6px 6px 0 0;
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .editor-tabs button .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0; }
-        .editor-tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
-        .editor-tabs button.active .dot { opacity: 1; }
-
+        /* ─── Left: combined-source editor (flowchart + @annotations) ───── */
         .editor-stack { flex: 1; position: relative; min-height: 0; }
         .editor-panel { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        .editor-panel.hidden { display: none; }
 
         textarea.code {
             flex: 1; width: 100%;
@@ -100,9 +84,6 @@
         }
         textarea.code::placeholder { color: var(--ink-faint); }
 
-        /* The React low-code Layout-rules editor mounts here. */
-        #rules-mount { flex: 1; overflow: auto; background: var(--editor-bg); }
-        #rules-mount > div { height: 100%; }
         .rules-hint {
             flex: 0 0 auto; font-size: 11.5px; color: var(--ink-faint);
             padding: 7px 14px; border-bottom: 1px solid var(--border); background: var(--chrome-2);
@@ -185,25 +166,19 @@
     </header>
 
     <main>
-        <!-- LEFT: Mermaid editor + low-code Layout-rules editor -->
+        <!-- LEFT: one combined-source editor (flowchart + inline @annotations) -->
         <section class="pane left">
-            <div class="editor-tabs" role="tablist">
-                <button id="tab-diagram" class="active" onclick="showTab('diagram')" role="tab">Diagram (Mermaid)</button>
-                <button id="tab-rules" onclick="showTab('rules')" role="tab">Layout rules<span class="dot" id="rules-dot"></span></button>
+            <div class="rules-hint">
+                Write a flowchart, then add spatial operations inline as
+                <code>@annotations</code> — e.g.
+                <code>@orientation(selector=link, directions=[below])</code>. Selectors match
+                edge labels (<code>link</code> = unlabeled), node classes (<code>tree</code>),
+                and shapes (<code>rect</code>, <code>diamond</code>…).
             </div>
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
                     <textarea id="mermaid-input" class="code" spellcheck="false"
-                        placeholder="flowchart TD&#10;  A[Start] --> B[Build]&#10;  B --> C{OK?}"></textarea>
-                </div>
-                <div class="editor-panel hidden" id="panel-rules">
-                    <div class="rules-hint">
-                        Constrain the space — drag selectors, directions and groups in the builder,
-                        or switch to <code>Code</code> for YAML. Selectors match edge labels
-                        (<code>link</code> = unlabeled), node classes (<code>tree</code>), and shapes
-                        (<code>rect</code>, <code>diamond</code>…).
-                    </div>
-                    <div id="rules-mount"></div>
+                        placeholder="flowchart TD&#10;  A[Start] --> B[Build]&#10;  B --> C{OK?}&#10;&#10;@orientation(selector=link, directions=[below])"></textarea>
                 </div>
             </div>
             <div class="editor-foot">
@@ -242,7 +217,7 @@
     <script type="module">
         import { renderMermaid } from '../src/index.js';
 
-        // ─── Examples (Mermaid source + Layout rules YAML) ──────────────
+        // ─── Examples (one combined source: flowchart + inline @annotations) ──
         // Selectors below match what relationalize.js emits:
         //   link        — unlabeled edges (drawn)
         //   <label>     — labeled edges, e.g. left / right (drawn)
@@ -250,38 +225,36 @@
         //   <class>     — class membership, e.g. tree (unary)
         //   <class>_edge— edges between two class members (selector-only)
         const EXAMPLES = {
-            flowchart: {
-                mermaid: `flowchart TD
+            flowchart: `flowchart TD
   A[Start] --> B[Build]
   B --> C{Tests pass?}
   C -->|ship| D[(Release)]
-  C -->|retry| B`,
-                rules: `# No rules yet — Spytial places nodes freely from the
-# faithful default. Switch to the Layout-rules tab and add
-# a rule (e.g. orientation on 'link') to constrain the space.`,
-            },
-            pipeline: {
-                mermaid: `flowchart LR
+  C -->|retry| B
+
+%% No annotations yet — Spytial places nodes freely from the faithful default.
+%% Add a spatial operation to constrain the space — try an orientation on the
+%% unlabeled 'link' edges so the flow points downward. See the "Binary tree"
+%% example for the inline annotation syntax.`,
+
+            pipeline: `flowchart LR
   A[Start] --> B[Build]
   B --> C[Test]
-  C --> D[Ship]`,
-                rules: `# Every unlabeled edge's target sits to the right of its
-# source, so the pipeline reads left -> right.
-constraints:
-  - orientation: { selector: link, directions: [right] }`,
-            },
-            cycle: {
-                mermaid: `flowchart LR
+  C --> D[Ship]
+
+%% Every unlabeled edge's target sits to the right of its
+%% source, so the pipeline reads left -> right.
+@orientation(selector=link, directions=[right])`,
+
+            cycle: `flowchart LR
   S0((S0)) --> S1((S1))
   S1 --> S2((S2))
   S2 --> S3((S3))
-  S3 --> S0`,
-                rules: `# Arrange the edge cycle as a ring.
-constraints:
-  - cyclic: { selector: link, direction: clockwise }`,
-            },
-            tree: {
-                mermaid: `flowchart TD
+  S3 --> S0
+
+%% Arrange the edge cycle as a ring.
+@cyclic(selector=link, direction=clockwise)`,
+
+            tree: `flowchart TD
   A -->|left| B
   A -->|right| C
   B -->|left| E
@@ -289,28 +262,26 @@ constraints:
   C -->|left| D
   C -->|right| F
   class A,B,C,D,E,F tree
-  class A root`,
-                rules: `# Children sit below their parent; 'left' edges point left,
-# 'right' edges point right — a binary tree.
-constraints:
-  - orientation: { selector: tree_edge, directions: [below] }
-  - orientation: { selector: left,  directions: [left] }
-  - orientation: { selector: right, directions: [right] }`,
-            },
-            clash: {
-                mermaid: `flowchart TD
+  class A root
+
+%% Children sit below their parent; 'left' edges point left,
+%% 'right' edges point right — a binary tree.
+@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=left,  directions=[left])
+@orientation(selector=right, directions=[right])`,
+
+            clash: `flowchart TD
   a -->|r1| b
   b -->|r2| c
-  c -->|r3| a`,
-                rules: `# These rules cannot all hold at once: r1, r2, r3 chase
-# each other around the cycle a -> b -> c -> a, but each
-# demands its target sit further left. Spytial renders the
-# best feasible layout and explains the minimal clash.
-constraints:
-  - orientation: { selector: r1, directions: [left] }
-  - orientation: { selector: r2, directions: [left] }
-  - orientation: { selector: r3, directions: [left] }`,
-            },
+  c -->|r3| a
+
+%% These rules cannot all hold at once: r1, r2, r3 chase each
+%% other around the cycle a -> b -> c -> a, but each demands its
+%% target sit further left. Spytial renders the best feasible
+%% layout and explains the minimal clash.
+@orientation(selector=r1, directions=[left])
+@orientation(selector=r2, directions=[left])
+@orientation(selector=r3, directions=[left])`,
         };
 
         // ─── Element refs / state ───────────────────────────────────────
@@ -340,39 +311,6 @@ constraints:
             sr.appendChild(style);
         }
 
-        // ─── Tabs ───────────────────────────────────────────────────────
-        window.showTab = function (which) {
-            const isDiagram = which === 'diagram';
-            document.getElementById('panel-diagram').classList.toggle('hidden', !isDiagram);
-            document.getElementById('panel-rules').classList.toggle('hidden', isDiagram);
-            document.getElementById('tab-diagram').classList.toggle('active', isDiagram);
-            document.getElementById('tab-rules').classList.toggle('active', !isDiagram);
-        };
-
-        // ─── Low-code Layout-rules editor (React CndLayoutInterface) ────
-        // Hosts a structured builder AND a YAML code view (lossless toggle).
-        // Re-mounted when loading an example to seed new rules.
-        function mountRules(yaml) {
-            const mount = document.getElementById('rules-mount');
-            mount.innerHTML = '';
-            const host = document.createElement('div');
-            host.id = 'rules-host';
-            mount.appendChild(host);
-            window.mountCndLayoutInterface &&
-                window.mountCndLayoutInterface('rules-host', {
-                    initialYamlValue: yaml || '',
-                    initialIsNoCodeView: false, // Code view: getCurrentCndSpec returns YAML verbatim
-                });
-            refreshRulesDot(yaml);
-        }
-        function currentRules() {
-            return (window.getCurrentCNDSpecFromReact ? window.getCurrentCNDSpecFromReact() : '') || '';
-        }
-        function refreshRulesDot(yaml) {
-            const meaningful = (yaml || '').split('\n').some(l => l.trim() && !l.trim().startsWith('#'));
-            document.getElementById('rules-dot').style.opacity = meaningful ? '1' : '0';
-        }
-
         // ─── Theme ──────────────────────────────────────────────────────
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -389,7 +327,7 @@ constraints:
         function b64e(s) { return btoa(unescape(encodeURIComponent(s))); }
         function b64d(s) { return decodeURIComponent(escape(atob(s))); }
         function writeHash() {
-            const payload = JSON.stringify({ m: mermaidEl.value, y: currentRules() });
+            const payload = JSON.stringify({ m: mermaidEl.value });
             history.replaceState(null, '', '#g=' + b64e(payload));
         }
         function readHash() {
@@ -411,11 +349,10 @@ constraints:
 
         // ─── Examples ───────────────────────────────────────────────────
         document.getElementById('example-select').addEventListener('change', (e) => {
-            const ex = EXAMPLES[e.target.value];
-            if (!ex) return;
-            mermaidEl.value = ex.mermaid;
-            mountRules(ex.rules);
-            setTimeout(apply, 60); // let the React editor commit its initial value
+            const src = EXAMPLES[e.target.value];
+            if (!src) return;
+            mermaidEl.value = src;
+            apply();
             e.target.selectedIndex = 0;
         });
 
@@ -430,7 +367,8 @@ constraints:
 
             let result;
             try {
-                result = await renderMermaid(graphEl, src, { rules: currentRules() });
+                // Spatial operations come from inline @annotations in the source.
+                result = await renderMermaid(graphEl, src);
             } catch (err) {
                 console.error(err);
                 setStatus('Error: ' + err.message, 'error');
@@ -438,13 +376,13 @@ constraints:
                 return;
             }
 
-            // Feed the data instance to the rules editor for domain-aware dropdowns.
-            if (result.instance) window.updateInstanceFromReact && window.updateInstanceFromReact(result.instance);
-
             if (result.applied) { fitView(); tidyCanvasChrome(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
 
             if (result.reason) {
                 setStatus(result.reason, 'error');
+            } else if (result.annotationErrors && result.annotationErrors.length) {
+                const first = result.annotationErrors[0];
+                setStatus(`Annotation error (line ${first.line}): ${first.message} — "${first.text}"`, 'error');
             } else if (result.selectorErrors && result.selectorErrors.length) {
                 window.showSelectorErrors && window.showSelectorErrors(result.selectorErrors);
                 document.getElementById('conflict-hint').style.display = 'inline-flex';
@@ -526,9 +464,7 @@ constraints:
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
             const shared = readHash();
-            const seed = shared ? { mermaid: shared.m || '', rules: shared.y || '' } : EXAMPLES.flowchart;
-            mermaidEl.value = seed.mermaid;
-            mountRules(seed.rules);
+            mermaidEl.value = shared && shared.m != null ? shared.m : EXAMPLES.flowchart;
 
             applyBtn.disabled = false;
             setStatus('Ready — edit and press Apply (⌘⏎).', 'info');

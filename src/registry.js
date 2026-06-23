@@ -27,33 +27,20 @@ export function getRegisteredClasses() {
   return Array.from(registry.keys());
 }
 
-// Tiny YAML-aware concat: parse each spec with the supplied parseLayoutSpec
-// (spytial-core's parser) and merge the `constraints` and `directives`
-// arrays. We do not attempt deep merge — within a category, later entries
-// simply follow earlier ones. spytial's solver processes both as ordered
-// lists, so concatenation is the natural composition.
+// Concatenate several authoring-YAML specs into one. Each source contributes
+// its `constraints` and `directives` list items; within a category, later
+// entries simply follow earlier ones (spytial's solver processes both as
+// ordered lists, so concatenation is the natural composition — no deep merge).
+// Empty / whitespace-only / null entries in the list are ignored.
 //
 // Returns the merged spec as a YAML string (so the caller can pass it back
-// through parseLayoutSpec one more time — keeps the wire format consistent).
-export function mergeSpecsForClasses(classNames, extraSpec) {
-  const specs = [];
-  for (const cn of classNames) {
-    const s = registry.get(cn);
-    if (s) specs.push(s);
-  }
-  if (extraSpec) specs.push(extraSpec);
-
-  if (specs.length === 0) {
-    return 'constraints: []\ndirectives: []\n';
-  }
-
-  // Concatenate the YAML sources under a single constraints/directives
-  // header. Each source contributes its constraints and directives blocks;
-  // we extract them with a minimal regex (no YAML lib) since spec format
-  // is well-known and small.
+// through parseLayoutSpec — keeps the wire format consistent). This is the
+// shared merge path used both by the class registry and by inline annotations.
+export function mergeSpecStrings(yamlList) {
   const allConstraints = [];
   const allDirectives = [];
-  for (const yaml of specs) {
+  for (const yaml of yamlList) {
+    if (!yaml || !String(yaml).trim()) continue;
     const { constraints, directives } = extractBlocks(yaml);
     allConstraints.push(...constraints);
     allDirectives.push(...directives);
@@ -73,6 +60,18 @@ export function mergeSpecsForClasses(classNames, extraSpec) {
     for (const d of allDirectives) out += `  - ${d}\n`;
   }
   return out;
+}
+
+// Merge the registered specs for the given class names (in registration order),
+// with an optional `extraSpec` appended last. Delegates to mergeSpecStrings.
+export function mergeSpecsForClasses(classNames, extraSpec) {
+  const specs = [];
+  for (const cn of classNames) {
+    const s = registry.get(cn);
+    if (s) specs.push(s);
+  }
+  if (extraSpec) specs.push(extraSpec);
+  return mergeSpecStrings(specs);
 }
 
 // Pull the lines under `constraints:` and `directives:` from a YAML spec.

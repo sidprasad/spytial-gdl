@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spytial-mermaid · spytial-graph in markdown</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 820px; margin: 0 auto; padding: 32px 20px 80px;
+      color: #1d2230; line-height: 1.6; background: #fafbfc;
+    }
+    h1 { font-size: 26px; letter-spacing: -0.01em; margin: 0 0 4px; }
+    h2 { font-size: 19px; margin: 32px 0 8px; }
+    p { margin: 10px 0; }
+    .lede { color: #5b6472; font-size: 15px; }
+    a { color: #2d8659; }
+    /* Fenced code blocks that are NOT spytial-graph (e.g. the source sample). */
+    pre { background: #f4f5f7; border: 1px solid #e2e5ea; border-radius: 8px;
+          padding: 12px 14px; overflow-x: auto; font-size: 12.5px; }
+    code { font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace; }
+    p code, li code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 90%; }
+    .note { font-size: 13px; color: #8c95a3; }
+    webcola-cnd-graph { display: block; width: 100%; height: 100%; }
+  </style>
+
+  <!-- d3 v4 + WebCola (constraint solver) + spytial-core (engine + <webcola-cnd-graph>) -->
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js"></script>
+  <!-- marked: a client-side markdown → HTML renderer (any markdown lib works). -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+</head>
+<body>
+  <!--
+    The markdown document. Held in a hidden <textarea> so the ```fences``` AND the
+    literal </script> tags in the "how a page turns these on" example are plain text
+    (a <textarea> only ends at </textarea>). In a real site this is whatever markdown
+    your docs pipeline already renders.
+  -->
+  <textarea id="source-md" hidden>
+# spytial-graph in markdown
+
+Write a fenced **`spytial-graph`** block — exactly the way you'd write a `mermaid`
+block — and it renders client-side as a live, draggable SpyTial constraint diagram.
+The spatial operations live *inline*, as `@orientation(...)` style annotations, so a
+single block describes both the graph and how it should be laid out.
+
+## A left-to-right pipeline
+
+`@orientation(selector=link, directions=[right])` says every edge's target sits to the
+right of its source, so the pipeline reads left → right:
+
+```spytial-graph
+flowchart LR
+  A[Start] --> B[Build]
+  B --> C[Test]
+  C --> D[Ship]
+
+@orientation(selector=link, directions=[right])
+```
+
+## A binary tree
+
+Label edges (`A -->|left| B`) and they become selectors. Here children sit below their
+parent, `left` edges point left, and `right` edges point right:
+
+```spytial-graph
+flowchart TD
+  A -->|left| B
+  A -->|right| C
+  B -->|left| D
+  B -->|right| E
+  C -->|left| F
+  C -->|right| G
+  class A,B,C,D,E,F,G tree
+
+@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=left,  directions=[left])
+@orientation(selector=right, directions=[right])
+```
+
+## A state cycle
+
+`@cyclic(...)` arranges the edge cycle as a ring. `@atomColor(...)` is a directive — it
+styles rather than positions:
+
+```spytial-graph
+flowchart LR
+  S0((S0)) --> S1((S1))
+  S1 --> S2((S2))
+  S2 --> S3((S3))
+  S3 --> S0
+
+@cyclic(selector=link, direction=clockwise)
+@atomColor(selector=S0, value='#ffe7b3')
+```
+
+## How a page turns these on
+
+Just two scripts (the engine, then one import) — no build step, no server beyond static
+hosting:
+
+```html
+<script src=".../spytial-core-complete.global.js"></script>
+<script type="module">
+  import { initStartOnLoad } from '.../src/markdown.js';
+  initStartOnLoad();
+</script>
+```
+  </textarea>
+
+  <div id="doc"><p class="note">Rendering…</p></div>
+
+  <script type="module">
+    import { renderSpytialGraphs, whenEngineReady } from '../src/markdown.js';
+
+    const md = document.getElementById('source-md').value;
+
+    // 1. markdown → HTML (any markdown renderer works; here: marked).
+    document.getElementById('doc').innerHTML = marked.parse(md);
+
+    // 2. swap every ```spytial-graph block for a live diagram.
+    try {
+      await whenEngineReady();
+      await renderSpytialGraphs(document.getElementById('doc'), { height: 320 });
+    } catch (err) {
+      console.error(err);
+      document.getElementById('doc').insertAdjacentHTML(
+        'afterbegin',
+        `<p style="color:#b00020">Failed to load: ${err.message}</p>`
+      );
+    }
+  </script>
+</body>
+</html>
