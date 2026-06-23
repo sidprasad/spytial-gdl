@@ -11,7 +11,7 @@
 //     A -->|right| C
 //     class A,B,C tree
 //
-//   @orientation(selector=tree_edge, directions=[below])
+//   @orientation(selector=_links, directions=[below])
 //   @orientation(selector=left,  directions=[left])
 //   @orientation(selector=right, directions=[right])
 //
@@ -124,7 +124,7 @@ function parseArgs(argStr) {
       throw new Error(`invalid argument name "${key}"`);
     }
     // A top-level `=` inside the value (outside quotes/brackets) means the args
-    // weren't comma-separated, e.g. `selector=link directions=[below]`.
+    // weren't comma-separated, e.g. `selector=_links directions=[below]`.
     if (hasTopLevelEquals(val)) {
       throw new Error(`missing comma before "${key}" arguments`);
     }
@@ -155,7 +155,7 @@ function emitValue(v) {
 }
 
 // Compile a single annotation to a YAML list-item body, e.g.
-//   orientation: { selector: link, directions: [below] }
+//   orientation: { selector: _links, directions: [below] }
 // `flag` is special-cased to a scalar payload (`flag: hideDisconnected`),
 // matching the Python serializer.
 function emitEntry(name, kwargs) {

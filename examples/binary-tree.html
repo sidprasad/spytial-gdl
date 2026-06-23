@@ -49,12 +49,12 @@
     import { renderSpytialGraph, mountGraph } from '../src/index.js';
 
     // ── Inline @annotations live in the source itself ───────────────────
-    // The spatial operations are part of the diagram now: children below their
-    // parent ('tree_edge' is the selector-only relation between two tree nodes),
-    // 'left' edges point left, 'right' edges point right, and the root is tinted
-    // by a directive. No separate rules block, no registry.
+    // The spatial operations are part of the diagram now: every edge points
+    // below ('_links' is all edges), 'left' edges also point left, 'right' edges
+    // point right, and the root node is tinted by a directive. No separate rules
+    // block, no registry.
     const TREE_ANNOTATIONS = `
-@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])
 @atomColor(selector=root, value='#ffe7b3')`;
@@ -67,14 +67,13 @@ B -> E : left
 B -> D : right
 C -> D : left
 C -> F : right
-class A,B,C,D,E,F tree
 class A root`;
 
     const satSource = baseGraph + '\n' + TREE_ANNOTATIONS;
 
     // Add a contradicting annotation: forces edges ABOVE while the tree forces
     // them BELOW. Spytial reports the clash; the element gets `unsat`.
-    const unsatSource = satSource + '\n@orientation(selector=tree_edge, directions=[above])';
+    const unsatSource = satSource + '\n@orientation(selector=_links, directions=[above])';
 
     // B's subtree (B, E) → leftSubtree; C's subtree (C, F) → rightSubtree.
     // D is shared, so it belongs to neither group. @group draws a rectangle.

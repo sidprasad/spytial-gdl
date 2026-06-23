@@ -171,14 +171,14 @@
             <div class="rules-hint">
                 Write nodes and edges (<code>A -&gt; B</code>, <code>A -&gt; B : label</code>),
                 then add spatial operations inline as <code>@annotations</code> — e.g.
-                <code>@orientation(selector=link, directions=[below])</code>. Selectors match
-                edge labels (<code>link</code> = unlabeled), node classes (<code>tree</code>),
-                and shapes (<code>rect</code>, <code>diamond</code>…).
+                <code>@orientation(selector=_links, directions=[below])</code>. Selectors are
+                edge labels (<code>_</code> = unlabeled, <code>_links</code> = all), node
+                classes (<code>tree</code>), and shapes (<code>rect</code>, <code>diamond</code>…).
             </div>
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
                     <textarea id="mermaid-input" class="code" spellcheck="false"
-                        placeholder="A[Start] -> B[Build]&#10;B -> C{OK?}&#10;&#10;@orientation(selector=link, directions=[below])"></textarea>
+                        placeholder="A[Start] -> B[Build]&#10;B -> C{OK?}&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
                 </div>
             </div>
             <div class="editor-foot">
@@ -219,11 +219,10 @@
 
         // ─── Examples (one combined source: graph + inline @annotations) ──────
         // Selectors below match what relationalize.js emits:
-        //   link        — unlabeled edges (drawn)
-        //   <label>     — labeled edges, e.g. left / right (drawn)
-        //   edge        — every edge (selector-only)
-        //   <class>     — class membership, e.g. tree (unary)
-        //   <class>_edge— edges between two class members (selector-only)
+        //   <label>  — edges with that label, e.g. left / right (drawn)
+        //   _        — unlabeled edges (drawn)
+        //   _links   — every edge
+        //   <class>  — the nodes carrying a class, e.g. tree / root
         const EXAMPLES = {
             flowchart: `A[Start] -> B[Build]
 B -> C{Tests pass?}
@@ -231,16 +230,16 @@ C -> D[(Release)] : ship
 C -> B : retry
 
 %% No annotations yet — SpyTial places nodes freely. Add a spatial operation to
-%% constrain the space — try an orientation on the unlabeled 'link' edges so the
-%% flow points downward. See the "Binary tree" example for the syntax.`,
+%% constrain the space — try @orientation(selector=_links, directions=[below])
+%% to point every edge downward. See the "Binary tree" example for more.`,
 
             pipeline: `A[Start] -> B[Build]
 B -> C[Test]
 C -> D[Ship]
 
-%% Every unlabeled edge's target sits to the right of its
-%% source, so the pipeline reads left -> right.
-@orientation(selector=link, directions=[right])`,
+%% Every edge's target sits to the right of its source,
+%% so the pipeline reads left -> right.
+@orientation(selector=_links, directions=[right])`,
 
             cycle: `S0 -> S1
 S1 -> S2
@@ -248,7 +247,7 @@ S2 -> S3
 S3 -> S0
 
 %% Arrange the edge cycle as a ring.
-@cyclic(selector=link, direction=clockwise)`,
+@cyclic(selector=_links, direction=clockwise)`,
 
             tree: `A -> B : left
 A -> C : right
@@ -256,12 +255,10 @@ B -> E : left
 B -> D : right
 C -> D : left
 C -> F : right
-class A,B,C,D,E,F tree
-class A root
 
-%% Children sit below their parent; 'left' edges point left,
+%% Every edge points down; 'left' edges also point left,
 %% 'right' edges point right — a binary tree.
-@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])`,
 

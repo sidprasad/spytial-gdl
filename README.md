@@ -1,5 +1,7 @@
 # spytial-graph
 
+*Diagramming in your browser, with semantics.*
+
 Write a small graph notation — nodes, edges, and inline spatial `@annotations` — and
 render it as a **live SpyTial constraint diagram** with the standard
 `<webcola-cnd-graph>` renderer. Drop a fenced ` ```spytial-graph ` block into Markdown and
@@ -8,9 +10,8 @@ it comes alive client-side, the way ` ```mermaid ` does.
 ```
 A -> B : left
 A -> C : right
-class A,B,C tree
 
-@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])
 ```
@@ -120,7 +121,7 @@ const result = await renderSpytialGraph(graph, `
 A -> B
 A -> C
 
-@orientation(selector=link, directions=[below])
+@orientation(selector=_links, directions=[below])
 `);
 ```
 
@@ -137,37 +138,22 @@ pass `opts.rules` (raw CnD YAML), or register a spec per class with `registerSpe
 
 ## Selectors
 
-A graph edge can be selected by several relation names. Each edge is **drawn exactly once**;
-the rest are *selector-only* (hidden from drawing):
+An edge's label **is** its relation name — that's the whole model. There are two built-in
+edge relations (`_`, `_links`), and a class names a set of nodes:
 
-| relation | arity | drawn? | selector example |
-|---|---|---|---|
-| `<label>` | 2 | ✅ drawn | `A -> B : left` → `selector: left` |
-| `link` | 2 | ✅ drawn | unlabeled `A -> B` → `selector: link` |
-| `edge` | 2 | hidden | every edge → `selector: edge` |
-| `<class>` | 1 | hidden | `class A,B tree` → `selector: tree` |
-| `<class>_edge` | 2 | hidden | edges between two `tree` nodes → `selector: tree_edge` |
+| selector | selects |
+|---|---|
+| `<label>` | edges carrying that label — `A -> B : left` → `left` |
+| `_` | the unlabeled edges — `A -> B` |
+| `_links` | every edge |
+| `<class>` | the nodes carrying a class — `class A,B team` → `team` |
+| `<shape>` | nodes of that shape — `rect`, `circle`, `diamond`, … (plain nodes are `Node`) |
 
-Node **type** = the shape (`rect`, `circle`, `diamond`, `cylinder`, `subroutine`,
-`asymmetric`, `round`) or `Node` for a plain `A`, so `selector: diamond` targets all
-decision nodes.
-
-**Name-collision warning:** if a class name and an edge label share a spelling, two
-relations get that name (one unary, one binary). Name classes and labels distinctly.
-
-## Why "draw each edge once" (the `hideField` trick)
-
-The standard renderer draws an edge for **every** relation tuple, labeled with the relation
-name (and a *unary* relation as a self-loop on each member). Since `relationalize.js` emits
-each edge into several relations (its label *and* the catch-all `edge` *and* any
-`<class>_edge`) plus a unary membership relation per class, drawing all of them would
-produce duplicate lines and stray self-loops.
-
-So `relationalize` marks every selector-only relation (`edge`, `<class>`, `<class>_edge`) as
-**hidden**, and `index.js` injects a `hideField` directive for each before solving. A hidden
-relation is removed from the drawn graph but stays in the data instance, so `selector: edge`
-/ `selector: tree_edge` still resolve. Net effect: each edge is drawn once (carrying its
-label, or none for `link`), while every selector still works.
+Each edge is **drawn once** — under its label, or `_` if unlabeled. `_links` and the class
+relations are *selector-only*: `relationalize` lists them in `hiddenRelations` and `index.js`
+injects a `hideField` directive for each, so they resolve in selectors without drawing a
+duplicate edge or a self-loop. (Name a class and an edge label distinctly — a shared
+spelling collides their relations.)
 
 ## Conflicts (unsat)
 

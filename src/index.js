@@ -59,8 +59,8 @@ export function mountGraph(container, opts = {}) {
   return el;
 }
 
-// Blank the synthetic `link` label that unlabeled edges carry, so the
-// rendered graph doesn't show the word "link" on every plain `A --> B`.
+// Blank the synthetic `_` name that unlabeled edges carry, so the rendered
+// graph doesn't show "_" on every plain `A -> B`.
 function blankDefaultLabels(layout) {
   if (!layout || !Array.isArray(layout.edges)) return;
   for (const edge of layout.edges) {

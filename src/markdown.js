@@ -12,7 +12,7 @@
 //       A -->|right| C
 //       class A,B,C tree
 //
-//     @orientation(selector=tree_edge, directions=[below])
+//     @orientation(selector=_links, directions=[below])
 //     @orientation(selector=left,  directions=[left])
 //     @orientation(selector=right, directions=[right])
 //     ```

@@ -19,7 +19,7 @@ Then write a fenced block, the way you'd write `mermaid`:
 ```spytial-graph
 A -> B
 B -> C
-@orientation(selector=link, directions=[right])
+@orientation(selector=_links, directions=[right])
 ```
 ````
 
@@ -68,15 +68,17 @@ Annotations *are* the layout. Each is one line, `@name(arg=value, …)`:
 
 | annotation | effect |
 |---|---|
-| `@orientation(selector=link, directions=[below])` | put each edge's target below its source |
+| `@orientation(selector=_links, directions=[below])` | put each edge's target below its source |
 | `@align(selector=row, direction=top)` | line nodes up on an axis |
-| `@cyclic(selector=link, direction=clockwise)` | arrange a cycle as a ring |
+| `@cyclic(selector=_links, direction=clockwise)` | arrange a cycle as a ring |
 | `@group(selector=team, name='Team A')` | draw a labeled region around a set |
 | `@atomColor(selector=root, value='#ffe7b3')` | tint nodes |
 
-A `selector` names nodes or edges: an edge label (`yes`), `link` for unlabeled
-edges, a class (`tag`), a shape (`diamond`), or `edge` for all edges. A class
-`team` also exposes `team_edge` — the edges between two of its members.
+A `selector` names nodes or edges:
+
+- an **edge label** (`yes`) — the edges carrying it
+- **`_`** — the unlabeled edges; **`_links`** — every edge
+- a **class** (`tag`) or a **shape** (`diamond`) — the matching nodes
 
 Put together — a binary tree, children below, left-left and right-right:
 
@@ -87,9 +89,8 @@ B -> D : left
 B -> E : right
 C -> F : left
 C -> G : right
-class A,B,C,D,E,F,G tree
 
-@orientation(selector=tree_edge, directions=[below])
+@orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])
 ```
