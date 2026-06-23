@@ -1,172 +1,172 @@
-// Public API. The full Shape B pipeline:
-//   parse mermaid source → render via mermaid → relationalize for spytial →
-//   compute target positions via runHeadlessLayout → rewrite SVG.
+// spytial-mermaid — render mermaid declarations through Spytial's standard
+// WebCola CnD renderer.
 //
-// `mermaid` and `spytial-core` are expected to be on `window` (loaded via
-// CDN or bundler). Both are peer dependencies — the integration deliberately
-// doesn't import them so it can be loaded as a bare ES module in the browser.
+// Pipeline (Shape A — webcola-cnd-graph owns both layout AND drawing):
+//
+//   mermaid source
+//     → parse.js          { nodes, edges, classesPerNode }
+//     → relationalize.js  { atoms, relations, hiddenRelations }
+//     → JSONDataInstance + SGraphQueryEvaluator + parseLayoutSpec
+//     → LayoutInstance.generateLayout  → { layout, error, selectorErrors }
+//     → <webcola-cnd-graph>.renderLayout(layout)
+//
+// spytial-core is a peer dependency loaded on the page (CDN or bundler) as the
+// global `window.spytialcore` (legacy alias `CndCore`); it auto-registers the
+// <webcola-cnd-graph> custom element and needs d3 v4 + cola.js present. We do
+// NOT import it, so this module loads as a bare ES module in the browser.
+//
+// Note: we parse the mermaid *syntax* ourselves (parse.js) and draw via
+// WebCola, so the mermaid library itself is no longer a dependency.
 
 import { parseFlowchart } from './parse.js';
 import { registerSpec, clearRegistry, mergeSpecsForClasses } from './registry.js';
-import { relationalize } from './relationalize.js';
-import { applyLayout, highlightConflicts } from './postprocess.js';
+import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 
-export { registerSpec, clearRegistry };
-
-// Pull atom IDs out of a LayoutConstraint regardless of which subtype it
-// is. Covers Top/Left/Alignment/BBox; ignores `sourceConstraint` to avoid
-// pulling in atoms that aren't actually in conflict.
-function constraintAtomIds(c) {
-  const ids = new Set();
-  const pick = n => { if (n && typeof n.id === 'string') ids.add(n.id); };
-  // Top/Left/Alignment
-  pick(c.top); pick(c.bottom);
-  pick(c.left); pick(c.right);
-  pick(c.node1); pick(c.node2);
-  // BoundingBox: node is the lone atom; group adds member ids.
-  pick(c.node);
-  if (c.group && Array.isArray(c.group.nodeIds)) c.group.nodeIds.forEach(id => ids.add(id));
-  if (c.groupA && Array.isArray(c.groupA.nodeIds)) c.groupA.nodeIds.forEach(id => ids.add(id));
-  if (c.groupB && Array.isArray(c.groupB.nodeIds)) c.groupB.nodeIds.forEach(id => ids.add(id));
-  return Array.from(ids);
-}
-
-// (pairs of atom ids that share a conflicting binary constraint — useful
-// for highlighting the EDGE between them as well as the nodes).
-function constraintAtomPair(c) {
-  if (c.top && c.bottom) return [c.top.id, c.bottom.id];
-  if (c.left && c.right) return [c.left.id, c.right.id];
-  if (c.node1 && c.node2) return [c.node1.id, c.node2.id];
-  return null;
-}
-
-function getMermaid() {
-  const m = globalThis.mermaid;
-  if (!m) throw new Error('spytial-mermaid: mermaid is not loaded on window.mermaid');
-  return m;
-}
+export { registerSpec, clearRegistry, mergeSpecsForClasses };
 
 function getSpytialCore() {
-  const s = globalThis.spytialcore;
-  if (!s) throw new Error('spytial-mermaid: spytial-core is not loaded on window.spytialcore');
+  const s =
+    (typeof window !== 'undefined' && (window.spytialcore || window.CndCore || window.CnDCore)) ||
+    globalThis.spytialcore ||
+    globalThis.CndCore;
+  if (!s) {
+    throw new Error(
+      'spytial-mermaid: spytial-core is not loaded. Include ' +
+        'spytial-core-complete.global.js (plus d3 v4 and cola.js) on the page.'
+    );
+  }
   return s;
 }
 
-let renderCounter = 0;
-
-export async function render(targetEl, source, opts = {}) {
-  if (!(targetEl instanceof Element)) {
-    throw new Error('render: targetEl must be an Element');
+// Create (or reuse) a <webcola-cnd-graph> element inside `container`. Returns
+// the graph element to pass to renderMermaid. If `container` is already a
+// <webcola-cnd-graph>, it is returned as-is.
+export function mountGraph(container, opts = {}) {
+  if (!(container instanceof Element)) {
+    throw new Error('mountGraph: container must be an Element');
   }
-
-  const mermaid = getMermaid();
-  const spytial = getSpytialCore();
-  const {
-    JSONDataInstance,
-    parseLayoutSpec,
-    runHeadlessLayout,
-    LayoutInstance,
-    SGraphQueryEvaluator,
-  } = spytial;
-
-  if (typeof runHeadlessLayout !== 'function') {
-    throw new Error('spytial-mermaid: spytialcore.runHeadlessLayout missing; need spytial-core ≥ 2.5');
+  if (container.tagName && container.tagName.toLowerCase() === 'webcola-cnd-graph') {
+    return container;
   }
-
-  const parsed = parseFlowchart(source);
-  if (parsed.nodes.size === 0) {
-    targetEl.innerHTML = '<em>spytial-mermaid: no nodes parsed from source.</em>';
-    return null;
+  let el = container.querySelector('webcola-cnd-graph');
+  if (!el) {
+    el = document.createElement('webcola-cnd-graph');
+    if (opts.width != null) el.setAttribute('width', String(opts.width));
+    if (opts.height != null) el.setAttribute('height', String(opts.height));
+    if (opts.theme) el.setAttribute('theme', opts.theme);
+    el.setAttribute('aria-label', opts.ariaLabel || 'Spytial constraint diagram');
+    container.appendChild(el);
   }
+  return el;
+}
 
-  // 1. Render with mermaid into the target element.
-  const id = `spytial-mermaid-${++renderCounter}`;
-  const { svg, bindFunctions } = await mermaid.render(id, source);
-  targetEl.innerHTML = svg;
-  const svgRoot = targetEl.querySelector('svg');
-  if (!svgRoot) throw new Error('spytial-mermaid: mermaid did not produce an <svg>');
-  if (bindFunctions) bindFunctions(targetEl);
+// Blank the synthetic `link` label that unlabeled mermaid edges carry, so the
+// rendered graph doesn't show the word "link" on every plain `A --> B`.
+function blankDefaultLabels(layout) {
+  if (!layout || !Array.isArray(layout.edges)) return;
+  for (const edge of layout.edges) {
+    if (edge.relationName === DEFAULT_RELATION || edge.label === DEFAULT_RELATION) {
+      edge.showLabel = false;
+      edge.label = '';
+    }
+  }
+}
 
-  // 2. Gather the set of classes that actually appear in this source so
-  //    we only merge specs that are relevant.
+// Resolve the layout-rules YAML: an explicit `opts.rules` string wins; otherwise
+// merge any specs registered (via registerSpec) for the classes used in this
+// source, plus an optional `opts.extraSpec`. Empty rules are fine — Spytial
+// still produces a faithful default diagram.
+function resolveRules(parsed, opts) {
+  if (typeof opts.rules === 'string') return opts.rules;
   const usedClasses = new Set();
   for (const cs of parsed.classesPerNode.values()) {
     for (const c of cs) usedClasses.add(c);
   }
-  if (usedClasses.size === 0 && !opts.extraSpec) {
-    // No specs to apply → leave mermaid's rendering untouched.
-    return { applied: false, reason: 'no classes carried specs' };
-  }
-
-  // 3. Build the spytial inputs.
-  const dataJson = relationalize(parsed);
-  const mergedYaml = mergeSpecsForClasses(Array.from(usedClasses), opts.extraSpec);
-
-  const instance = new JSONDataInstance(dataJson);
-  const layoutSpec = parseLayoutSpec(mergedYaml);
-
-  // 4a. Build the LayoutInstance directly so we can read conflict info
-  //     off the InstanceLayout. runHeadlessLayout doesn't expose it.
-  const evaluator = new SGraphQueryEvaluator();
-  evaluator.initialize({ sourceData: instance });
-  const layoutInstance = new LayoutInstance(layoutSpec, evaluator, 0, true);
-  const { layout: instanceLayout } = layoutInstance.generateLayout(instance);
-  const conflictingConstraints = instanceLayout.conflictingConstraints || [];
-  const overlappingNodes = instanceLayout.overlappingNodes || [];
-
-  const conflictAtoms = new Set();
-  const conflictPairs = [];
-  for (const c of conflictingConstraints) {
-    for (const id of constraintAtomIds(c)) conflictAtoms.add(id);
-    const pair = constraintAtomPair(c);
-    if (pair) conflictPairs.push(pair);
-  }
-  for (const n of overlappingNodes) {
-    if (n && typeof n.id === 'string') conflictAtoms.add(n.id);
-  }
-
-  // 4b. Compute target positions headlessly. Figure size is read from
-  //     the rendered svg's viewBox if available, otherwise from current
-  //     width/height attributes; falls back to spytial defaults.
-  const { figWidth, figHeight } = readFigureSize(svgRoot);
-  const result = await runHeadlessLayout(layoutSpec, instance, { figWidth, figHeight });
-  const positions = result.positions.positions;
-
-  // 5. Mutate the mermaid SVG to match. Pass through the LayoutGroups so
-  //    `group` constraints get visual rectangles drawn behind the nodes.
-  const layoutGroups = instanceLayout.groups || [];
-  const stats = applyLayout(svgRoot, positions, parsed.edges, layoutGroups);
-
-  // 6. Highlight any unsat constraints back onto the SVG. Edges are
-  //    matched against `parsed.edges` so we tint a path whenever both
-  //    endpoints are in a conflicting pair.
-  const highlightStats = highlightConflicts(svgRoot, conflictAtoms, conflictPairs, parsed.edges);
-
-  return {
-    applied: true,
-    mergedYaml,
-    dataJson,
-    positions,
-    stats,
-    conflicts: {
-      count: conflictingConstraints.length,
-      atomIds: Array.from(conflictAtoms),
-      pairs: conflictPairs,
-      overlapping: overlappingNodes.map(n => n.id).filter(Boolean),
-      highlight: highlightStats,
-    },
-  };
+  return mergeSpecsForClasses(Array.from(usedClasses), opts.extraSpec);
 }
 
-function readFigureSize(svgRoot) {
-  const vb = svgRoot.getAttribute('viewBox');
-  if (vb) {
-    const parts = vb.split(/\s+/).map(parseFloat);
-    if (parts.length === 4 && parts.every(Number.isFinite)) {
-      return { figWidth: Math.max(parts[2], 200), figHeight: Math.max(parts[3], 200) };
-    }
+// Inject `hideField` directives for the selector-only relations so they stay
+// queryable in selectors but are not drawn as duplicate edges. We mutate the
+// parsed spec's directive list directly (the layout spec's data model), which
+// avoids fragile YAML string surgery.
+function hideRelations(spec, hiddenRelations) {
+  if (!spec || !hiddenRelations || hiddenRelations.length === 0) return;
+  if (!spec.directives) spec.directives = {};
+  if (!Array.isArray(spec.directives.hiddenFields)) spec.directives.hiddenFields = [];
+  const hidden = spec.directives.hiddenFields;
+  for (const field of hiddenRelations) {
+    if (!hidden.some(h => h && h.field === field)) hidden.push({ field });
   }
-  const w = parseFloat(svgRoot.getAttribute('width')) || 800;
-  const h = parseFloat(svgRoot.getAttribute('height')) || 600;
-  return { figWidth: w, figHeight: h };
+}
+
+// Render mermaid `source` onto a <webcola-cnd-graph> element using Spytial's
+// standard constraint-layout pipeline.
+//
+//   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
+//   source   — mermaid flowchart text
+//   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
+//
+// Returns { applied, layout, error, selectorErrors, parsed, data, rules,
+//           hiddenRelations }.
+export async function renderMermaid(graphEl, source, opts = {}) {
+  if (!graphEl || typeof graphEl.renderLayout !== 'function') {
+    throw new Error(
+      'renderMermaid: graphEl must be a <webcola-cnd-graph> element. ' +
+        'Use mountGraph(container) to create one.'
+    );
+  }
+
+  const spytial = getSpytialCore();
+  const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial;
+  for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
+    if (!fn) throw new Error(`spytial-mermaid: spytial-core is missing ${name}; need spytial-core ≥ 2.9`);
+  }
+
+  const parsed = parseFlowchart(source);
+  if (parsed.nodes.size === 0) {
+    return { applied: false, reason: 'no nodes parsed from source', parsed };
+  }
+
+  // 1. mermaid → relational data instance (+ which relations are selector-only)
+  const { atoms, relations, hiddenRelations } = relationalize(parsed);
+  const data = { atoms, relations };
+  const instance = new JSONDataInstance(data);
+
+  // 2. relational evaluator
+  const evaluator = new SGraphQueryEvaluator();
+  evaluator.initialize({ sourceData: instance });
+
+  // 3. layout rules (YAML) → parsed spec, then hide the selector-only relations
+  const rules = resolveRules(parsed, opts);
+  let spec;
+  try {
+    spec = parseLayoutSpec(rules || '');
+  } catch (err) {
+    throw new Error(`spytial-mermaid: layout rules parse error: ${err.message}`);
+  }
+  hideRelations(spec, hiddenRelations);
+
+  // 4. solve (qualitative validator → IIS clash reporting / counterfactual)
+  const li = new LayoutInstance(spec, evaluator, 0, true, undefined, opts.validator || 'qualitative');
+  const result = li.generateLayout(instance);
+  const layout = result.layout;
+  const selectorErrors = result.selectorErrors || [];
+  const error = result.error || null;
+
+  // 5. reflect unsat state on the element (drives the renderer's conflict styling)
+  if (selectorErrors.length > 0 || error) graphEl.setAttribute('unsat', '');
+  else graphEl.removeAttribute('unsat');
+
+  // 6. render. On a constraint clash, `layout` is the best-feasible
+  //    counterfactual — still worth drawing. Selector errors mean the spec
+  //    itself is malformed, so we skip drawing a degenerate layout.
+  let applied = false;
+  if (layout && selectorErrors.length === 0) {
+    blankDefaultLabels(layout);
+    if (typeof graphEl.clear === 'function') graphEl.clear();
+    await graphEl.renderLayout(layout);
+    applied = true;
+  }
+
+  return { applied, layout, error, selectorErrors, parsed, data, instance, rules, hiddenRelations };
 }

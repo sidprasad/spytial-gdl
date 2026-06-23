@@ -1,192 +1,167 @@
-# spytial-mermaid (prototype)
+# spytial-mermaid
 
-Apply SpyTial spatial constraints on top of mermaid.js flowcharts.
+Render [Mermaid](https://mermaid.js.org/) flowcharts as **live SpyTial constraint
+diagrams**, using SpyTial's standard `<webcola-cnd-graph>` renderer.
 
-## What it does
+You write a Mermaid declaration; SpyTial gives you a faithful default diagram for
+free, then lets you refine it with compact spatial rules (orientation, alignment,
+grouping, cycles) — without rebuilding it. This is the **Live Mermaid** tool of the
+[Spytial UIST 2026 demo](../spytial-uist-2026/): one of three input modalities on the
+same `spytial-core` engine.
 
-Mermaid renders normally. Then spytial reads the SVG, computes new positions
-that satisfy a class-keyed spec, and rewrites the SVG: node `transform`s
-get updated and edges get redrawn as straight lines between the new endpoints.
+> **Shape A.** SpyTial owns both layout *and* drawing. Mermaid is just an input
+> notation: we parse the Mermaid *syntax* ourselves, turn it into a relational data
+> instance, solve the constraints, and draw with WebCola. (The previous prototype used
+> "Shape B" — render Mermaid's SVG, then post-nudge node positions; that renderer is
+> gone.) The Mermaid library itself is no longer a dependency.
 
-```js
-import { registerSpec, render } from './src/index.js';
+## Try it
 
-registerSpec('tree', `
-constraints:
-  - orientation: { selector: child, directions: [below] }
-  - align: { selector: child, direction: vertical }
-`);
+Everything loads from CDN — no `npm install` needed:
 
-await render(document.getElementById('out'), `
-graph TD
-    root:::tree --> a:::tree
-    root:::tree --> b:::tree
-    a:::tree --> a1:::tree
-    a:::tree --> a2:::tree
-`);
+```bash
+# from the spytial-mermaid directory
+npm run serve            # zero-dep static server (node), port 8100
+# open http://localhost:8100/playground/            ← Live Mermaid playground
+# open http://localhost:8100/examples/binary-tree.html   ← programmatic API demo
 ```
 
-## Architecture (Shape B: mermaid owns layout, spytial post-nudges)
+(Any static file server works — e.g. `python3 -m http.server`. A server is required
+because the pages load `src/index.js` as an ES module.)
+
+The **playground** is a Mermaid live editor: a Mermaid pane, a low-code Layout-rules
+pane (structured builder ⇄ YAML), and a live constraint diagram you can drag, zoom, and
+share via URL. Pick an example from the top-right menu.
+
+## Pipeline
 
 ```
 mermaid source
-   │
-   ├── parse.js          → { nodes, edges, classesPerNode }
-   │
-   ├── mermaid.render()  → SVG (mermaid's own positions)
-   │
-   ├── relationalize.js  → JSONDataInstance shape
-   ├── registry.js       → merge specs from class names
-   │
-   ├── spytial runHeadlessLayout → target positions {id, x, y}
-   │
-   └── postprocess.js    → mutate SVG: move <g class="node">, redraw <path>
+  └─ parse.js          → { nodes, edges, classesPerNode }
+  └─ relationalize.js  → { atoms, relations, hiddenRelations }
+  └─ spytial-core standard pipeline:
+       new JSONDataInstance(data)
+       SGraphQueryEvaluator().initialize({ sourceData })
+       parseLayoutSpec(rules)            (+ injected hideField directives)
+       new LayoutInstance(spec, evaluator, 0, true, undefined, 'qualitative')
+       .generateLayout(instance)         → { layout, error, selectorErrors }
+  └─ <webcola-cnd-graph>.renderLayout(layout)
 ```
 
 ## Public API
 
 ```js
-registerSpec(className: string, yamlSpec: string): void
-render(targetEl: HTMLElement, source: string, opts?: { extraSpec?: string }): Promise<void>
-clearRegistry(): void
-```
+import { renderMermaid, mountGraph, registerSpec, clearRegistry } from 'spytial-mermaid';
 
-## Groups
+// 1. Create (or reuse) a <webcola-cnd-graph> element inside a container.
+const graph = mountGraph(document.getElementById('out'), { width: 800, height: 600 });
 
-A spytial `group` constraint collects atoms into a `LayoutGroup`. We
-draw each group as a rounded `<rect>` behind the nodes, sized to enclose
-all members plus a padding margin, with the group's name in the
-top-left corner. Inserted before the node container in DOM order so it
-sits behind everything but the SVG background.
-
-```yaml
-# leftSubtreeSpec
+// 2. Render mermaid + an optional CnD rules spec onto it.
+const result = await renderMermaid(graph, `
+graph TD
+  A --> B
+  A --> C
+`, {
+  rules: `
 constraints:
-  - group: { selector: leftSubtree, name: 'left subtree' }
+  - orientation: { selector: link, directions: [below] }
+`,
+});
 ```
 
-```
-# in the mermaid source
-class B,E leftSubtree
-class C,F rightSubtree
-```
+`renderMermaid(graphEl, source, opts)` →
+`{ applied, layout, error, selectorErrors, parsed, data, instance, rules, hiddenRelations }`.
 
-For overlapping groups, the larger group is drawn first (deeper in the
-DOM) so smaller groups visually nest in front. Spytial's "negated"
-groups (representing "no clean rect can contain these") are skipped —
-they don't have an unambiguous rectangle to draw.
+| opt | meaning |
+|---|---|
+| `rules` | CnD layout-spec YAML (string). If omitted, rules are merged from `registerSpec` (see below). |
+| `extraSpec` | extra YAML appended when merging from the registry. |
+| `validator` | `'qualitative'` (default, IIS clash reporting) or `'kiwi'`. |
 
-The `examples/binary-tree.html` demo has a third button, **"render with
-groups"**, that adds `leftSubtree` and `rightSubtree` classes to the
-relevant nodes and registers two group constraints. The result panel's
-`groupsDrawn` stat reflects how many rects were inserted.
+`mountGraph(container, { width, height, theme, ariaLabel })` — creates/returns a
+`<webcola-cnd-graph>` element. If `container` already is one, it's returned as-is.
 
-## Unsat highlighting
+### Optional: class-keyed spec registry
 
-When the constraint system is over-determined, spytial-core reports
-which constraints conflict. We pull those out (via
-`LayoutInstance.generateLayout`'s `conflictingConstraints` /
-`overlappingNodes` fields) and tint the affected nodes and edges red
-directly on the mermaid SVG. The render result includes a `conflicts`
-object so callers can also inspect programmatically:
+Instead of passing `rules`, you can register a spec per Mermaid class; `renderMermaid`
+merges the specs for whichever classes appear in the source:
 
 ```js
-const result = await render(el, source);
-if (result.conflicts.count > 0) {
-  console.warn(`${result.conflicts.count} unsat constraints`,
-               result.conflicts.atomIds, result.conflicts.pairs);
-}
+registerSpec('tree', `constraints:\n  - orientation: { selector: tree_edge, directions: [below] }`);
+clearRegistry();   // reset
 ```
 
-Two notes on how spytial reports conflicts:
-- Conflicts are returned as the *constraints* involved, not a complete
-  enumeration of affected pairs. Spytial's solver short-circuits per
-  node, so for a 6-edge graph where every edge has a contradictory
-  orientation, you may see 5 of 6 pairs highlighted, not all 6.
-- `overlappingNodes` is reported separately — node-pair overlaps where
-  no minDistance can be found. Those get highlighted as nodes too.
+## Selectors: what relationalize emits
 
-The example demo has a "render unsat spec" button that piles a
-contradictory `orientation: above` on top of the existing `below`
-constraint to exercise this path.
+A Mermaid edge can be selected by several relation names. Each mermaid edge is **drawn
+exactly once**; the rest are *selector-only* (hidden from drawing, see below).
 
-## Edge labels become first-class relations
+| relation | arity | drawn? | example selector |
+|---|---|---|---|
+| `<label>` | 2 | ✅ drawn | `A -->|left| B` → `selector: left` |
+| `link` | 2 | ✅ drawn | unlabeled `A --> B` → `selector: link` |
+| `edge` | 2 | hidden | every edge → `selector: edge` |
+| `<class>` | 1 | hidden | `class A,B tree` → `selector: tree` |
+| `<class>_edge` | 2 | hidden | edges between two `tree` nodes → `selector: tree_edge` |
 
-Mermaid edge labels (`A -->|left| B`) are *not* just visual annotations
-here — each unique label becomes its own binary relation that spytial can
-target directly. Given:
+Node **type** = the Mermaid shape (`rect`, `circle`, `diamond`, `cylinder`,
+`subroutine`, `asymmetric`, `round`) or `MermaidNode` for a plain `A`, so
+`selector: diamond` targets all decision nodes.
 
-```
-graph TD
-    A -->|left|  B
-    A -->|right| C
-```
+**Name-collision warning:** if a class name and an edge label share a spelling, two
+relations get that name (one unary, one binary). Name classes and labels distinctly.
 
-the relationalizer emits relations `edge` (catch-all, both tuples),
-`left` (just `(A,B)`), and `right` (just `(A,C)`). Then a spec can do:
+## Why "draw each edge once" (the `hideField` trick)
+
+The standard renderer draws an edge for **every** relation tuple, labeled with the
+relation name (and a *unary* relation as a self-loop on each member). Since
+`relationalize.js` emits each edge into several relations (its label *and* the catch-all
+`edge` *and* any `<class>_edge`) plus a unary membership relation per class, drawing all
+of them would produce duplicate lines and stray self-loops.
+
+So relationalize marks every selector-only relation (`edge`, `<class>`, `<class>_edge`)
+as **hidden**, and `index.js` injects a `hideField` directive for each before solving:
 
 ```yaml
-constraints:
-  - orientation: { selector: left,  directions: [leftOf] }
-  - orientation: { selector: right, directions: [rightOf] }
+directives:
+  - hideField: { field: edge }
+  - hideField: { field: tree }
+  - hideField: { field: tree_edge }
 ```
 
-— the natural way to express binary-tree shape. The `examples/binary-tree.html`
-demo uses this pattern.
+A hidden relation is removed from the drawn graph but stays in the data instance, so
+`selector: edge` / `selector: tree_edge` still resolve. Net effect: each Mermaid edge is
+drawn once (carrying its Mermaid label, or none for `link`), while every selector still
+works.
 
-**Name collision warning:** if a class name and an edge label share a
-spelling, two relations will be emitted with the same name — one unary
-(class membership), one binary (label). spytial will likely complain.
-Name your classes and labels distinctly.
+## Conflicts (unsat)
 
-## Edge routing
+When rules can't all hold, `generateLayout` returns a counterfactual `layout` plus an
+`error` (the minimal conflicting constraints / IIS). `renderMermaid` sets the `unsat`
+attribute on the `<webcola-cnd-graph>` element and returns the error structured; the
+playground renders the best-feasible layout and shows the explanation modal. Malformed
+selectors come back as `selectorErrors`.
 
-Mermaid's original bezier paths are stale once spytial moves the nodes,
-so we redraw every edge with **orthogonal Z-routing**: exit the source
-perpendicular to its closest face, run along the dominant axis, bend
-once toward the target's closest face, enter perpendicular to that.
-Corners are smoothed with a small quadratic curve so edges look like
-flowchart paths, not hand-drawn L-shapes. Edge labels are repositioned
-to the midpoint of the new route in the same pass.
+## Dependencies (CDN)
 
-This is *obstacle-unaware* — an edge can still cut through a third
-node if spytial's layout puts one in its path. Obstacle-aware routing
-(orthogonal with detour, or A* over a visibility graph) is a v2
-upgrade.
+The pages load, in order:
 
-## Known limitations
-
-- **Obstacle-unaware routing.** See above — edges may pass through
-  unrelated nodes.
-- **Flowchart only.** `graph TD`/`graph LR`/`flowchart TD` etc. No
-  classDiagram, stateDiagram, sequenceDiagram, Gantt, pie, journey.
-- **Mermaid `classDef fill:#...` styles** still apply (mermaid renders the
-  shape). spytial directives govern positions; mermaid CSS governs paint.
-- **Spytial *directives* are silent under Shape B.** `atomColor`, `icon`,
-  `edgeColor` etc. have no visual effect because mermaid (not spytial)
-  renders the SVG. Only *constraints* (positions) take effect.
-- **No live re-render** on source/registry change — call `render` again.
-
-## Running the example
-
-The example loads both `mermaid` and `spytial-core` from CDN, so no
-`npm install` is needed:
-
-```bash
-# from the spytial-mermaid directory
-python3 -m http.server 8000
-# open http://localhost:8000/examples/binary-tree.html
+```
+d3 v4         https://d3js.org/d3.v4.min.js
+webcola       https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js
+spytial-core  https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js
+components    https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/components/react-component-integration.global.js (+ .css)
 ```
 
-## How it relates to spytial-core's other integrations
+`spytial-core-complete.global.js` auto-registers the `<webcola-cnd-graph>` custom
+element and exposes the engine on `window.spytialcore` (legacy alias `CndCore`). The
+components bundle supplies the playground's low-code rules editor and error modal. For a
+fully offline demo, vendor these four assets locally.
 
-This is Shape B from `spytial-core-could-be-integrated-abstract-moler.md` —
-the user prefers mermaid's pretty rendering and accepts that constraint
-post-nudging fights mermaid's layout. Shape A (spytial owns layout, mermaid
-syntax is input notation) is the safer alternative; it would render via
-`<webcola-cnd-graph>` and ignore mermaid's SVG.
+## Limitations
 
-Mermaid is not a "host language" in the spytial-core sense — there are no
-runtime values to relationalize. The mermaid source IS the relational data.
-Identity is trivial (mermaid node IDs are unique per source), so none of the
-hash-cons / counter / `StableName` machinery applies.
+- **Flowchart subset only** — `graph TD|LR|TB|BT|RL` / `flowchart …`, the node shapes
+  and arrow kinds in `parse.js`. No class/state/sequence/Gantt/pie diagrams.
+- **Edge labels are relations**, not free text — see the collision warning above.
+- **No automatic live re-render** on source/rules change — call `renderMermaid` again
+  (the playground does this on Apply / ⌘⏎).

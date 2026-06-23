@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>spytial-mermaid · binary-tree demo</title>
+  <title>spytial-mermaid · binary-tree (library API demo)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #fafafa; }
     h1 { font-size: 18px; margin: 0 0 8px 0; }
@@ -10,22 +10,25 @@
     .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .col { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 12px; }
     pre { font-size: 12px; background: #f4f4f4; padding: 8px; border-radius: 4px; overflow-x: auto; }
-    .stats { font-size: 12px; color: #555; }
-    .status { font-weight: bold; }
+    .status { font-size: 13px; font-weight: bold; }
     .status.ok { color: #2a7; }
     .status.err { color: #c33; }
-    .render-box { min-height: 360px; }
+    /* The <webcola-cnd-graph> is created inside this box by mountGraph(). */
+    #out { min-height: 420px; position: relative; }
+    webcola-cnd-graph { display: block; width: 100%; height: 420px; border: 1px solid #ddd; border-radius: 6px; }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.5.2/dist/browser/spytial-core-complete.global.js"></script>
+  <!-- d3 v4 + WebCola (constraint solver) + spytial-core (engine + <webcola-cnd-graph>) -->
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js"></script>
 </head>
 <body>
-  <h1>spytial-mermaid prototype — binary-tree</h1>
-  <div class="stats" id="status">initializing…</div>
+  <h1>spytial-mermaid — binary-tree (programmatic API)</h1>
+  <div class="status" id="status">initializing…</div>
   <div style="margin: 8px 0;">
-    <button id="btn-sat">render satisfiable spec</button>
-    <button id="btn-unsat">render unsat spec (over-constrain edges)</button>
+    <button id="btn-sat">render satisfiable</button>
+    <button id="btn-unsat">render unsat (over-constrain edges)</button>
     <button id="btn-groups">render with groups</button>
   </div>
 
@@ -33,79 +36,56 @@
     <div class="col">
       <h2>mermaid source</h2>
       <pre id="source"></pre>
-      <h2>registered specs</h2>
+      <h2>registered specs (by class)</h2>
       <pre id="specs"></pre>
     </div>
     <div class="col">
-      <h2>rendered (mermaid + spytial post-nudge)</h2>
-      <div id="out" class="render-box"></div>
-      <h2>pipeline result</h2>
-      <pre id="result" style="max-height: 240px;"></pre>
+      <h2>rendered (standard webcola-cnd-graph)</h2>
+      <div id="out"></div>
+      <h2>renderMermaid() result</h2>
+      <pre id="result" style="max-height: 220px;"></pre>
     </div>
   </div>
 
   <script type="module">
-    import { registerSpec, clearRegistry, render } from '../src/index.js';
+    import { registerSpec, clearRegistry, renderMermaid, mountGraph } from '../src/index.js';
 
-    // ----- specs ---------------------------------------------------------
-    // `tree` class contributes the BELOW constraint (children below parent).
-    // The example also uses *edge labels* in the mermaid source — every
-    // labeled edge becomes a named binary relation users can target
-    // directly, so we add orientation constraints that pull `left` edges
-    // leftward and `right` edges rightward. This is the natural way to
-    // express binary-tree shape via mermaid+spytial.
-    //
-    // Note on Shape B: spytial *directives* (atomColor, icon, edgeColor)
-    // do not take effect — mermaid renders the SVG and we only post-nudge
-    // POSITIONS. Only *constraints* are visible. The directive in
-    // rootSpec is included to show that the merged YAML still carries it,
-    // even though it has no visual effect.
+    // ── Specs (registered per class; renderMermaid merges those used) ────
+    // 'tree' contributes: children below their parent, 'left' edges point
+    // left, 'right' edges point right. Note `tree_edge` is a selector-only
+    // relation (every edge between two tree nodes); it isn't drawn twice.
     const treeSpec = `
 constraints:
   - orientation: { selector: tree_edge, directions: [below] }
-  - orientation: { selector: left,  directions: [leftOf] }
-  - orientation: { selector: right, directions: [rightOf] }
-directives: []
+  - orientation: { selector: left,  directions: [left] }
+  - orientation: { selector: right, directions: [right] }
 `;
 
+    // Directives now take effect — the standard renderer draws them. Here we
+    // tint the root node (this had NO effect in the old post-nudge renderer).
     const rootSpec = `
-constraints:
-  - align: { selector: root_edge, direction: horizontal }
 directives:
-  - atomColor: { selector: root, value: "#fec" }
+  - atomColor: { selector: root, value: "#ffe7b3" }
 `;
 
-    // Pathological spec that contradicts `tree`: forces edges to point
-    // ABOVE while tree forces them BELOW. Spytial will flag the conflict
-    // and we'll tint the offending nodes/edges red in the SVG.
+    // Contradicts 'tree': forces edges ABOVE while tree forces them BELOW.
+    // Spytial reports the clash; the element gets the `unsat` attribute.
     const unsatSpec = `
 constraints:
   - orientation: { selector: tree_edge, directions: [above] }
-directives: []
 `;
 
-    // Group constraints. Each `group` constraint with a selector
-    // collects atoms in that class into a LayoutGroup; we draw a
-    // rectangle around them in the SVG.
+    // Group constraints — each draws a rectangle around its members.
     const leftSubtreeSpec = `
 constraints:
   - group: { selector: leftSubtree, name: 'left subtree' }
-directives: []
 `;
     const rightSubtreeSpec = `
 constraints:
   - group: { selector: rightSubtree, name: 'right subtree' }
-directives: []
 `;
 
-    // ----- source --------------------------------------------------------
-    // A small binary tree plus one shared child (D), to exercise tree
-    // layout, sharing, and labeled edges. Edge labels `left`/`right`
-    // get exposed as named binary relations the spec can target.
-    //
-    // Mermaid v10 only accepts ONE `:::class` per node; multi-class
-    // composition (Verification step 4) goes through the `class` directive
-    // instead, which both mermaid and our parser handle.
+    // ── Source: a small binary tree with one shared child (D) ───────────
     const source = `
 graph TD
     A -->|left| B
@@ -122,28 +102,27 @@ graph TD
     document.getElementById('specs').textContent =
       '// tree\n' + treeSpec.trim() + '\n\n// root\n' + rootSpec.trim();
 
-    // ----- run -----------------------------------------------------------
     const statusEl = document.getElementById('status');
     const setStatus = (msg, ok) => {
       statusEl.textContent = msg;
       statusEl.className = 'status ' + (ok ? 'ok' : 'err');
     };
 
+    // mountGraph creates a <webcola-cnd-graph> inside #out and returns it.
+    let graphEl;
+
     async function runSat() {
       clearRegistry();
       registerSpec('tree', treeSpec);
       registerSpec('root', rootSpec);
-      await runOnce('satisfiable');
+      await runOnce('satisfiable', source);
     }
 
     async function runUnsat() {
       clearRegistry();
       registerSpec('tree', treeSpec);
       registerSpec('root', rootSpec);
-      // `tree` already says edges go BELOW; pile on a contradictory rule
-      // via class `pathological` so the merged spec contains both.
       registerSpec('pathological', unsatSpec);
-      // Add the class to the source so the merge picks up the spec.
       const unsatSource = source.replace(
         'class A,B,C,D,E,F tree',
         'class A,B,C,D,E,F tree\n    class A,B,C,D,E,F pathological'
@@ -157,9 +136,8 @@ graph TD
       registerSpec('root', rootSpec);
       registerSpec('leftSubtree', leftSubtreeSpec);
       registerSpec('rightSubtree', rightSubtreeSpec);
-      // B is the left child of A; B's subtree (B, E) gets the leftSubtree
-      // class. C is the right child of A; C's subtree (C, F) gets the
-      // rightSubtree class. D is shared so it lives in neither group.
+      // B's subtree (B, E) → leftSubtree; C's subtree (C, F) → rightSubtree.
+      // D is shared, so it belongs to neither group.
       const groupsSource = source.replace(
         'class A,B,C,D,E,F tree',
         'class A,B,C,D,E,F tree\n    class B,E leftSubtree\n    class C,F rightSubtree'
@@ -167,34 +145,30 @@ graph TD
       await runOnce('groups', groupsSource);
     }
 
-    async function runOnce(mode, sourceOverride) {
+    async function runOnce(mode, src) {
       try {
-        const src = sourceOverride ?? source;
-        const result = await render(document.getElementById('out'), src);
-        if (!result) {
-          setStatus('render returned null — nothing parsed', false);
-          return;
-        }
-        if (!result.applied) {
-          setStatus('no specs applied: ' + result.reason, false);
-          return;
-        }
-        const s = result.stats;
-        const c = result.conflicts;
-        const conflictMsg = c.count > 0
-          ? ` · ${c.count} unsat constraint${c.count === 1 ? '' : 's'}, highlighted ${c.highlight.nodesHighlighted} node(s)/${c.highlight.edgesHighlighted} edge(s)`
-          : '';
+        // No explicit `rules` → renderMermaid merges the registered specs for
+        // whichever classes appear in this source.
+        const result = await renderMermaid(graphEl, src);
+        if (result.reason) { setStatus(`[${mode}] ${result.reason}`, false); return; }
+
+        const conflict = (result.selectorErrors && result.selectorErrors.length)
+          ? ` · ${result.selectorErrors.length} selector error(s)`
+          : (result.error ? ' · constraints clash (unsat) — rendered counterfactual' : '');
         setStatus(
-          `[${mode}] moved ${s.nodesMoved}/${s.nodesTotal} nodes, redrew ${s.edgesRedrawn}/${s.edgesTotal} edges` + conflictMsg,
-          true
+          `[${mode}] ${result.applied ? 'rendered' : 'not rendered'} · ` +
+          `${result.parsed.nodes.size} nodes, ${result.parsed.edges.length} edges` + conflict,
+          !result.error && !(result.selectorErrors || []).length
         );
         document.getElementById('result').textContent = JSON.stringify({
           mode,
-          stats: result.stats,
-          conflicts: result.conflicts,
-          dataAtoms: result.dataJson.atoms.length,
-          dataRelations: result.dataJson.relations.map(r => r.name + '(' + r.tuples.length + ')'),
-          firstPositions: result.positions.slice(0, 5),
+          applied: result.applied,
+          nodes: result.parsed.nodes.size,
+          edges: result.parsed.edges.length,
+          hiddenRelations: result.hiddenRelations,
+          relations: result.data.relations.map(r => `${r.name}(${r.tuples.length})`),
+          error: result.error ? (result.error.message || result.error.type || 'clash') : null,
+          selectorErrors: result.selectorErrors,
         }, null, 2);
       } catch (err) {
         console.error(err);
@@ -207,15 +181,20 @@ graph TD
     document.getElementById('btn-unsat').addEventListener('click', runUnsat);
     document.getElementById('btn-groups').addEventListener('click', runGroups);
 
-    async function go() {
-      if (window.mermaid?.initialize) {
-        window.mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
-      }
-      await new Promise(r => setTimeout(r, 50));
-      await runSat();
+    // Wait for the engine (spytial-core exposes its global asynchronously).
+    function ready() {
+      const core = window.spytialcore || window.CndCore;
+      return core && core.JSONDataInstance && core.LayoutInstance && customElements.get('webcola-cnd-graph');
     }
-
-    go();
+    (async function go() {
+      const start = Date.now();
+      while (!ready()) {
+        if (Date.now() - start > 10000) { setStatus('spytial-core did not load (check network/CDN)', false); return; }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      graphEl = mountGraph(document.getElementById('out'), { width: 800, height: 420 });
+      await runSat();
+    })();
   </script>
 </body>
 </html>

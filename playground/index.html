@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spytial + Mermaid — Live Mermaid playground</title>
+
+    <!-- Bootstrap powers the constraint-clash explanation card (IIS table). -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Styles for the React error modal + the low-code Layout-rules editor. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/components/react-component-integration.css" />
+
+    <style>
+        /* ─── Theme tokens ──────────────────────────────────────────────── */
+        :root {
+            --bg: #f4f5f7; --chrome: #ffffff; --chrome-2: #f7f8fa;
+            --ink: #1d2230; --ink-soft: #5b6472; --ink-faint: #8c95a3;
+            --border: #e2e5ea; --border-strong: #cdd2db;
+            --accent: #2d8659; --accent-ink: #ffffff;
+            --canvas: #ffffff; --editor-bg: #ffffff;
+            --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 16px rgba(16, 24, 40, .06);
+            --radius: 10px;
+        }
+        [data-theme="dark"] {
+            --bg: #0f1115; --chrome: #181b21; --chrome-2: #1f232b;
+            --ink: #e8eaee; --ink-soft: #a7b0bd; --ink-faint: #6b7382;
+            --border: #2a2f38; --border-strong: #3a414d;
+            --accent: #3fae74; --accent-ink: #06140c;
+            --canvas: #f7f8fa; --editor-bg: #14171c;
+            --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg); color: var(--ink);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* ─── Header ────────────────────────────────────────────────────── */
+        header.topbar {
+            flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+            padding: 10px 18px; background: var(--chrome);
+            border-bottom: 1px solid var(--border); z-index: 20;
+        }
+        .brand { display: flex; align-items: baseline; gap: 10px; }
+        .brand .mark { font-size: 18px; line-height: 1; color: var(--accent); }
+        .brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+        .brand .tag { font-size: 12.5px; color: var(--ink-faint); font-weight: 450; }
+        .topbar .spacer { flex: 1; }
+        .topbar select, .topbar button.ghost {
+            font: inherit; font-size: 13px;
+            background: var(--chrome-2); color: var(--ink);
+            border: 1px solid var(--border); border-radius: 8px;
+            padding: 6px 11px; cursor: pointer;
+            transition: border-color .12s, background .12s;
+        }
+        .topbar select:hover, .topbar button.ghost:hover { border-color: var(--border-strong); }
+        .topbar button.icon { width: 34px; height: 34px; display: inline-grid; place-items: center; font-size: 15px; padding: 0; }
+
+        /* ─── Main split ────────────────────────────────────────────────── */
+        main { flex: 1; display: flex; min-height: 0; }
+        .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+        .pane.left { flex: 0 0 44%; border-right: 1px solid var(--border); background: var(--chrome); }
+        .pane.right { flex: 1; background: var(--bg); }
+
+        .splitter { flex: 0 0 6px; cursor: col-resize; background: transparent; position: relative; }
+        .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--border); border-radius: 3px; transition: background .12s; }
+        .splitter:hover::after { background: var(--accent); }
+
+        /* ─── Left: editor column with Diagram / Rules tabs ─────────────── */
+        .editor-tabs {
+            display: flex; gap: 2px; padding: 8px 10px 0; flex: 0 0 auto;
+            border-bottom: 1px solid var(--border);
+        }
+        .editor-tabs button {
+            font: inherit; font-size: 13px; font-weight: 550;
+            background: transparent; color: var(--ink-soft);
+            border: none; border-bottom: 2px solid transparent;
+            padding: 8px 12px 9px; cursor: pointer; border-radius: 6px 6px 0 0;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .editor-tabs button .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0; }
+        .editor-tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
+        .editor-tabs button.active .dot { opacity: 1; }
+
+        .editor-stack { flex: 1; position: relative; min-height: 0; }
+        .editor-panel { position: absolute; inset: 0; display: flex; flex-direction: column; }
+        .editor-panel.hidden { display: none; }
+
+        textarea.code {
+            flex: 1; width: 100%;
+            font-family: "SF Mono", "JetBrains Mono", "Fira Code", "Courier New", monospace;
+            font-size: 13px; line-height: 1.6;
+            color: var(--ink); background: var(--editor-bg);
+            border: none; outline: none; resize: none;
+            padding: 16px 18px; tab-size: 2;
+        }
+        textarea.code::placeholder { color: var(--ink-faint); }
+
+        /* The React low-code Layout-rules editor mounts here. */
+        #rules-mount { flex: 1; overflow: auto; background: var(--editor-bg); }
+        #rules-mount > div { height: 100%; }
+        .rules-hint {
+            flex: 0 0 auto; font-size: 11.5px; color: var(--ink-faint);
+            padding: 7px 14px; border-bottom: 1px solid var(--border); background: var(--chrome-2);
+        }
+        .rules-hint code { font-size: 11px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+        .editor-foot {
+            flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+            padding: 10px 14px; border-top: 1px solid var(--border); background: var(--chrome-2);
+        }
+        .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .status.info { color: var(--ink-soft); }
+        .status.success { color: var(--accent); }
+        .status.error { color: #d6453c; }
+        .status .pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: currentColor; }
+        button.apply {
+            font: inherit; font-size: 13.5px; font-weight: 650;
+            background: var(--accent); color: var(--accent-ink);
+            border: none; border-radius: 8px; padding: 9px 18px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,.12);
+        }
+        button.apply:hover { filter: brightness(1.05); }
+        button.apply:active { transform: translateY(1px); }
+        button.apply:disabled { opacity: .5; cursor: default; }
+        button.apply kbd { font: inherit; font-size: 11px; opacity: .7; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
+
+        /* ─── Right: live diagram ───────────────────────────────────────── */
+        .preview-bar {
+            flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+            padding: 9px 16px; font-size: 12px; color: var(--ink-faint);
+            border-bottom: 1px solid var(--border); background: var(--chrome);
+        }
+        .preview-bar .hint { display: inline-flex; align-items: center; gap: 5px; }
+        .preview-body { flex: 1; position: relative; min-height: 0; padding: 14px; }
+        .canvas-wrap {
+            position: absolute; inset: 14px; border-radius: var(--radius);
+            background: var(--canvas); border: 1px solid var(--border);
+            box-shadow: var(--shadow); overflow: hidden;
+        }
+        webcola-cnd-graph { display: block; width: 100%; height: 100%; }
+
+        #error-messages {
+            position: absolute; left: 26px; right: 26px; bottom: 22px;
+            max-height: 48%; overflow: auto; z-index: 8;
+            border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.22);
+        }
+        #error-messages:empty { display: none; }
+
+        /* ─── Toast ─────────────────────────────────────────────────────── */
+        #toast {
+            position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--ink); color: var(--bg);
+            font-size: 13px; font-weight: 550; padding: 9px 16px; border-radius: 8px;
+            box-shadow: 0 8px 28px rgba(0,0,0,.3); opacity: 0; pointer-events: none;
+            transition: opacity .2s, transform .2s; z-index: 50;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 860px) { .pane.left { flex-basis: 50%; } .brand .tag { display: none; } }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="mark">◆</span>
+            <h1>Spytial&nbsp;+&nbsp;Mermaid</h1>
+            <span class="tag">write Mermaid — get a live constraint space, not a static picture</span>
+        </div>
+        <div class="spacer"></div>
+        <select id="example-select" title="Load an example" aria-label="Load an example">
+            <option value="" disabled selected>Examples…</option>
+            <option value="flowchart">Flowchart (faithful default)</option>
+            <option value="pipeline">Left-to-right pipeline</option>
+            <option value="cycle">State cycle (ring)</option>
+            <option value="tree">Binary tree (left / right)</option>
+            <option value="clash">⚠ Rules that clash</option>
+        </select>
+        <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
+        <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
+    </header>
+
+    <main>
+        <!-- LEFT: Mermaid editor + low-code Layout-rules editor -->
+        <section class="pane left">
+            <div class="editor-tabs" role="tablist">
+                <button id="tab-diagram" class="active" onclick="showTab('diagram')" role="tab">Diagram (Mermaid)</button>
+                <button id="tab-rules" onclick="showTab('rules')" role="tab">Layout rules<span class="dot" id="rules-dot"></span></button>
+            </div>
+            <div class="editor-stack">
+                <div class="editor-panel" id="panel-diagram">
+                    <textarea id="mermaid-input" class="code" spellcheck="false"
+                        placeholder="flowchart TD&#10;  A[Start] --> B[Build]&#10;  B --> C{OK?}"></textarea>
+                </div>
+                <div class="editor-panel hidden" id="panel-rules">
+                    <div class="rules-hint">
+                        Constrain the space — drag selectors, directions and groups in the builder,
+                        or switch to <code>Code</code> for YAML. Selectors match edge labels
+                        (<code>link</code> = unlabeled), node classes (<code>tree</code>), and shapes
+                        (<code>rect</code>, <code>diamond</code>…).
+                    </div>
+                    <div id="rules-mount"></div>
+                </div>
+            </div>
+            <div class="editor-foot">
+                <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
+                <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
+            </div>
+        </section>
+
+        <div class="splitter" id="splitter" title="Drag to resize"></div>
+
+        <!-- RIGHT: live diagram -->
+        <section class="pane right">
+            <div class="preview-bar">
+                <span class="hint">✦ drag nodes — constraints hold</span>
+                <span class="hint">⊙ scroll to zoom</span>
+                <span class="hint" id="conflict-hint" style="color:#d6453c; display:none;">⚠ rules clash — see explanation</span>
+            </div>
+            <div class="preview-body">
+                <div class="canvas-wrap">
+                    <webcola-cnd-graph id="graph" theme="light" aria-label="Live constraint diagram"></webcola-cnd-graph>
+                    <div id="error-messages"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast"></div>
+
+    <!-- D3 v4 + WebCola (the renderer's constraint solver) -->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
+    <!-- spytial-core engine + React component bundle (rules editor + error modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/components/react-component-integration.global.js"></script>
+
+    <script type="module">
+        import { renderMermaid } from '../src/index.js';
+
+        // ─── Examples (Mermaid source + Layout rules YAML) ──────────────
+        // Selectors below match what relationalize.js emits:
+        //   link        — unlabeled edges (drawn)
+        //   <label>     — labeled edges, e.g. left / right (drawn)
+        //   edge        — every edge (selector-only)
+        //   <class>     — class membership, e.g. tree (unary)
+        //   <class>_edge— edges between two class members (selector-only)
+        const EXAMPLES = {
+            flowchart: {
+                mermaid: `flowchart TD
+  A[Start] --> B[Build]
+  B --> C{Tests pass?}
+  C -->|ship| D[(Release)]
+  C -->|retry| B`,
+                rules: `# No rules yet — Spytial places nodes freely from the
+# faithful default. Switch to the Layout-rules tab and add
+# a rule (e.g. orientation on 'link') to constrain the space.`,
+            },
+            pipeline: {
+                mermaid: `flowchart LR
+  A[Start] --> B[Build]
+  B --> C[Test]
+  C --> D[Ship]`,
+                rules: `# Every unlabeled edge's target sits to the right of its
+# source, so the pipeline reads left -> right.
+constraints:
+  - orientation: { selector: link, directions: [right] }`,
+            },
+            cycle: {
+                mermaid: `flowchart LR
+  S0((S0)) --> S1((S1))
+  S1 --> S2((S2))
+  S2 --> S3((S3))
+  S3 --> S0`,
+                rules: `# Arrange the edge cycle as a ring.
+constraints:
+  - cyclic: { selector: link, direction: clockwise }`,
+            },
+            tree: {
+                mermaid: `flowchart TD
+  A -->|left| B
+  A -->|right| C
+  B -->|left| E
+  B -->|right| D
+  C -->|left| D
+  C -->|right| F
+  class A,B,C,D,E,F tree
+  class A root`,
+                rules: `# Children sit below their parent; 'left' edges point left,
+# 'right' edges point right — a binary tree.
+constraints:
+  - orientation: { selector: tree_edge, directions: [below] }
+  - orientation: { selector: left,  directions: [left] }
+  - orientation: { selector: right, directions: [right] }`,
+            },
+            clash: {
+                mermaid: `flowchart TD
+  a -->|r1| b
+  b -->|r2| c
+  c -->|r3| a`,
+                rules: `# These rules cannot all hold at once: r1, r2, r3 chase
+# each other around the cycle a -> b -> c -> a, but each
+# demands its target sit further left. Spytial renders the
+# best feasible layout and explains the minimal clash.
+constraints:
+  - orientation: { selector: r1, directions: [left] }
+  - orientation: { selector: r2, directions: [left] }
+  - orientation: { selector: r3, directions: [left] }`,
+            },
+        };
+
+        // ─── Element refs / state ───────────────────────────────────────
+        const mermaidEl = document.getElementById('mermaid-input');
+        const graphEl = document.getElementById('graph');
+        const statusEl = document.getElementById('status');
+        const applyBtn = document.getElementById('apply-btn');
+
+        function setStatus(msg, kind = 'info') {
+            statusEl.className = `status ${kind}`;
+            statusEl.innerHTML = `<span class="pulse"></span>${msg}`;
+        }
+
+        // The graph component only auto-fits on first connect; re-fit after render.
+        function fitView() {
+            try { graphEl.resetViewToFitContent && graphEl.resetViewToFitContent(); } catch (e) {}
+        }
+
+        // Hide the canvas's dev-tool dropdowns (routing strategy + a Mode toggle
+        // that duplicates our header theme switch). Keep zoom + PNG export.
+        function tidyCanvasChrome() {
+            const sr = graphEl.shadowRoot;
+            if (!sr || sr.getElementById('pg-tidy')) return;
+            const style = document.createElement('style');
+            style.id = 'pg-tidy';
+            style.textContent = '#routing-control, #mode-control { display: none !important; }';
+            sr.appendChild(style);
+        }
+
+        // ─── Tabs ───────────────────────────────────────────────────────
+        window.showTab = function (which) {
+            const isDiagram = which === 'diagram';
+            document.getElementById('panel-diagram').classList.toggle('hidden', !isDiagram);
+            document.getElementById('panel-rules').classList.toggle('hidden', isDiagram);
+            document.getElementById('tab-diagram').classList.toggle('active', isDiagram);
+            document.getElementById('tab-rules').classList.toggle('active', !isDiagram);
+        };
+
+        // ─── Low-code Layout-rules editor (React CndLayoutInterface) ────
+        // Hosts a structured builder AND a YAML code view (lossless toggle).
+        // Re-mounted when loading an example to seed new rules.
+        function mountRules(yaml) {
+            const mount = document.getElementById('rules-mount');
+            mount.innerHTML = '';
+            const host = document.createElement('div');
+            host.id = 'rules-host';
+            mount.appendChild(host);
+            window.mountCndLayoutInterface &&
+                window.mountCndLayoutInterface('rules-host', {
+                    initialYamlValue: yaml || '',
+                    initialIsNoCodeView: false, // Code view: getCurrentCndSpec returns YAML verbatim
+                });
+            refreshRulesDot(yaml);
+        }
+        function currentRules() {
+            return (window.getCurrentCNDSpecFromReact ? window.getCurrentCNDSpecFromReact() : '') || '';
+        }
+        function refreshRulesDot(yaml) {
+            const meaningful = (yaml || '').split('\n').some(l => l.trim() && !l.trim().startsWith('#'));
+            document.getElementById('rules-dot').style.opacity = meaningful ? '1' : '0';
+        }
+
+        // ─── Theme ──────────────────────────────────────────────────────
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            graphEl.setAttribute('theme', theme === 'dark' ? 'dark' : 'light');
+            document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+            try { localStorage.setItem('spytial-mermaid-theme', theme); } catch (e) {}
+        }
+        document.getElementById('theme-btn').onclick = () => {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        };
+
+        // ─── Shareable state (URL hash) ─────────────────────────────────
+        function b64e(s) { return btoa(unescape(encodeURIComponent(s))); }
+        function b64d(s) { return decodeURIComponent(escape(atob(s))); }
+        function writeHash() {
+            const payload = JSON.stringify({ m: mermaidEl.value, y: currentRules() });
+            history.replaceState(null, '', '#g=' + b64e(payload));
+        }
+        function readHash() {
+            const m = location.hash.match(/#g=(.+)$/);
+            if (!m) return null;
+            try { return JSON.parse(b64d(m[1])); } catch (e) { return null; }
+        }
+        document.getElementById('share-btn').onclick = async () => {
+            writeHash();
+            try { await navigator.clipboard.writeText(location.href); toast('Link copied to clipboard'); }
+            catch (e) { toast('Copy this URL from the address bar'); }
+        };
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => t.classList.remove('show'), 1900);
+        }
+
+        // ─── Examples ───────────────────────────────────────────────────
+        document.getElementById('example-select').addEventListener('change', (e) => {
+            const ex = EXAMPLES[e.target.value];
+            if (!ex) return;
+            mermaidEl.value = ex.mermaid;
+            mountRules(ex.rules);
+            setTimeout(apply, 60); // let the React editor commit its initial value
+            e.target.selectedIndex = 0;
+        });
+
+        // ─── The pipeline: Mermaid + rules -> live constraint diagram ───
+        async function apply() {
+            window.clearAllErrors && window.clearAllErrors();
+            document.getElementById('conflict-hint').style.display = 'none';
+            writeHash();
+
+            const src = mermaidEl.value.trim();
+            if (!src) { setStatus('Write a Mermaid flowchart to render.', 'error'); return; }
+
+            let result;
+            try {
+                result = await renderMermaid(graphEl, src, { rules: currentRules() });
+            } catch (err) {
+                console.error(err);
+                setStatus('Error: ' + err.message, 'error');
+                window.showGeneralError && window.showGeneralError(err.message);
+                return;
+            }
+
+            // Feed the data instance to the rules editor for domain-aware dropdowns.
+            if (result.instance) window.updateInstanceFromReact && window.updateInstanceFromReact(result.instance);
+
+            if (result.applied) { fitView(); tidyCanvasChrome(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
+
+            if (result.reason) {
+                setStatus(result.reason, 'error');
+            } else if (result.selectorErrors && result.selectorErrors.length) {
+                window.showSelectorErrors && window.showSelectorErrors(result.selectorErrors);
+                document.getElementById('conflict-hint').style.display = 'inline-flex';
+                setStatus('Some selectors did not resolve — see the explanation.', 'error');
+            } else if (result.error) {
+                handleConflict(result.error);
+                document.getElementById('conflict-hint').style.display = 'inline-flex';
+            } else {
+                const n = result.parsed.nodes.size, e = result.parsed.edges.length;
+                setStatus(`Rendered ${n} node${n !== 1 ? 's' : ''}, ${e} edge${e !== 1 ? 's' : ''}.`, 'success');
+            }
+        }
+        window.apply = apply;
+
+        function handleConflict(error) {
+            if (error.errorMessages) {
+                if (error.type === 'hidden-node-conflict' && window.showHiddenNodeConflict) {
+                    window.showHiddenNodeConflict(error.errorMessages);
+                } else if (window.showPositionalError) {
+                    window.showPositionalError(error.errorMessages);
+                } else {
+                    window.showGeneralError && window.showGeneralError(error.message);
+                }
+                setStatus('These rules cannot all hold — see the explanation below.', 'error');
+            } else if (error.overlappingNodes || error.type === 'group-overlap') {
+                window.showGroupOverlapError && window.showGroupOverlapError(error.message);
+                setStatus('Groups overlap — see the explanation.', 'error');
+            } else {
+                window.showGeneralError && window.showGeneralError(error.message);
+                setStatus('Layout error: ' + error.message, 'error');
+            }
+        }
+
+        // ─── Keyboard: ⌘/Ctrl + Enter applies ───────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); apply(); }
+        });
+
+        // ─── Draggable splitter ─────────────────────────────────────────
+        (function () {
+            const splitter = document.getElementById('splitter');
+            const left = document.querySelector('.pane.left');
+            let dragging = false;
+            splitter.addEventListener('mousedown', () => { dragging = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+            window.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                const pct = Math.min(70, Math.max(24, (e.clientX / window.innerWidth) * 100));
+                left.style.flexBasis = pct + '%';
+            });
+            window.addEventListener('mouseup', () => { dragging = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; });
+        })();
+
+        // ─── Wait for the (async-exposed) engine, then boot ─────────────
+        function engineReady() {
+            const core = window.spytialcore || window.CndCore;
+            return !!(core && core.JSONDataInstance && core.LayoutInstance &&
+                      core.parseLayoutSpec && core.SGraphQueryEvaluator &&
+                      customElements.get('webcola-cnd-graph'));
+        }
+        function waitForEngine(timeoutMs = 10000) {
+            return new Promise((resolve, reject) => {
+                const start = Date.now();
+                (function poll() {
+                    if (engineReady()) return resolve();
+                    if (Date.now() - start > timeoutMs) return reject(new Error('spytial-core engine did not load'));
+                    setTimeout(poll, 50);
+                })();
+            });
+        }
+
+        window.addEventListener('load', async () => {
+            let theme = 'light';
+            try { theme = localStorage.getItem('spytial-mermaid-theme') || 'light'; } catch (e) {}
+            applyTheme(theme);
+
+            try { await waitForEngine(); }
+            catch (err) { setStatus(err.message + ' — check your network / CDN.', 'error'); return; }
+
+            window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
+
+            const shared = readHash();
+            const seed = shared ? { mermaid: shared.m || '', rules: shared.y || '' } : EXAMPLES.flowchart;
+            mermaidEl.value = seed.mermaid;
+            mountRules(seed.rules);
+
+            applyBtn.disabled = false;
+            setStatus('Ready — edit and press Apply (⌘⏎).', 'info');
+            setTimeout(apply, 80);
+        });
+    </script>
+</body>
+</html>

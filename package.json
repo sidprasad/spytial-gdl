@@ -1,7 +1,7 @@
 {
   "name": "spytial-mermaid",
-  "version": "0.1.0-prototype",
-  "description": "Apply SpyTial spatial constraints on top of mermaid.js flowcharts via class-keyed spec registry.",
+  "version": "0.2.0-prototype",
+  "description": "Render Mermaid flowcharts as live SpyTial constraint diagrams via the standard webcola-cnd-graph renderer.",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -9,11 +9,15 @@
   },
   "files": [
     "src",
+    "playground",
+    "examples",
     "README.md"
   ],
+  "scripts": {
+    "serve": "node scripts/preview-server.mjs"
+  },
   "peerDependencies": {
-    "mermaid": ">=10",
-    "spytial-core": ">=2.5"
+    "spytial-core": ">=2.9"
   },
   "license": "MIT"
 }
