@@ -20,9 +20,7 @@ You get a faithful default layout for free; the `@annotations` refine it — ori
 alignment, grouping, cycles — without rebuilding anything. The arrow syntax will look
 familiar, but it's its own notation: no `graph TD` header, and no Mermaid dependency.
 
-> **New here? Start with [GUIDE.md](GUIDE.md)** — the 5-minute embedding guide. This repo is
-> the Live-Graph tool of the [SpyTial UIST 2026 demo](../spytial-uist-2026/): one of three
-> input modalities on the same `spytial-core` engine.
+> **New here? Start with [GUIDE.md](GUIDE.md)** 
 
 ## Try it
 
