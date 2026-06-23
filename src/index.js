@@ -1,9 +1,9 @@
-// spytial-mermaid — render mermaid declarations through Spytial's standard
-// WebCola CnD renderer.
+// spytial-graph — render a small graph notation (nodes, edges, inline spatial
+// @annotations) through SpyTial's standard WebCola CnD renderer.
 //
-// Pipeline (Shape A — webcola-cnd-graph owns both layout AND drawing):
+// Pipeline (webcola-cnd-graph owns both layout AND drawing):
 //
-//   mermaid source
+//   spytial-graph source
 //     → annotations.js    extract inline @orientation(...) → { source, specYaml }
 //     → parse.js          { nodes, edges, classesPerNode }
 //     → relationalize.js  { atoms, relations, hiddenRelations }
@@ -15,11 +15,8 @@
 // global `window.spytialcore` (legacy alias `CndCore`); it auto-registers the
 // <webcola-cnd-graph> custom element and needs d3 v4 + cola.js present. We do
 // NOT import it, so this module loads as a bare ES module in the browser.
-//
-// Note: we parse the mermaid *syntax* ourselves (parse.js) and draw via
-// WebCola, so the mermaid library itself is no longer a dependency.
 
-import { parseFlowchart } from './parse.js';
+import { parseGraph } from './parse.js';
 import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } from './registry.js';
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
@@ -33,7 +30,7 @@ function getSpytialCore() {
     globalThis.CndCore;
   if (!s) {
     throw new Error(
-      'spytial-mermaid: spytial-core is not loaded. Include ' +
+      'spytial-graph: spytial-core is not loaded. Include ' +
         'spytial-core-complete.global.js (plus d3 v4 and cola.js) on the page.'
     );
   }
@@ -41,7 +38,7 @@ function getSpytialCore() {
 }
 
 // Create (or reuse) a <webcola-cnd-graph> element inside `container`. Returns
-// the graph element to pass to renderMermaid. If `container` is already a
+// the graph element to pass to renderSpytialGraph. If `container` is already a
 // <webcola-cnd-graph>, it is returned as-is.
 export function mountGraph(container, opts = {}) {
   if (!(container instanceof Element)) {
@@ -62,7 +59,7 @@ export function mountGraph(container, opts = {}) {
   return el;
 }
 
-// Blank the synthetic `link` label that unlabeled mermaid edges carry, so the
+// Blank the synthetic `link` label that unlabeled edges carry, so the
 // rendered graph doesn't show the word "link" on every plain `A --> B`.
 function blankDefaultLabels(layout) {
   if (!layout || !Array.isArray(layout.edges)) return;
@@ -109,20 +106,20 @@ function hideRelations(spec, hiddenRelations) {
   }
 }
 
-// Render mermaid `source` onto a <webcola-cnd-graph> element using Spytial's
-// standard constraint-layout pipeline.
+// Render a spytial-graph `source` onto a <webcola-cnd-graph> element using
+// SpyTial's standard constraint-layout pipeline.
 //
 //   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
-//   source   — mermaid flowchart text, optionally with inline `@orientation(...)`
+//   source   — spytial-graph text (nodes/edges) with inline `@orientation(...)`
 //              spatial annotations (see annotations.js)
 //   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
 //
 // Returns { applied, layout, error, selectorErrors, annotationErrors, parsed,
 //           data, instance, rules, hiddenRelations }.
-export async function renderMermaid(graphEl, source, opts = {}) {
+export async function renderSpytialGraph(graphEl, source, opts = {}) {
   if (!graphEl || typeof graphEl.renderLayout !== 'function') {
     throw new Error(
-      'renderMermaid: graphEl must be a <webcola-cnd-graph> element. ' +
+      'renderSpytialGraph: graphEl must be a <webcola-cnd-graph> element. ' +
         'Use mountGraph(container) to create one.'
     );
   }
@@ -130,20 +127,20 @@ export async function renderMermaid(graphEl, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial;
   for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-mermaid: spytial-core is missing ${name}; need spytial-core ≥ 2.9`);
+    if (!fn) throw new Error(`spytial-graph: spytial-core is missing ${name}; need spytial-core ≥ 2.9`);
   }
 
   // 0. lift inline `@orientation(...)` annotations out of the source before
-  //    parsing the flowchart; they compile to a layout spec, not graph syntax.
+  //    parsing the graph; they compile to a layout spec, not graph syntax.
   const { source: cleanSource, specYaml: annoYaml, errors: annotationErrors } =
     extractAnnotations(source);
 
-  const parsed = parseFlowchart(cleanSource);
+  const parsed = parseGraph(cleanSource);
   if (parsed.nodes.size === 0) {
     return { applied: false, reason: 'no nodes parsed from source', parsed, annotationErrors };
   }
 
-  // 1. mermaid → relational data instance (+ which relations are selector-only)
+  // 1. graph → relational data instance (+ which relations are selector-only)
   const { atoms, relations, hiddenRelations } = relationalize(parsed);
   const data = { atoms, relations };
   const instance = new JSONDataInstance(data);
@@ -158,7 +155,7 @@ export async function renderMermaid(graphEl, source, opts = {}) {
   try {
     spec = parseLayoutSpec(rules || '');
   } catch (err) {
-    throw new Error(`spytial-mermaid: layout rules parse error: ${err.message}`);
+    throw new Error(`spytial-graph: layout rules parse error: ${err.message}`);
   }
   hideRelations(spec, hiddenRelations);
 

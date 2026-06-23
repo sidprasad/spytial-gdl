@@ -1,20 +1,29 @@
-// Flowchart-subset parser for mermaid source.
+// Parser for spytial-graph notation — a tiny graph syntax.
 //
-// Returns { direction, nodes, edges, classesPerNode }:
+// You write nodes and edges; SpyTial lays them out. There is no required header
+// and no layout direction: spatial operations come from inline @annotations (see
+// annotations.js), so a `graph TD` preamble would do nothing. Leave it out.
+//
+// Returns { nodes, edges, classesPerNode }:
 //   nodes:           Map<id, { id, label, shape }>
-//   edges:           Array<{ source, target, kind }>
+//   edges:           Array<{ source, target, kind, label }>
 //   classesPerNode:  Map<id, Set<string>>
 //
-// Supported:
-//   header:  graph TD|LR|TB|BT|RL  /  flowchart TD|LR|TB|BT|RL
-//   nodes:   A, A[label], A(label), A((label)), A{label}, A[[label]],
-//            A[(label)], A>label]; class tags via A:::className (chained)
-//   edges:   A --> B, A -.-> B, A ==> B, A --- B; labels via A -->|label| B
-//            (tolerated, label discarded in v1)
-//   class:   class A,B,C name   /   classDef name css... (parsed and ignored)
-//   comments: %% rest-of-line
+// Edges:
+//   A -> B               an edge
+//   A -> B : left        a labeled edge (the label becomes a selector)
+//   A[Start] -> B(Stop)  endpoints may carry a label/shape (see Nodes)
+// Nodes (a node is implicit from any edge; declare one only to give it a shape
+// or label):
+//   A                    bare id
+//   A[Start]  A(Start)  A((Start))  A{Decide}  A[[Sub]]  A[(Store)]  A>Tag]
+//   A:::tag              class tag (chainable: A:::x:::y)
+//   class A,B,C tag      assign a class to several nodes
+// Comments:  %% rest-of-line
 //
-// Anything outside this subset is silently ignored.
+// For paste-compatibility, a leading `graph`/`flowchart` line and the
+// mermaid-style arrows (-->, -.->, ==>, ---) and pipe labels (A -->|x| B) are
+// also accepted, but the minimal forms above are the notation.
 
 const SHAPE_PATTERNS = [
   { re: /^\[\[(.+)\]\]$/, name: 'subroutine' },
@@ -26,8 +35,10 @@ const SHAPE_PATTERNS = [
   { re: /^>(.+)\]$/,      name: 'asymmetric' },
 ];
 
-// Ordered longest-first so longer arrows match before substrings.
-const ARROW_TOKENS = ['-.->', '==>', '-->', '---'];
+// Ordered longest-first so a longer arrow matches before one of its substrings
+// (e.g. `-->` before `->`, which it contains as a tail).
+const ARROW_TOKENS = ['-.->', '==>', '-->', '---', '->'];
+const ARROW_ALT = '-\\.->|==>|-->|---|->'; // same set, for the pipe-label regex
 
 function stripComments(line) {
   const i = line.indexOf('%%');
@@ -71,34 +82,41 @@ function findArrow(line) {
   return null;
 }
 
-function parseEdgeLine(line) {
-  // `A -->|label| B` — label captured and exposed as edge.label.
-  const labeled = line.match(/^(.+?)\s*(-->|-\.->|==>|---)\s*\|([^|]+)\|\s*(.+)$/);
-  let leftRaw, rightRaw, kind, label = null;
-  if (labeled) {
-    leftRaw = labeled[1];
-    kind = labeled[2];
-    label = labeled[3].trim();
-    rightRaw = labeled[4];
-  } else {
-    const arrow = findArrow(line);
-    if (!arrow) return null;
-    leftRaw = line.slice(0, arrow.i);
-    rightRaw = line.slice(arrow.i + arrow.tok.length);
-    kind = arrow.tok;
+// Split a trailing ` : label` off an edge's target side. The colon must be
+// preceded by whitespace and sit at bracket depth 0, so it can't be confused
+// with a `:::class` tag or a colon inside a `[label]`.
+function splitLabel(rightRaw) {
+  let depth = 0;
+  for (let i = 0; i < rightRaw.length; i++) {
+    const ch = rightRaw[i];
+    if (ch === '[' || ch === '(' || ch === '{') depth++;
+    else if (ch === ']' || ch === ')' || ch === '}') depth--;
+    else if (ch === ':' && depth === 0 && /\s/.test(rightRaw[i - 1] || '')) {
+      const node = rightRaw.slice(0, i).trim();
+      const label = rightRaw.slice(i + 1).trim().replace(/^["']|["']$/g, '');
+      return { node, label: label || null };
+    }
   }
-  return {
-    leftExpr: leftRaw.trim(),
-    rightExpr: rightRaw.trim(),
-    kind,
-    label,
-  };
+  return { node: rightRaw.trim(), label: null };
 }
 
-export function parseFlowchart(source) {
+function parseEdgeLine(line) {
+  // mermaid-style pipe label first: `A -->|label| B`.
+  const piped = line.match(new RegExp(`^(.+?)\\s*(${ARROW_ALT})\\s*\\|([^|]+)\\|\\s*(.+)$`));
+  if (piped) {
+    return { leftExpr: piped[1].trim(), rightExpr: piped[4].trim(), kind: piped[2], label: piped[3].trim() };
+  }
+  const arrow = findArrow(line);
+  if (!arrow) return null;
+  const leftRaw = line.slice(0, arrow.i);
+  const rightRaw = line.slice(arrow.i + arrow.tok.length);
+  const { node, label } = splitLabel(rightRaw); // ` : label` form
+  return { leftExpr: leftRaw.trim(), rightExpr: node, kind: arrow.tok, label };
+}
+
+export function parseGraph(source) {
   const lines = source.split(/\r?\n/).map(stripComments).map(l => l.trim()).filter(Boolean);
 
-  let direction = 'TD';
   const nodes = new Map();
   const edges = [];
   const classesPerNode = new Map();
@@ -120,14 +138,10 @@ export function parseFlowchart(source) {
   };
 
   for (const line of lines) {
-    // Header
-    const header = line.match(/^(?:graph|flowchart)\s+(TD|TB|BT|LR|RL)\b/i);
-    if (header) {
-      direction = header[1].toUpperCase();
-      continue;
-    }
+    // Tolerated (and ignored): a leading `graph`/`flowchart [direction]` header.
+    if (/^(?:graph|flowchart)\b/i.test(line)) continue;
 
-    // classDef foo fill:#fff;   (ignored — mermaid CSS is not our domain)
+    // classDef foo fill:#fff;   (mermaid CSS is not our domain)
     if (/^classDef\s+/.test(line)) continue;
 
     // class A,B,C someClass
@@ -157,5 +171,5 @@ export function parseFlowchart(source) {
     if (node) addNode(node);
   }
 
-  return { direction, nodes, edges, classesPerNode };
+  return { nodes, edges, classesPerNode };
 }

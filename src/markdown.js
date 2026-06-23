@@ -19,17 +19,18 @@
 //
 // …and gets a live, draggable constraint diagram.
 //
-// Usage on a page (mirrors mermaid's `mermaid.initialize({ startOnLoad: true })`):
+// Usage on a page — one import, one call (the engine is injected for you if it
+// isn't already on the page):
 //
-//     import { initStartOnLoad } from '.../src/markdown.js';
-//     initStartOnLoad();
+//     import { autoRender } from '.../src/markdown.js';
+//     autoRender();
 //
 // or, to render a specific subtree after you inject HTML yourself:
 //
 //     import { renderSpytialGraphs } from '.../src/markdown.js';
 //     await renderSpytialGraphs(myContainer);
 
-import { mountGraph, renderMermaid } from './index.js';
+import { mountGraph, renderSpytialGraph } from './index.js';
 
 // Languages that mark a SpyTial graph block. `spytial-graph` is canonical;
 // `spytial` is accepted as an alias.
@@ -104,6 +105,43 @@ export function whenEngineReady(timeoutMs = 10000) {
   });
 }
 
+// The three scripts the renderer needs, in dependency order (webcola needs d3;
+// spytial-core needs both). Loaded only if the page hasn't already included them.
+const ENGINE_DEPS = [
+  'https://d3js.org/d3.v4.min.js',
+  'https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js',
+  'https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js',
+];
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded) return resolve();
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('failed to load ' + src)), { once: true });
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); }, { once: true });
+    s.addEventListener('error', () => reject(new Error('failed to load ' + src)), { once: true });
+    document.head.appendChild(s);
+  });
+}
+
+// Ensure the renderer engine is present, injecting the CDN scripts if the page
+// didn't already include them. Lets a page bootstrap from a single import. Pass
+// { deps: [...] } to pin/host the scripts yourself, or skip injection by having
+// already loaded spytial-core.
+export async function ensureEngineLoaded(opts = {}) {
+  if (engineReady()) return;
+  for (const src of (opts.deps || ENGINE_DEPS)) {
+    await loadScript(src);
+  }
+  await whenEngineReady(opts.timeoutMs);
+}
+
 function makeContainer(doc, opts) {
   const wrap = doc.createElement('div');
   wrap.className = 'spytial-graph-rendered';
@@ -132,10 +170,12 @@ function renderError(doc, host, message) {
 //   opts.height   — diagram height (number px or CSS string). Default 360.
 //                   A block can override with a data-height attribute.
 //   opts.theme    — 'light' | 'dark' passed to mountGraph.
-//   opts.waitForEngine — wait for spytial-core to load first (default true).
+//   opts.injectEngine — inject the CDN engine scripts if absent (default true).
 export async function renderSpytialGraphs(root = document, opts = {}) {
   const doc = root.ownerDocument || (root.nodeType === 9 ? root : document);
-  if (opts.waitForEngine !== false) {
+  if (opts.injectEngine !== false) {
+    await ensureEngineLoaded(opts);
+  } else {
     await whenEngineReady(opts.timeoutMs);
   }
 
@@ -150,7 +190,7 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
 
     try {
       const graphEl = mountGraph(wrap, { theme: opts.theme });
-      const result = await renderMermaid(graphEl, source);
+      const result = await renderSpytialGraph(graphEl, source);
       // Re-fit the view once the layout has been drawn.
       try { graphEl.resetViewToFitContent && graphEl.resetViewToFitContent(); } catch (_) {}
       setTimeout(() => {
@@ -166,9 +206,9 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
   return results;
 }
 
-// Render once the DOM is ready (and the engine has loaded). The one-liner a
-// page adds to turn on auto-rendering, à la mermaid's startOnLoad.
-export function initStartOnLoad(opts = {}) {
+// Render every spytial-graph block once the DOM is ready, injecting the engine
+// if needed. The one-liner a page adds to turn on rendering.
+export function autoRender(opts = {}) {
   const run = () => {
     renderSpytialGraphs(document, opts).catch((err) => {
       // Surface load failures on the console rather than failing silently.

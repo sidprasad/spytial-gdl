@@ -8,9 +8,9 @@
 // relation), the same A→B pair would be drawn 2–3 times as overlapping lines.
 // So we split relations into two kinds:
 //
-//   DRAWN (exactly one per mermaid edge):
-//     - one relation named by the edge's mermaid label  (`A -->|left| B` → `left`)
-//     - `link`  for unlabeled edges                      (`A --> B`      → `link`)
+//   DRAWN (exactly one per edge):
+//     - one relation named by the edge's label  (`A -> B : left` → `left`)
+//     - `link`  for unlabeled edges             (`A -> B`        → `link`)
 //   SELECTOR-ONLY (hidden via a `hideField` directive — see index.js):
 //     - `edge`             — every edge, so `selector: edge` still works
 //     - `<className>`      — class membership (the renderer would otherwise
@@ -18,20 +18,20 @@
 //     - `<className>_edge` — edges between two members of a class
 //
 // Mapping decisions:
-//   - Atom type = mermaid shape name (rect, circle, diamond, …) or
-//     'MermaidNode' for plain `A` declarations. Lets `selector: rect`
-//     target all rectangles via type-based selection.
+//   - Atom type = shape name (rect, circle, diamond, …) or 'Node' for a plain
+//     `A` declaration. Lets `selector: rect` target all rectangles via
+//     type-based selection.
 //   - For every class that appears on any node we also emit a unary membership
 //     relation named for the class (`selector: tree` → tree-class nodes), hidden
 //     so its per-member self-loops aren't drawn.
 //   - Class names are stored on each atom under `labels.classes`, matching the
 //     documented use of the `labels?` field for host-specific metadata.
 
-const DEFAULT_TYPE = 'MermaidNode';
+const DEFAULT_TYPE = 'Node';
 
 // Relation name carrying unlabeled edges. Kept in sync with index.js, which
-// blanks this label on the rendered edges (an unlabeled mermaid edge should
-// not show the word "link"). Exported so callers can recognize it.
+// blanks this label on the rendered edges (an unlabeled edge should not show
+// the word "link"). Exported so callers can recognize it.
 export const DEFAULT_RELATION = 'link';
 
 function nodeType(node) {
@@ -66,7 +66,7 @@ export function relationalize({ nodes, edges, classesPerNode }) {
     // ── DRAWN edges ────────────────────────────────────────────────────
     // One relation per distinct edge label (drawn, carrying the label), and a
     // single `link` relation for every unlabeled edge (drawn, label blanked).
-    // Each mermaid edge lands in exactly one of these, so it draws once.
+    // Each edge lands in exactly one of these, so it draws once.
     const byLabel = new Map();
     const unlabeled = [];
     for (const e of edges) {
@@ -88,7 +88,7 @@ export function relationalize({ nodes, edges, classesPerNode }) {
     }
 
     for (const [label, labelEdges] of byLabel) {
-      // `A -->|left| B` exposes a relation named `left` so users can write
+      // `A -> B : left` exposes a relation named `left` so users can write
       // `selector: left` directly — and it carries the visible edge label.
       //
       // Collision warning: if a node class and an edge label share a name,

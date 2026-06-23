@@ -170,7 +170,7 @@ function emitEntry(name, kwargs) {
 // Extract inline annotations from `rawSource`.
 //
 // Returns { source, specYaml, errors }:
-//   source    — the input with annotation lines removed (feed to parseFlowchart)
+//   source    — the input with annotation lines removed (feed to parseGraph)
 //   specYaml  — authoring YAML for the compiled constraints/directives, or '' if
 //               none. Shape: `constraints:\n  - <entry>\n directives:\n  - <entry>`
 //   errors    — [{ line, text, message }] for unknown names / malformed args

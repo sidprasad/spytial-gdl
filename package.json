@@ -1,7 +1,7 @@
 {
   "name": "spytial-mermaid",
   "version": "0.2.0-prototype",
-  "description": "Render Mermaid flowcharts as live SpyTial constraint diagrams via the standard webcola-cnd-graph renderer.",
+  "description": "spytial-graph — a small graph notation with inline spatial @annotations, rendered as live SpyTial constraint diagrams in Markdown or anywhere.",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -12,7 +12,8 @@
     "src",
     "playground",
     "examples",
-    "README.md"
+    "README.md",
+    "GUIDE.md"
   ],
   "scripts": {
     "serve": "node scripts/preview-server.mjs"
