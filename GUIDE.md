@@ -35,6 +35,45 @@ Wiring it yourself instead of the drop-in tag:
 </script>
 ```
 
+## In plain HTML (no Markdown renderer)
+
+You don't need Markdown at all. In a hand-written HTML page, put the notation in a
+`<div class="spytial-graph">` and add the same one tag — the way you'd drop a
+`<div class="mermaid">` into a page. The complete integration:
+
+```html
+<div class="spytial-graph">
+  A -> B : left
+  A -> C : right
+
+  @orientation(selector=_links, directions=[below])
+  @orientation(selector=left,  directions=[left])
+  @orientation(selector=right, directions=[right])
+</div>
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+```
+
+On load, every block becomes a live diagram — no init call, no config. The block
+also accepts `class="language-spytial-graph"` and a `<pre class="spytial-graph">`,
+so whatever markup you (or a renderer) emit is caught. Indentation inside the
+`<div>` is fine; each line is trimmed.
+
+Give each block a height — the diagram fills its container:
+
+```css
+.spytial-graph, .spytial-graph-editable { height: 340px; }
+```
+
+For an **editor** instead of a static view, use `class="spytial-graph-editable"`
+(or add `data-editable` to the div). It renders with a *copy notation* button.
+
+Two things to know: the page must be **served** (any static server) rather than
+opened as `file://`, because the tag is an ES module; and the `npm`-CDN URL above
+works once the package is published — until then point the tag at a local checkout
+(`src="../src/auto.js"`). A complete, runnable page is
+[`examples/drop-in.html`](examples/drop-in.html).
+
 ## The notation
 
 A node is implicit from any edge, so the smallest graph is one line:

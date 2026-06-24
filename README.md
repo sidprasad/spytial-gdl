@@ -33,6 +33,7 @@ No `npm install` — everything loads from CDN:
 ```bash
 npm run serve   # zero-dep static server, port 8100
 # /playground/                 live editor (View ⇄ Edit)
+# /examples/drop-in.html       minimal HTML drop-in — one tag + <div> blocks
 # /examples/guide.html         the guide, rendered by spytial-graph itself
 # /examples/binary-tree.html   programmatic API demo
 # /examples/editable.html      editable graph — edit visually, re-get the notation
