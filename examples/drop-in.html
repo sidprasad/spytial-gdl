@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+  The minimal HTML drop-in. The whole integration is:
+
+    1. ONE script tag (it injects d3 + WebCola + spytial-core for you), and
+    2. a <div class="spytial-graph"> holding the notation.
+
+  Published, that one tag is the CDN URL:
+    <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+  This file points at the local checkout so it runs under `npm run serve`
+  before the first npm publish — swap in the CDN line for the real thing.
+
+  Note: this is an ES module, so the page must be *served* (any static server),
+  not opened from disk as file://.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spytial-graph · HTML drop-in</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+           max-width: 720px; margin: 6vh auto; padding: 0 24px; color: #1d2230; line-height: 1.6; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #5b6472; margin: 36px 0 10px; }
+    p { color: #5b6472; }
+    code { background: #f4f5f7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    /* Give each block a frame + height. The renderer fills the container. */
+    .spytial-graph, .spytial-graph-editable {
+      height: 340px; border: 1px solid #e2e5ea; border-radius: 8px; margin: 8px 0; background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>HTML drop-in</h1>
+  <p>One script tag (bottom of this file) + the <code>&lt;div&gt;</code> blocks below.
+     No build, no init call — every block becomes a live diagram on load.</p>
+
+  <h2>Read-only — <code>class="spytial-graph"</code></h2>
+  <div class="spytial-graph">
+    A -> B : left
+    A -> C : right
+
+    @orientation(selector=_links, directions=[below])
+    @orientation(selector=left,  directions=[left])
+    @orientation(selector=right, directions=[right])
+  </div>
+
+  <h2>Editable — <code>class="spytial-graph-editable"</code></h2>
+  <p>Add a node, drag to connect an edge, then hit <b>⧉ notation</b> to copy the
+     graph back out as spytial-graph text.</p>
+  <div class="spytial-graph-editable">
+    alice[Alice]:::Person -> acme[Acme]:::Company
+    bob[Bob]:::Person     -> acme
+
+    @atomColor(selector=Person, value='#cfe8d8')
+  </div>
+
+  <!-- THE ONE TAG. Published, this is:
+       https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js -->
+  <script type="module" src="../src/auto.js"></script>
+</body>
+</html>
