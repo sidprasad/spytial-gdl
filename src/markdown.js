@@ -178,6 +178,8 @@ export async function ensureEngineLoaded(opts = {}) {
 //   conflict             — the conflict region (passed to showCoreConflict)
 //   setSourceProvider(fn)— fn() returns the current notation for the Source tab
 //   setRefit(fn)         — called when the Diagram tab is re-shown
+//   refreshSource()      — re-pull the Source tab's text if it's the active tab
+//                          (editable blocks call this on every edit)
 function buildDevice(doc, opts, height) {
   const h = height != null && height !== '' ? height : (opts.height != null ? opts.height : 360);
   // A bare number (or numeric string like "320") means pixels; anything else
@@ -289,6 +291,14 @@ function buildDevice(doc, opts, height) {
     else setTimeout(refit, 0);
     styleTabs();
   };
+  // Live-refresh the Source tab from the provider, but only while it's the
+  // visible tab — flipping to Source already re-pulls on open (setTab), so this
+  // only matters when an edit lands with Source already showing. Editing happens
+  // on the Diagram tab (the editor is hidden under Source), so today this is a
+  // belt-and-braces correctness guard; a side-by-side layout would lean on it.
+  const refreshSource = () => {
+    if (active === 'source') sourcePre.textContent = getSource();
+  };
   tabDiagram.addEventListener('click', () => setTab('diagram'));
   tabSource.addEventListener('click', () => setTab('source'));
   copyBtn.addEventListener('click', async () => {
@@ -311,6 +321,7 @@ function buildDevice(doc, opts, height) {
     device, graphHost, conflict,
     setSourceProvider: (fn) => { getSource = fn; },
     setRefit: (fn) => { refit = fn; },
+    refreshSource,
   };
 }
 
@@ -382,6 +393,7 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
         }, 500);
         if (handle && typeof handle.onChange === 'function') {
           handle.onChange(({ error }) => {
+            ui.refreshSource();   // keep the Source tab current if it's showing
             if (error) showCoreConflict(doc, ui.conflict, error, null);
             else clearCoreConflict(ui.conflict);
           });
