@@ -4,30 +4,52 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>spytial-graph</title>
-  <!-- Send the root URL straight to the playground; the links below are a fallback. -->
-  <meta http-equiv="refresh" content="0; url=./playground/" />
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-           max-width: 640px; margin: 12vh auto; padding: 0 24px; color: #1d2230; line-height: 1.6; }
-    h1 { font-size: 22px; margin: 0 0 6px; }
-    p { color: #5b6472; }
-    a { color: #2d8659; font-weight: 600; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    ul { padding-left: 18px; }
-    code { background: #f4f5f7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    :root { --ink: #1c1f26; --soft: #565d6a; --faint: #8b93a1; --line: #e7e9ee;
+            --accent: #1f6f54; --accent2: #2d8659; --bg: #fcfcfb; --card: #fff;
+            --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6;
+           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+           -webkit-font-smoothing: antialiased; }
+    main { max-width: 640px; margin: 0 auto; padding: 14vh 24px 120px; }
+    h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 6px; }
+    .lede { color: var(--soft); font-size: 18px; margin: 0 0 36px; }
+    .lede em { color: var(--ink); font-style: normal; font-weight: 600; }
+    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    li a { display: block; background: var(--card); border: 1px solid var(--line);
+           border-radius: 12px; padding: 16px 18px; text-decoration: none; color: inherit;
+           transition: border-color .15s, box-shadow .15s, transform .15s; }
+    li a:hover { border-color: var(--accent2);
+                 box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 10px 28px rgba(16,24,40,.06);
+                 transform: translateY(-1px); }
+    .name { font-weight: 650; color: var(--accent); }
+    .desc { color: var(--soft); font-size: 15px; margin: 3px 0 0; }
+    .more { color: var(--soft); font-size: 14px; margin: 28px 0 0; }
+    .more a { color: var(--accent2); font-weight: 600; text-decoration: none; }
+    .more a:hover { text-decoration: underline; }
+    code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 13px; }
   </style>
 </head>
 <body>
-  <h1>spytial-graph</h1>
-  <p><em>Diagramming in your browser, with semantics.</em> A small graph notation with inline
-     spatial <code>@annotations</code>, rendered as live SpyTial constraint diagrams.
-     Redirecting to the playground…</p>
-  <ul>
-    <li><a href="./playground/">Playground</a></li>
-    <li><a href="./examples/guide.html">Embedding guide (live)</a></li>
-    <li><a href="./examples/binary-tree.html">Programmatic API demo</a></li>
-  </ul>
-  <p>See <a href="./GUIDE.md">GUIDE.md</a> to embed in Markdown, or the
-     <a href="./README.md">README</a> for the API.</p>
+  <main>
+    <h1>spytial-graph</h1>
+    <p class="lede"><em>Diagramming in your browser, with semantics.</em> A small graph notation
+       with inline spatial <code>@annotations</code>, rendered as live SpyTial constraint diagrams.</p>
+
+    <ul>
+      <li><a href="./docs/">
+        <span class="name">Documentation</span>
+        <p class="desc">The developer docs — notation, annotations, the API, embedding. Every example renders live.</p></a></li>
+      <li><a href="./playground/">
+        <span class="name">Playground</span>
+        <p class="desc">Write notation, see the diagram update live.</p></a></li>
+      <li><a href="./examples/">
+        <span class="name">Examples</span>
+        <p class="desc">Live HTML and Markdown demos of every embedding mode.</p></a></li>
+    </ul>
+
+    <p class="more">Reference: <a href="./docs/">Docs</a> · <a href="./GUIDE.md">GUIDE.md</a> · <a href="./README.md">README</a></p>
+  </main>
 </body>
 </html>

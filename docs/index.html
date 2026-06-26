@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spytial-graph · docs</title>
+  <meta name="description" content="Developer documentation for spytial-graph — a small graph notation with inline spatial @annotations, rendered as live SpyTial constraint diagrams in Markdown or anywhere." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-theme="light">
+  <!-- Top bar ------------------------------------------------------------ -->
+  <header class="topbar">
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <a class="brand" href="#/">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">spytial-graph</span>
+      <span class="brand-tag">docs</span>
+    </a>
+    <div class="topbar-spacer"></div>
+    <nav class="topbar-links">
+      <a href="../playground/">Playground</a>
+      <a href="../examples/">Examples</a>
+      <a href="https://github.com/sidprasad/spytial-graph" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button>
+  </header>
+
+  <div class="shell">
+    <!-- Sidebar ---------------------------------------------------------- -->
+    <aside class="sidebar" id="sidebar">
+      <div class="search">
+        <input id="search-input" type="search" placeholder="Search docs…  (press /)" aria-label="Search documentation" autocomplete="off" spellcheck="false" />
+        <div class="search-results" id="search-results" hidden></div>
+      </div>
+      <nav class="sidenav" id="sidenav" aria-label="Documentation"></nav>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <!-- Content ---------------------------------------------------------- -->
+    <main class="content" id="content">
+      <article class="doc" id="doc"><p class="loading">Loading…</p></article>
+      <nav class="prevnext" id="prevnext" aria-label="Page navigation"></nav>
+      <footer class="docfoot">
+        <span id="status" class="status"></span>
+        <a href="https://github.com/sidprasad/spytial-graph/tree/main/docs/pages" target="_blank" rel="noopener" id="edit-link">Edit this page ↗</a>
+      </footer>
+    </main>
+
+    <!-- On-page table of contents --------------------------------------- -->
+    <aside class="toc" id="toc" aria-label="On this page"></aside>
+  </div>
+
+  <!-- A Markdown renderer — the one piece a raw .md can't supply itself. -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
