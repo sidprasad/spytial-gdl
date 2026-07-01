@@ -6,17 +6,18 @@ Every annotation targets a **selector**: a name that resolves to a set of edges 
 a set of nodes. This is what makes layout a *query over the model* rather than
 per-node markup — one rule, every matching element.
 
-## The five forms
+## The built-in forms
 
 | selector | selects |
 |---|---|
 | `<label>` | edges carrying that label — `A -> B : left` → `left` |
 | `_` | the unlabeled edges (plain `A -> B`) |
 | `_links` | **every** edge, labeled or not |
-| `<type>` | nodes of that sort — `A:::Person` → `Person`; plain nodes are `Node` |
+| `<type>` | nodes of that sort — `A:::Person` → `Person`; a plain node is untyped |
 | `<class>` | nodes carrying that class — `class A,B team` → `team` |
+| `univ` | **every** node, whatever its type — the universal set |
 
-The first three select **edges**; the last two select **nodes**. An annotation
+The first three select **edges**; the last three select **nodes**. An annotation
 that wants edges (like `@orientation`) takes an edge selector; one that wants nodes
 (like `@group` or `@atomColor`) takes a node selector.
 
@@ -72,6 +73,24 @@ The **types** `Service` and `Client` tint nodes by role; the **class** `critical
 draws a region around the one node that matters most. Types model *what a node is*;
 classes model *a cross-cutting tag* — use whichever matches your intent.
 
+A node with no `:::Sort` is **untyped**: it belongs to no named type, so a named
+selector never touches it by accident. To reach *every* node regardless of type —
+typed, classed, or plain — use `univ`, the universal set:
+
+```spytial-graph
+a[Root] -> b:::Service
+a -> c:::Client
+
+@atomColor(selector=univ, value='#f3f4f6')
+@orientation(selector=_links, directions=[below])
+```
+
+One `univ` rule tints all three nodes the same — the untyped `Root` included.
+Reach for it when a rule should apply to the whole diagram; when you want *some*
+nodes styled differently, give those a type or a class and target that instead —
+two `atomColor` rules that both match a node (say `univ` and `Service`) are a
+color conflict, not a last-one-wins override (see the note below).
+
 > **Note** — `atomColor` won't paint one node two colors: if a node is matched by
 > two `atomColor` selectors with different values, the engine reports a color
 > conflict rather than picking one. Keep a node's color coming from a single
@@ -81,10 +100,11 @@ classes model *a cross-cutting tag* — use whichever matches your intent.
 ## Drawn once
 
 Each edge is **drawn exactly once** — under its own label, or under `_` if it has
-none. `_links` and the node-set relations (`Node`, your types, your classes) are
+none. `_links` and the node-set relations (your types and classes) are
 **selector-only**: they resolve in selectors but are hidden from drawing, so they
-never double-draw an edge or render a phantom relation. You don't have to manage
-this; the engine emits the necessary `hideField` directives for you.
+never double-draw an edge or render a phantom relation. (`univ` is a built-in
+universal set, not a relation, so there's nothing to hide.) You don't have to
+manage this; the engine emits the necessary `hideField` directives for you.
 
 The practical effect: targeting `_links` changes layout for every edge without
 adding a second arrow on top of the labeled one.
@@ -111,7 +131,7 @@ Quote the whole expression so its braces and pipe survive parsing:
 @group(selector='{p: Person | some p.reports_to}', name='Managers')
 ```
 
-For everyday diagrams the five named forms above are all you need.
+For everyday diagrams the named forms above are all you need.
 
 ## Next
 

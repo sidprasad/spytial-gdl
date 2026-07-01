@@ -132,6 +132,7 @@ A `selector` names nodes or edges:
 - an **edge label** (`yes`) — the edges carrying it
 - **`_`** — the unlabeled edges; **`_links`** — every edge
 - a **type** (`Person`) or a **class** (`tag`) — the matching nodes
+- **`univ`** — every node, whatever its type (a plain node is untyped)
 
 Put together — a binary tree, children below, left-left and right-right:
 

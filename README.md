@@ -50,7 +50,8 @@ npm run serve   # zero-dep static server, port 8100
 - **Nodes** are implicit from edges; the id is the name, and every node is a rectangle.
 - **Labels** — `A[Alice]` gives a display label, mermaid-style; without one the id is
   shown. The id stays the stable identity that edges reference (handy for generated ids).
-- **Sorts** — `A:::Person` gives the node a type, so `selector: Person` matches it.
+- **Sorts** — `A:::Person` gives the node a type, so `selector: Person` matches it. A
+  plain node is untyped; `univ` selects every node regardless of type.
 - **Classes** — `class A,B,C tag` tags several nodes with a cross-cutting group.
 - **No header, no direction.** Layout comes from the annotations, not a `TD`/`LR` keyword.
 
@@ -81,8 +82,9 @@ and the node sets round it out:
 | `<label>` | edges carrying that label — `A -> B : left` → `left` |
 | `_` | the unlabeled edges |
 | `_links` | every edge |
-| `<type>` | nodes of that sort — `A:::Person` → `Person` (plain nodes are `Node`) |
+| `<type>` | nodes of that sort — `A:::Person` → `Person` (a plain node is untyped) |
 | `<class>` | nodes carrying that class — `class A,B team` → `team` |
+| `univ` | every node, whatever its type — the universal set |
 
 Each edge is **drawn once** (under its label, or `_`). `_links` and the node-set relations
 are selector-only — hidden from drawing so they don't double-draw — but still resolve in

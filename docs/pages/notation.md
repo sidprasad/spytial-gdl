@@ -51,7 +51,9 @@ solo[Just here]
 ## Sorts (types)
 
 A `:::Sort` tag gives a node a **type**, so `selector: Person` then matches every
-node of that type. Plain nodes have the implicit sort `Node`:
+node of that type. A plain node is **untyped** — with no sort it carries no type
+name, so no named `selector` matches it; only `univ` (the universal set) reaches
+every node regardless of type:
 
 ```spytial-graph
 alice[Alice]:::Person -> acme[Acme]:::Company

@@ -53,7 +53,7 @@ together as one block of text.
 
 ## Selector-only relations
 
-`_links` and the node-set relations (`Node`, your sorts, your classes) must be
+`_links` and the node-set relations (your sorts and classes) must be
 *queryable in selectors* but must not be *drawn* — otherwise `@orientation(selector=_links)`
 would paint a second arrow over every labeled edge. `relationalize` flags these as
 `hiddenRelations`, and the renderer injects `hideField` directives for them: present
