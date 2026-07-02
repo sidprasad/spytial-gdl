@@ -1,6 +1,6 @@
 {
   "name": "spytial-graph",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A small graph notation with inline spatial @annotations, rendered as live Spytial constraint diagrams in Markdown or anywhere.",
   "keywords": [
     "graph",
@@ -41,6 +41,6 @@
     "test:integration": "node test/sgq-integration.test.mjs"
   },
   "peerDependencies": {
-    "spytial-core": ">=2.9"
+    "spytial-core": "^2.10.1"
   }
 }
