@@ -1,12 +1,12 @@
-// Markdown integration — render ```spytial-graph fenced blocks the way people
+// Markdown integration — render ```spytial-gdl fenced blocks the way people
 // render ```mermaid, entirely client-side.
 //
 // This is framework-agnostic: it scans *already-rendered* HTML for the code
 // blocks a markdown renderer (marked, markdown-it, MkDocs, Docusaurus, GitHub
-// pipelines, …) produces for a fenced block tagged `spytial-graph`, and swaps
+// pipelines, …) produces for a fenced block tagged `spytial-gdl`, and swaps
 // each one for a live <webcola-cnd-graph>. So a doc author writes:
 //
-//     ```spytial-graph
+//     ```spytial-gdl
 //     flowchart TD
 //       A -->|left| B
 //       A -->|right| C
@@ -27,26 +27,28 @@
 //
 // or, to render a specific subtree after you inject HTML yourself:
 //
-//     import { renderSpytialGraphs } from '.../src/markdown.js';
-//     await renderSpytialGraphs(myContainer);
+//     import { renderSpytialGdls } from '.../src/markdown.js';
+//     await renderSpytialGdls(myContainer);
 
-import { mountGraph, renderSpytialGraph, mountInputGraph, renderSpytialGraphEditable } from './index.js';
+import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable } from './index.js';
 
-// Languages that mark a SpyTial graph block. `spytial-graph` is canonical;
-// `spytial` is accepted as an alias.
-const LANGS = ['spytial-graph', 'spytial'];
+// Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
+// is the short alias. `spytial-graph` is the pre-rename name, still accepted so
+// docs and embeds authored before the rename keep rendering.
+const LANGS = ['spytial-gdl', 'spytial', 'spytial-graph'];
 
 // Editable variants. Most markdown renderers keep only the first info-string
 // token as the language class, so a dedicated language is the portable way to
-// opt a block into the editor (` ```spytial-graph-editable `). A `data-editable`
+// opt a block into the editor (` ```spytial-gdl-editable `). A `data-editable`
 // attribute on the host (hand-authored HTML) works too, as does opts.editable.
-const EDITABLE_LANGS = ['spytial-graph-editable', 'spytial-editable'];
+// `spytial-graph-editable` is kept as a legacy alias, same as above.
+const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable', 'spytial-graph-editable'];
 const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS];
 
 // CSS selectors covering how common markdown renderers tag a fenced block:
-//   marked / markdown-it / Prism / highlight.js → <pre><code class="language-spytial-graph">
-//   some pipelines emit the class on the <pre>   → <pre class="language-spytial-graph">
-//   hand-authored containers                     → <div class="spytial-graph">
+//   marked / markdown-it / Prism / highlight.js → <pre><code class="language-spytial-gdl">
+//   some pipelines emit the class on the <pre>   → <pre class="language-spytial-gdl">
+//   hand-authored containers                     → <div class="spytial-gdl">
 function blockSelector() {
   const sels = [];
   for (const lang of ALL_LANGS) {
@@ -59,8 +61,8 @@ function blockSelector() {
   return sels.join(', ');
 }
 
-// classList matching is whole-token, so `language-spytial-graph` never matches a
-// `language-spytial-graph-editable` block (the editable langs are distinct).
+// classList matching is whole-token, so `language-spytial-gdl` never matches a
+// `language-spytial-gdl-editable` block (the editable langs are distinct).
 function hasLang(el, lang) {
   return !!(el && el.classList && (el.classList.contains(`language-${lang}`) || el.classList.contains(lang)));
 }
@@ -221,7 +223,7 @@ function buildDevice(doc, opts, height, editable) {
   };
 
   const device = doc.createElement('div');
-  device.className = 'spytial-graph-device';
+  device.className = 'spytial-gdl-device';
   device.dataset.spytialProcessed = '1';
   device.style.cssText =
     `margin: 12px 0; border: 1px solid ${C.border}; border-radius: 8px; overflow: hidden; background: ${C.bg};`;
@@ -233,7 +235,7 @@ function buildDevice(doc, opts, height, editable) {
 
   // ── source column (collapsible) ──
   const sourceCol = doc.createElement('div');
-  sourceCol.className = 'spytial-graph-source';
+  sourceCol.className = 'spytial-gdl-source';
   sourceCol.style.cssText = `flex: 0 0 auto; display: flex; min-width: 0; overflow: hidden; background: ${C.chrome};`;
   frame.appendChild(sourceCol);
 
@@ -311,15 +313,59 @@ function buildDevice(doc, opts, height, editable) {
   const graphStage = doc.createElement('div');
   graphStage.style.cssText = `flex: 1 1 0; position: relative; min-width: 0; overflow: hidden; height: ${hCss};`;
   const graphHost = doc.createElement('div');
-  graphHost.className = 'spytial-graph-rendered';
+  graphHost.className = 'spytial-gdl-rendered';
   graphHost.dataset.spytialProcessed = '1';
   graphHost.style.cssText = 'position: absolute; inset: 0;';
   graphStage.appendChild(graphHost);
   frame.appendChild(graphStage);
 
+  // ── diagnostics band (parse / annotation problems; non-fatal) ──
+  // Distinct from the conflict region below: this reports source-level problems
+  // (a malformed line, an unknown annotation, an ignored Mermaid construct). The
+  // diagram still renders best-effort; this just says what was wrong, with line
+  // numbers. `severity: 'error'` reads red, everything else amber ("ignored").
+  const AMBER = dark
+    ? { bg: '#332711', ink: '#f0d9a3', border: '#5a4415', accent: '#d0a24a' }
+    : { bg: '#fff8e6', ink: '#7a5b00', border: '#f0dca0', accent: '#e0ac30' };
+  const diagnostics = doc.createElement('div');
+  diagnostics.className = 'spytial-gdl-diagnostics';
+  diagnostics.dataset.spytialProcessed = '1';
+  diagnostics.style.display = 'none';
+  device.appendChild(diagnostics);
+
+  const setDiagnostics = (items) => {
+    const list = (Array.isArray(items) ? items : []).filter(Boolean);
+    diagnostics.textContent = '';
+    if (list.length === 0) { diagnostics.style.display = 'none'; return; }
+    const hasError = list.some((d) => d.severity !== 'warning');
+    const P = hasError ? { bg: C.warnBg, ink: C.warnInk, border: C.warnBorder, accent: C.warnAccent } : AMBER;
+    diagnostics.style.cssText =
+      `display: block; border-top: 1px solid ${P.border}; border-left: 3px solid ${P.accent};` +
+      ` background: ${P.bg}; color: ${P.ink}; padding: 9px 12px;`;
+    const nErr = list.filter((d) => d.severity !== 'warning').length;
+    const nWarn = list.length - nErr;
+    const parts = [];
+    if (nErr) parts.push(`${nErr} problem${nErr > 1 ? 's' : ''}`);
+    if (nWarn) parts.push(`${nWarn} ignored`);
+    const head = doc.createElement('div');
+    head.style.cssText = `font: 700 13px/1.3 ${SANS}; margin-bottom: 5px;`;
+    head.textContent = `⚠ ${parts.join(', ')} in this source`;
+    diagnostics.appendChild(head);
+    const ul = doc.createElement('ul');
+    ul.style.cssText = 'margin: 0; padding: 0 0 0 4px; list-style: none;';
+    for (const d of list) {
+      const li = doc.createElement('li');
+      li.style.cssText = `margin: 2px 0; font: 11.5px/1.5 ${MONO};`;
+      const where = d.line ? `line ${d.line}: ` : '';
+      li.textContent = `${where}${d.message}`;
+      ul.appendChild(li);
+    }
+    diagnostics.appendChild(ul);
+  };
+
   // ── conflict region (attached, below the frame, inside the border) ──
   const conflict = doc.createElement('div');
-  conflict.className = 'spytial-graph-conflict';
+  conflict.className = 'spytial-gdl-conflict';
   conflict.style.cssText =
     `display: none; border-top: 1px solid ${C.warnBorder}; border-left: 3px solid ${C.warnAccent};`;
   const cHeader = doc.createElement('button');
@@ -335,7 +381,7 @@ function buildDevice(doc, opts, height, editable) {
   cChevron.style.cssText = 'margin-left: auto; font-size: 11px; opacity: .8;';
   cHeader.appendChild(cLabel); cHeader.appendChild(cChevron);
   const conflictSlot = doc.createElement('div');
-  conflictSlot.className = 'spytial-graph-conflict-slot';
+  conflictSlot.className = 'spytial-gdl-conflict-slot';
   conflictSlot.style.cssText = `padding: 10px 12px 12px; max-height: 340px; overflow: auto; background: ${C.warnSlot};`;
   conflict.appendChild(cHeader); conflict.appendChild(conflictSlot);
   conflict._labelEl = cLabel;   // showCoreConflict sets the headline text
@@ -421,7 +467,7 @@ function buildDevice(doc, opts, height, editable) {
       await navigator.clipboard.writeText(text);
       const prev = copyBtn.textContent; copyBtn.textContent = '✓ Copied';
       setTimeout(() => { copyBtn.textContent = prev; }, 1200);
-    } catch (_) { window.prompt('spytial-graph notation:', text); }
+    } catch (_) { window.prompt('spytial-gdl notation:', text); }
   });
 
   // text → diagram: explicit apply (Run ▸ / ⌘⏎). Re-render, then snap the panel
@@ -474,34 +520,35 @@ function buildDevice(doc, opts, height, editable) {
   }
 
   return {
-    device, graphHost, conflict,
+    device, graphHost, conflict, diagnostics,
     setSourceProvider: (fn) => { getSource = fn; },
     setRefit: (fn) => { refit = fn; },
     setApply: (fn) => { applyFn = fn; },
     setSourceText,
     refreshSource,
+    setDiagnostics,
   };
 }
 
 function renderError(doc, host, message) {
   const pre = doc.createElement('pre');
-  pre.className = 'spytial-graph-error';
+  pre.className = 'spytial-gdl-error';
   pre.dataset.spytialProcessed = '1';
   pre.style.cssText =
     'color: #b00020; background: #fff3f3; border: 1px solid #f3c2c2; border-radius: 8px;' +
     ' padding: 10px 12px; margin: 12px 0; white-space: pre-wrap; font-size: 13px;';
-  pre.textContent = 'spytial-graph error: ' + message;
+  pre.textContent = 'spytial-gdl error: ' + message;
   host.replaceWith(pre);
 }
 
-// Render every spytial-graph block under `root` (default: the whole document).
+// Render every spytial-gdl block under `root` (default: the whole document).
 // Returns an array of per-block results: { host, applied?, error?, result? }.
 //
 //   opts.height   — diagram height (number px or CSS string). Default 360.
 //                   A block can override with a data-height attribute.
 //   opts.theme    — 'light' | 'dark' passed to mountGraph.
 //   opts.injectEngine — inject the CDN engine scripts if absent (default true).
-export async function renderSpytialGraphs(root = document, opts = {}) {
+export async function renderSpytialGdls(root = document, opts = {}) {
   const doc = root.ownerDocument || (root.nodeType === 9 ? root : document);
   if (opts.injectEngine !== false) {
     await ensureEngineLoaded(opts);
@@ -542,6 +589,10 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
           if (e) showCoreConflict(doc, ui.conflict, e, null);
           else clearCoreConflict(ui.conflict);
         };
+        // Source-level diagnostics for the currently-applied text (a render handle
+        // carries them whether or not it produced nodes).
+        const reflectDiag = (h) =>
+          ui.setDiagnostics([...((h && h.annotationErrors) || []), ...((h && h.parseErrors) || [])]);
 
         let handle = null;
         let unsub = null;
@@ -569,9 +620,10 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
         ui.setApply(async (text) => {
           applying = true;
           let h;
-          try { h = await renderSpytialGraphEditable(graphEl, text); }
+          try { h = await renderSpytialGdlEditable(graphEl, text); }
           catch (err) { applying = false; return { ok: false, message: err && err.message ? err.message : String(err) }; }
           applying = false;
+          reflectDiag(h);
           if (h && h.applied === false) return { ok: false, message: h.reason || 'no nodes parsed from source' };
           wire(h);
           refit(graphEl);
@@ -579,7 +631,9 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
           return { ok: true };
         });
 
-        wire(await renderSpytialGraphEditable(graphEl, source));
+        const initial = await renderSpytialGdlEditable(graphEl, source);
+        wire(initial);
+        reflectDiag(initial);
         refit(graphEl);
         ui.refreshSource(true);             // initial notation into the (expanded) textarea
         reflectConflict();
@@ -587,11 +641,14 @@ export async function renderSpytialGraphs(root = document, opts = {}) {
         results.push({ host: ui.graphHost, editable: true, applied: handle && handle.applied, handle });
       } else {
         const graphEl = mountGraph(ui.graphHost, { theme: opts.theme });
-        const result = await renderSpytialGraph(graphEl, source);
+        const result = await renderSpytialGdl(graphEl, source);
         ui.setRefit(() => refit(graphEl));
         refit(graphEl);
         ui.setSourceProvider(() => source);
         ui.refreshSource(true);
+        // Source-level problems (bad line, unknown annotation, ignored Mermaid),
+        // with line numbers. The diagram still renders best-effort above them.
+        ui.setDiagnostics([...(result.annotationErrors || []), ...(result.parseErrors || [])]);
         // A clash still draws the best-feasible layout; explain it below.
         showCoreConflict(doc, ui.conflict, result.error, result.selectorErrors);
         results.push({ host: ui.graphHost, applied: result.applied, result });
@@ -647,8 +704,8 @@ async function ensureErrorComponent() {
 function getErrorHost(doc) {
   if (_errHost) return _errHost;
   const div = doc.createElement('div');
-  div.id = 'spytial-graph-iis-host';
-  div.className = 'spytial-graph-iis';
+  div.id = 'spytial-gdl-iis-host';
+  div.className = 'spytial-gdl-iis';
   _errHost = div;
   return div;
 }
@@ -682,7 +739,7 @@ async function showCoreConflict(doc, conflict, error, selectorErrors) {
   if (!error && !(selectorErrors && selectorErrors.length)) { clearCoreConflict(conflict); return; }
   if (!(await ensureErrorComponent())) return;
   const host = getErrorHost(doc);
-  const slot = conflict.querySelector('.spytial-graph-conflict-slot');
+  const slot = conflict.querySelector('.spytial-gdl-conflict-slot');
   if (conflict._labelEl) {
     conflict._labelEl.textContent = (selectorErrors && selectorErrors.length)
       ? '⚠ A selector didn’t resolve'
@@ -706,13 +763,13 @@ function clearCoreConflict(conflict) {
   }
 }
 
-// Render every spytial-graph block once the DOM is ready, injecting the engine
+// Render every spytial-gdl block once the DOM is ready, injecting the engine
 // if needed. The one-liner a page adds to turn on rendering.
 export function autoRender(opts = {}) {
   const run = () => {
-    renderSpytialGraphs(document, opts).catch((err) => {
+    renderSpytialGdls(document, opts).catch((err) => {
       // Surface load failures on the console rather than failing silently.
-      console.error('[spytial-graph] auto-render failed:', err);
+      console.error('[spytial-gdl] auto-render failed:', err);
     });
   };
   if (typeof document !== 'undefined' && document.readyState === 'loading') {

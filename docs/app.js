@@ -1,18 +1,18 @@
-// spytial-graph docs shell — a tiny client-side, zero-build site that renders
-// Markdown pages with LIVE spytial-graph diagrams (the docs dogfood the tool).
+// spytial-gdl docs shell — a tiny client-side, zero-build site that renders
+// Markdown pages with LIVE spytial-gdl diagrams (the docs dogfood the tool).
 //
 // It generalizes examples/md-viewer.html: marked turns each page into HTML, then
-// renderSpytialGraphs lights up every ```spytial-graph block, exactly the way a
+// renderSpytialGdls lights up every ```spytial-gdl block, exactly the way a
 // reader's own page would. Pages live in pages/<slug>.md; the nav is nav.json.
 //
 // Routing is hash-based (#/<slug> and #/<slug>/<heading-id>) so the whole site is
 // one static index.html — deep links, back/forward, and GitHub Pages subpaths all
 // work with no server rewrites.
 
-import { renderSpytialGraphs } from '../src/markdown.js';
+import { renderSpytialGdls } from '../src/markdown.js';
 
 const PAGES = 'pages/';
-const REPO_PAGES = 'https://github.com/sidprasad/spytial-graph/blob/main/docs/pages/';
+const REPO_PAGES = 'https://github.com/sidprasad/spytial-gdl/blob/main/docs/pages/';
 
 const els = {
   doc: document.getElementById('doc'),
@@ -162,19 +162,19 @@ async function renderPage(slug, isRerender = false) {
 
   // page title + edit link
   const h1 = els.doc.querySelector('h1');
-  document.title = h1 ? `${h1.textContent} · spytial-graph` : 'spytial-graph · docs';
+  document.title = h1 ? `${h1.textContent} · spytial-gdl` : 'spytial-gdl · docs';
   els.editLink.href = `${REPO_PAGES}${slug}.md`;
 
-  // live diagrams (mermaid for contrast, then spytial-graph proper)
+  // live diagrams (mermaid for contrast, then spytial-gdl proper)
   await renderMermaid();
   els.status.textContent = 'rendering diagrams…';
   try {
-    const results = await renderSpytialGraphs(els.doc, { theme: themeOpt(), height: 320 });
+    const results = await renderSpytialGdls(els.doc, { theme: themeOpt(), height: 320 });
     const live = results.filter((r) => !r.error).length;
     els.status.textContent = live ? `${live} live diagram${live === 1 ? '' : 's'}` : '';
   } catch (err) {
     els.status.textContent = `diagram engine failed: ${err.message}`;
-    console.error('[docs] renderSpytialGraphs failed:', err);
+    console.error('[docs] renderSpytialGdls failed:', err);
   }
 
   if (!isRerender) observeToc();

@@ -4,7 +4,7 @@
 
 The embedding layer scans *already-rendered* HTML for the code blocks a Markdown
 renderer produces and swaps each one for a live diagram. It is the same path the
-` ```spytial-graph ` blocks on this very site go through.
+` ```spytial-gdl ` blocks on this very site go through.
 
 ## What gets detected
 
@@ -13,12 +13,12 @@ pages) emit:
 
 | markup | source |
 |---|---|
-| `<pre><code class="language-spytial-graph">` | marked · markdown-it · Prism · highlight.js |
-| `<pre class="language-spytial-graph">` | some pipelines |
-| `<div class="spytial-graph">` | hand-authored HTML |
+| `<pre><code class="language-spytial-gdl">` | marked · markdown-it · Prism · highlight.js |
+| `<pre class="language-spytial-gdl">` | some pipelines |
+| `<div class="spytial-gdl">` | hand-authored HTML |
 
-`spytial` is accepted as an alias for `spytial-graph`. Editable blocks use the
-dedicated languages `spytial-graph-editable` / `spytial-editable`, or a
+`spytial` is accepted as an alias for `spytial-gdl`. Editable blocks use the
+dedicated languages `spytial-gdl-editable` / `spytial-editable`, or a
 `data-editable` attribute on the host — see [Editable diagrams](editable.md).
 
 No plugin is needed for MkDocs, Docusaurus, marked, markdown-it, or GitHub-style
@@ -30,14 +30,14 @@ Import from `src/markdown.js` (or the CDN URL):
 
 ```js
 import {
-  autoRender, renderSpytialGraphs, ensureEngineLoaded, whenEngineReady,
-} from 'https://cdn.jsdelivr.net/npm/spytial-graph/src/markdown.js';
+  autoRender, renderSpytialGdls, ensureEngineLoaded, whenEngineReady,
+} from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
 ```
 
 | export | what it does |
 |---|---|
 | `autoRender(opts)` | render every block on the page once the DOM is ready (injects the engine if absent). The one-liner the drop-in tag calls. |
-| `renderSpytialGraphs(root = document, opts)` | render blocks under `root`; returns a per-block results array. Use after you inject HTML yourself. |
+| `renderSpytialGdls(root = document, opts)` | render blocks under `root`; returns a per-block results array. Use after you inject HTML yourself. |
 | `ensureEngineLoaded(opts)` | inject d3 + WebCola + spytial-core if they aren't already on the page. |
 | `whenEngineReady(ms)` | resolve once the engine global is available (poll with timeout). |
 
@@ -46,7 +46,7 @@ import {
 
 ## Options
 
-`opts` is shared by `autoRender` and `renderSpytialGraphs`:
+`opts` is shared by `autoRender` and `renderSpytialGdls`:
 
 | option | default | meaning |
 |---|---|---|
@@ -59,20 +59,20 @@ import {
 
 ```js
 // Render a fragment you built at runtime, dark, 420px tall:
-await renderSpytialGraphs(document.getElementById('panel'), { theme: 'dark', height: 420 });
+await renderSpytialGdls(document.getElementById('panel'), { theme: 'dark', height: 420 });
 ```
 
 ## The results array
 
-`renderSpytialGraphs` returns one entry per block, so you can react to failures:
+`renderSpytialGdls` returns one entry per block, so you can react to failures:
 
 ```js
-const results = await renderSpytialGraphs(document);
+const results = await renderSpytialGdls(document);
 const failed = results.filter((r) => r.error);
 // each entry: { host, applied?, result?, error?, editable?, handle? }
 ```
 
-`result` is the full [`renderSpytialGraph`](api.md#renderspytialgraph) return for a
+`result` is the full [`renderSpytialGdl`](api.md#renderspytialgdl) return for a
 read-only block; `handle` is the [editable handle](editable.md#the-handle) for an
 editable one.
 
@@ -114,10 +114,10 @@ The exact dependency set is in [Architecture → dependencies](architecture.md#d
   mangling the block, register it as a custom fence (`pymdownx.superfences`) that
   renders verbatim, then load `auto.js` via `extra_javascript`.
 - **Docusaurus.** Author the block in MDX; load `auto.js` from a client module or a
-  `<script type="module">` in the page. Re-run `renderSpytialGraphs` on route change
+  `<script type="module">` in the page. Re-run `renderSpytialGdls` on route change
   if you use client-side navigation.
 - **Static site generators (Eleventy, Hugo, Jekyll).** Any of them emit the
-  `language-spytial-graph` markup — add the drop-in tag to your base template.
+  `language-spytial-gdl` markup — add the drop-in tag to your base template.
 
 ## Next
 

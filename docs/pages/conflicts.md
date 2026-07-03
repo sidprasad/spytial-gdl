@@ -4,7 +4,7 @@
 
 Because layout is a set of constraints, you can ask for the impossible: two edges
 that must both point right *and* form a cycle, a group that must enclose nodes
-pulled apart by an orientation, and so on. SpyTial treats this as a first-class
+pulled apart by an orientation, and so on. Spytial treats this as a first-class
 outcome, not a crash.
 
 ## The best-feasible counterfactual
@@ -16,7 +16,7 @@ is the *Irreducible Inconsistent Subsystem* (IIS), commonly called the UNSAT cor
 
 This block asks two opposing edges of a 2-cycle to both go right — impossible:
 
-```spytial-graph
+```spytial-gdl
 A -> B : x
 B -> A : y
 
@@ -43,11 +43,11 @@ conflict-free pages never pay for it.
 
 ## Reading it from the API
 
-[`renderSpytialGraph`](api.md#renderspytialgraph) surfaces the same information on
+[`renderSpytialGdl`](api.md#renderspytialgdl) surfaces the same information on
 its result object:
 
 ```js
-const r = await renderSpytialGraph(graph, source);
+const r = await renderSpytialGdl(graph, source);
 if (r.error) {
   // r.error — the constraint conflict (UNSAT core / positional / group-overlap)
   console.warn('layout conflict:', r.error.message);
@@ -68,7 +68,7 @@ spec itself is malformed — so it's reported separately as `selectorErrors`, an
 degenerate layout is *not* drawn:
 
 ```js
-const r = await renderSpytialGraph(graph, source);
+const r = await renderSpytialGdl(graph, source);
 if (r.selectorErrors.length) {
   // e.g. selector 'lft' didn't match any edges or nodes
 }
@@ -77,18 +77,27 @@ if (r.selectorErrors.length) {
 In an embed this is the **⚠ A selector didn't resolve** panel. Fix the selector to
 one of the [five forms](selectors.md#the-five-forms) and it resolves.
 
-## Annotation errors
+## Source errors — parse and annotation
 
-Earlier still: an annotation that doesn't even parse (unknown `@name`, a missing
-comma) is caught when annotations are lifted from the source. These come back as
-`annotationErrors` — `[{ line, text, message }]` — and the offending line is dropped
-so it can't confuse the parser; the rest of the diagram renders normally.
+Earliest of all: problems in the *source text*, before any layout runs. Two kinds,
+both caught up front and both reported with line numbers:
 
-So the three are distinct stages, easy to tell apart:
+- **Annotation errors** — an annotation that doesn't parse (unknown `@name`, a
+  missing comma, an unterminated `(`). Come back as `annotationErrors` —
+  `[{ line, text, message }]`; the offending annotation is dropped.
+- **Parse errors** — a graph line the parser flagged. `parseErrors` —
+  `[{ line, text, severity, message }]`. `severity: 'error'` is a line it couldn't
+  read (a broken edge, junk); `severity: 'warning'` is a tolerated-but-ignored
+  Mermaid construct (a `graph`/`flowchart` header, `classDef`).
+
+Both are **non-fatal**: the diagram still renders best-effort, and an embed shows a
+**⚠ … in this source** band beneath it listing each problem by line. So the four
+stages are distinct, easy to tell apart:
 
 | stage | failure | result field | embed panel |
 |---|---|---|---|
-| lift annotations | bad `@name` / args | `annotationErrors` | (line dropped; rest renders) |
+| parse graph | bad line / ignored Mermaid | `parseErrors` | ⚠ … in this source |
+| lift annotations | bad `@name` / args | `annotationErrors` | ⚠ … in this source |
 | resolve selectors | `selector=` matches nothing | `selectorErrors` | ⚠ A selector didn't resolve |
 | solve constraints | rules can't all hold | `error` (UNSAT core) | ⚠ These rules can't all hold |
 

@@ -3,13 +3,13 @@
 *Render without the Markdown layer — mount a graph element and draw onto it.*
 
 Everything the embedding layer does, you can do directly. Import from the package
-(bundler) or the CDN (`https://cdn.jsdelivr.net/npm/spytial-graph/src/index.js`):
+(bundler) or the CDN (`https://cdn.jsdelivr.net/npm/spytial-gdl/src/index.js`):
 
 ```js
-import { renderSpytialGraph, mountGraph } from 'spytial-graph';
+import { renderSpytialGdl, mountGraph } from 'spytial-gdl';
 
 const graph = mountGraph(document.getElementById('out'), { width: 800, height: 600 });
-const result = await renderSpytialGraph(graph, `
+const result = await renderSpytialGdl(graph, `
 A -> B
 A -> C
 
@@ -22,10 +22,10 @@ The full export surface:
 | export | kind |
 |---|---|
 | `mountGraph(container, opts)` | create/return a read-only `<webcola-cnd-graph>` |
-| `renderSpytialGraph(graphEl, source, opts)` | render source onto it |
+| `renderSpytialGdl(graphEl, source, opts)` | render source onto it |
 | `mountInputGraph(container, opts)` | create/return an editable `<structured-input-graph>` |
-| `renderSpytialGraphEditable(container, source, opts)` | render onto the editor → [handle](editable.md#the-handle) |
-| `serializeToSpytialGraph(value, opts)` | the notation serializer (inverse of render) |
+| `renderSpytialGdlEditable(container, source, opts)` | render onto the editor → [handle](editable.md#the-handle) |
+| `serializeToSpytialGdl(value, opts)` | the notation serializer (inverse of render) |
 | `extractAnnotations(rawSource)` | lift inline `@annotations` out of source |
 | `registerSpec`, `clearRegistry`, `mergeSpecStrings`, `mergeSpecsForClasses` | the rule registry / merge helpers |
 
@@ -43,19 +43,19 @@ an existing child of that tag is reused, or a new one is created and appended.
 created element.
 
 > **Note** — spytial-core is a **peer dependency** loaded on the page (the global
-> `window.spytialcore`). `mountGraph`/`renderSpytialGraph` don't import it, so this
+> `window.spytialcore`). `mountGraph`/`renderSpytialGdl` don't import it, so this
 > module stays a bare browser ES module. If it isn't present you get a clear
 > "spytial-core is not loaded" error; the Markdown path injects it for you. See
 > [Architecture](architecture.md#dependencies).
 
-## renderSpytialGraph
+## renderSpytialGdl
 
 ```text
-renderSpytialGraph(graphEl, source, opts?) → Promise<result>
+renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 ```
 
 - `graphEl` — a `<webcola-cnd-graph>` (from `mountGraph`).
-- `source` — spytial-graph text with inline `@annotations`.
+- `source` — spytial-gdl text with inline `@annotations`.
 - `opts` — see below.
 
 ### opts
@@ -69,7 +69,7 @@ renderSpytialGraph(graphEl, source, opts?) → Promise<result>
 ### The result object
 
 ```text
-{ applied, layout, error, selectorErrors, annotationErrors,
+{ applied, layout, error, selectorErrors, annotationErrors, parseErrors,
   parsed, data, instance, rules, hiddenRelations }
 ```
 
@@ -80,22 +80,23 @@ renderSpytialGraph(graphEl, source, opts?) → Promise<result>
 | `error` | the constraint error / UNSAT core, or `null` (see [Conflicts](conflicts.md)) |
 | `selectorErrors` | selectors that didn't resolve — `[]` when clean |
 | `annotationErrors` | malformed/unknown annotations — `[{ line, text, message }]` |
-| `parsed` | `{ nodes, edges, classesPerNode }` from the parser |
+| `parseErrors` | graph lines the parser flagged — `[{ line, text, severity, message }]`, `severity` `'error'` or `'warning'` (an ignored Mermaid construct) |
+| `parsed` | `{ nodes, edges, classesPerNode, errors }` from the parser |
 | `data` | the relational `{ atoms, relations }` handed to spytial-core |
 | `instance` | the `JSONDataInstance` built from `data` |
 | `rules` | the merged layout YAML actually solved |
 | `hiddenRelations` | selector-only relations hidden from drawing (`_links`, types, classes) |
 
-When `source` has no nodes, you instead get `{ applied: false, reason, parsed, annotationErrors }`.
+When `source` has no nodes, you instead get `{ applied: false, reason, parsed, annotationErrors, parseErrors }`.
 
 ### Re-rendering
 
 The read-only view does **not** auto-re-render. To update a diagram, call
-`renderSpytialGraph` again on the same element with new source (the playground does
+`renderSpytialGdl` again on the same element with new source (the playground does
 this on ⌘⏎). For live editing with a notation round-trip, use
-[`renderSpytialGraphEditable`](editable.md) instead.
+[`renderSpytialGdlEditable`](editable.md) instead.
 
-```spytial-graph
+```spytial-gdl
 A:::Person -> B:::Person : knows
 B -> C:::Person : knows
 C -> A : knows
@@ -116,7 +117,7 @@ order, per render:
 3. an explicit `opts.rules` string.
 
 ```js
-import { registerSpec, renderSpytialGraph, mountGraph } from 'spytial-graph';
+import { registerSpec, renderSpytialGdl, mountGraph } from 'spytial-gdl';
 
 // Reusable layout for any node tagged `class … server`:
 registerSpec('server', `
@@ -125,7 +126,7 @@ directives:
 `);
 
 const g = mountGraph(el);
-await renderSpytialGraph(g, 'a:::Box -> b:::Box\nclass a,b server', {
+await renderSpytialGdl(g, 'a:::Box -> b:::Box\nclass a,b server', {
   rules: 'constraints:\n  - orientation: { selector: _links, directions: [right] }',
 });
 ```
@@ -134,14 +135,14 @@ await renderSpytialGraph(g, 'a:::Box -> b:::Box\nclass a,b server', {
 who assemble specs themselves. `clearRegistry()` empties the per-class registry
 (handy between independent renders / tests).
 
-## extractAnnotations and serializeToSpytialGraph
+## extractAnnotations and serializeToSpytialGdl
 
 The two ends of the pipeline, usable standalone:
 
 - `extractAnnotations(rawSource)` → `{ source, specYaml, annotationLines, errors }`
   — lifts the `@…` lines out and compiles them to authoring YAML.
-- `serializeToSpytialGraph(value, { annotations })` → notation text — the inverse,
-  turning a `{ atoms, relations }` value back into spytial-graph source. This powers
+- `serializeToSpytialGdl(value, { annotations })` → notation text — the inverse,
+  turning a `{ atoms, relations }` value back into spytial-gdl source. This powers
   the editable handle's [`getSource()`](editable.md#the-serializer-on-its-own).
 
 ## Next

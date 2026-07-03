@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>spytial-graph · embedding guide</title>
+  <title>spytial-gdl · embedding guide</title>
   <style>
     :root { --ink:#1d2230; --soft:#5b6472; --faint:#8c95a3; --border:#e2e5ea;
             --bg:#fafbfc; --accent:#2d8659; --code:#f4f5f7; }
@@ -28,23 +28,23 @@
   </style>
 
   <!-- Only marked is loaded here. The renderer (d3 + WebCola + spytial-core) is
-       injected on demand by renderSpytialGraphs — that's the single-import story
+       injected on demand by renderSpytialGdls — that's the single-import story
        this guide describes, dogfooded. -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 </head>
 <body>
-  <p class="masthead">◆ this page is itself rendered by spytial-graph — every diagram below is live</p>
+  <p class="masthead">◆ this page is itself rendered by spytial-gdl — every diagram below is live</p>
   <div id="doc"><p style="color:var(--faint)">Loading the guide…</p></div>
   <footer>Source: <a href="../GUIDE.md">GUIDE.md</a> · <a href="../playground/">open the playground</a></footer>
 
   <script type="module">
-    import { renderSpytialGraphs } from '../src/markdown.js';
+    import { renderSpytialGdls } from '../src/markdown.js';
 
     try {
       const md = await (await fetch('../GUIDE.md')).text();
       document.getElementById('doc').innerHTML = marked.parse(md);
-      // Renders every ```spytial-graph block and injects the engine if needed.
-      await renderSpytialGraphs(document.getElementById('doc'), { height: 300 });
+      // Renders every ```spytial-gdl block and injects the engine if needed.
+      await renderSpytialGdls(document.getElementById('doc'), { height: 300 });
     } catch (err) {
       console.error(err);
       document.getElementById('doc').innerHTML =

@@ -1,16 +1,17 @@
-// Serialize a graph data model back to spytial-graph notation — the inverse of
+// Serialize a graph data model back to spytial-gdl notation — the inverse of
 // relationalize.js. This is the "re-get the notation" half of the round-trip:
 //
 //   text → parse → relationalize → JSONDataInstance → (edit) → reify → serialize → text
 //
 // It accepts either a `{ atoms, relations }` object (the shape relationalize.js
 // produces and JSONDataInstance.reify() returns) or a data instance with a
-// `reify()` method, and returns spytial-graph source text that re-parses to an
+// `reify()` method, and returns spytial-gdl source text that re-parses to an
 // equivalent graph.
 //
 // The mapping mirrors relationalize.js exactly:
 //   atom                       → a node; `label !== id` ⇒ [label] (mermaid-style),
-//                                `type !== 'Node'` ⇒ :::sort
+//                                a non-default type (anything but DEFAULT_TYPE,
+//                                the empty "untyped" default) ⇒ :::sort
 //   `_` relation               → unlabeled edges            (A -> B)
 //   named binary relation      → labeled edges              (A -> B : name)
 //   `_links` relation          → skipped (selector-only; duplicates the drawn
@@ -67,7 +68,7 @@ function hasDecoration(atom) {
     (!!atom.type && atom.type !== DEFAULT_TYPE);
 }
 
-// Serialize a graph data model to spytial-graph notation.
+// Serialize a graph data model to spytial-gdl notation.
 //
 //   input        — { atoms, relations } or a data instance (with reify())
 //   opts.annotations — spatial @annotation text to re-append verbatim after the
@@ -75,7 +76,7 @@ function hasDecoration(atom) {
 //                  the layout directives, so they round-trip unchanged.
 //
 // Returns the notation as a string.
-export function serializeToSpytialGraph(input, opts = {}) {
+export function serializeToSpytialGdl(input, opts = {}) {
   const { atoms, relations } = toData(input);
 
   const atomById = new Map();
@@ -101,7 +102,7 @@ export function serializeToSpytialGraph(input, opts = {}) {
   const collisions = [...classNames].filter((c) => edgeNames.has(c));
   if (collisions.length && typeof console !== 'undefined') {
     console.warn(
-      `serializeToSpytialGraph: name(s) used as both a class and an edge label: ${collisions.join(', ')}`
+      `serializeToSpytialGdl: name(s) used as both a class and an edge label: ${collisions.join(', ')}`
     );
   }
 

@@ -1,7 +1,7 @@
-# Embedding spytial-graphs in Markdown
+# Embedding spytial-gdls in Markdown
 
-A **spytial-graph** is a small text notation for a graph with its layout written
-inline. You write nodes, edges, and spatial operations as `@annotations`; SpyTial
+A **spytial-gdl** is a small text notation for a graph with its layout written
+inline. You write nodes, edges, and spatial operations as `@annotations`; Spytial
 solves the layout and draws a live, draggable diagram. It runs in the browser —
 no build step, no server beyond static hosting.
 
@@ -10,27 +10,27 @@ no build step, no server beyond static hosting.
 Add one line to any page that renders your Markdown:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
 Then write a fenced block, the way you'd write `mermaid`:
 
 ````markdown
-```spytial-graph
+```spytial-gdl
 A -> B
 B -> C
 @orientation(selector=_links, directions=[right])
 ```
 ````
 
-Every `spytial-graph` block on the page becomes a diagram. The script pulls in the
+Every `spytial-gdl` block on the page becomes a diagram. The script pulls in the
 renderer (d3, WebCola, spytial-core) for you if the page doesn't already load it.
 
 Wiring it yourself instead of the drop-in tag:
 
 ```html
 <script type="module">
-  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-graph/src/markdown.js';
+  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
   autoRender();
 </script>
 ```
@@ -38,11 +38,11 @@ Wiring it yourself instead of the drop-in tag:
 ## In plain HTML (no Markdown renderer)
 
 You don't need Markdown at all. In a hand-written HTML page, put the notation in a
-`<div class="spytial-graph">` and add the same one tag — the way you'd drop a
+`<div class="spytial-gdl">` and add the same one tag — the way you'd drop a
 `<div class="mermaid">` into a page. The complete integration:
 
 ```html
-<div class="spytial-graph">
+<div class="spytial-gdl">
   A -> B : left
   A -> C : right
 
@@ -51,21 +51,21 @@ You don't need Markdown at all. In a hand-written HTML page, put the notation in
   @orientation(selector=right, directions=[right])
 </div>
 
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
 On load, every block becomes a live diagram — no init call, no config. The block
-also accepts `class="language-spytial-graph"` and a `<pre class="spytial-graph">`,
+also accepts `class="language-spytial-gdl"` and a `<pre class="spytial-gdl">`,
 so whatever markup you (or a renderer) emit is caught. Indentation inside the
 `<div>` is fine; each line is trimmed.
 
 Give each block a height — the diagram fills its container:
 
 ```css
-.spytial-graph, .spytial-graph-editable { height: 340px; }
+.spytial-gdl, .spytial-gdl-editable { height: 340px; }
 ```
 
-For an **editor** instead of a static view, use `class="spytial-graph-editable"`
+For an **editor** instead of a static view, use `class="spytial-gdl-editable"`
 (or add `data-editable` to the div). It opens with the **Source** panel beside the
 diagram as a live text editor — drag the graph or edit the text and **Run ▸** (⌘⏎)
 it in, both directions staying in sync — plus **⧉ Copy** to lift the notation out.
@@ -80,13 +80,13 @@ works once the package is published — until then point the tag at a local chec
 
 A node is implicit from any edge, so the smallest graph is one line:
 
-```spytial-graph
+```spytial-gdl
 A -> B
 ```
 
 Label an edge after a colon — the label is also a selector you can target:
 
-```spytial-graph
+```spytial-gdl
 A -> B : yes
 A -> C : no
 ```
@@ -94,14 +94,14 @@ A -> C : no
 A node's id is its name. A `[bracket]` gives it a display label, mermaid-style —
 without one the id is shown:
 
-```spytial-graph
+```spytial-gdl
 u1[Alice] -> u2[Bob]
 ```
 
 A `:::Sort` tag gives the node a **type**, so `selector: Person` then matches
 every node of that type:
 
-```spytial-graph
+```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
@@ -136,7 +136,7 @@ A `selector` names nodes or edges:
 
 Put together — a binary tree, children below, left-left and right-right:
 
-```spytial-graph
+```spytial-gdl
 A -> B : left
 A -> C : right
 B -> D : left
@@ -155,18 +155,18 @@ layout and explains the conflict — nothing silently disappears.
 ## Where it works
 
 `autoRender` looks for the markup a Markdown renderer emits for a fenced block —
-`<pre><code class="language-spytial-graph">`. That's what marked, markdown-it,
+`<pre><code class="language-spytial-gdl">`. That's what marked, markdown-it,
 Prism, highlight.js, MkDocs, and Docusaurus produce, so no plugin is needed. To
-render a fragment you injected yourself, call `renderSpytialGraphs(element)`.
+render a fragment you injected yourself, call `renderSpytialGdls(element)`.
 
 ## Editable blocks
 
-Tag a block `spytial-graph-editable` instead, and it renders an **editor** rather
+Tag a block `spytial-gdl-editable` instead, and it renders an **editor** rather
 than a static diagram — readers add and delete nodes, drag to connect edges, and
 rename relations, with the constraints re-solving live:
 
 ````markdown
-```spytial-graph-editable
+```spytial-gdl-editable
 A -> B : left
 A -> C : right
 
@@ -175,7 +175,7 @@ A -> C : right
 ````
 
 Each editable block sits beside a collapsible **Source** panel that re-derives
-spytial-graph text from the edited graph on every edit — and is editable itself:
+spytial-gdl text from the edited graph on every edit — and is editable itself:
 type notation and **Run ▸** (⌘⏎) to push it into the diagram, the two staying in
 sync. **⧉ Copy** lifts the result back out, `@annotations` and all. (A hand-authored
 container with `data-editable`, or `autoRender({ editable: true })` to make every
@@ -185,11 +185,11 @@ Driving the editor yourself, outside Markdown — the handle re-gets the notatio
 (`getSource()`) and the reified value (`getValue()`) on every edit:
 
 ```js
-import { renderSpytialGraphEditable } from 'https://cdn.jsdelivr.net/npm/spytial-graph/src/index.js';
+import { renderSpytialGdlEditable } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/index.js';
 
-const h = await renderSpytialGraphEditable(document.getElementById('out'), 'A -> B\nB -> C');
+const h = await renderSpytialGdlEditable(document.getElementById('out'), 'A -> B\nB -> C');
 h.onChange(({ source, value }) => {
-  console.log(source); // spytial-graph notation, re-derived from the edited graph
+  console.log(source); // spytial-gdl notation, re-derived from the edited graph
   console.log(value);  // its reified value — { atoms, relations }
 });
 ```

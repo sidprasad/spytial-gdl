@@ -8,24 +8,24 @@ Add one line to any page that renders your Markdown (or to a hand-written HTML
 page). Everything loads from CDN — there is no `npm install` and no build step:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
 Then write a fenced block the way you'd write `mermaid`:
 
 ````markdown
-```spytial-graph
+```spytial-gdl
 A -> B
 B -> C
 @orientation(selector=_links, directions=[right])
 ```
 ````
 
-Every `spytial-graph` block on the page becomes a live diagram. The script pulls
+Every `spytial-gdl` block on the page becomes a live diagram. The script pulls
 in the renderer (d3, WebCola, spytial-core) for you if the page doesn't already
 load it. The result:
 
-```spytial-graph
+```spytial-gdl
 A -> B
 B -> C
 @orientation(selector=_links, directions=[right])
@@ -34,15 +34,15 @@ B -> C
 ## In plain HTML (no Markdown renderer)
 
 You don't need Markdown at all. In a hand-written page, put the notation in a
-`<div class="spytial-graph">` and add the same one tag — the way you'd drop a
+`<div class="spytial-gdl">` and add the same one tag — the way you'd drop a
 `<div class="mermaid">` into a page. A complete, runnable page:
 
 ```html
 <!DOCTYPE html>
 <meta charset="utf-8" />
-<style>.spytial-graph { height: 340px; }</style>
+<style>.spytial-gdl { height: 340px; }</style>
 
-<div class="spytial-graph">
+<div class="spytial-gdl">
   A -> B : left
   A -> C : right
 
@@ -51,13 +51,18 @@ You don't need Markdown at all. In a hand-written page, put the notation in a
   @orientation(selector=right, directions=[right])
 </div>
 
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
 On load, every block becomes a live diagram — no init call, no config. The block
-also accepts `class="language-spytial-graph"` and `<pre class="spytial-graph">`,
+also accepts `class="language-spytial-gdl"` and `<pre class="spytial-gdl">`,
 so whatever markup you (or a renderer) emit is caught. Indentation inside the
 `<div>` is fine; each line is trimmed.
+
+> **Renaming note** — This project was previously called `spytial-graph`. The old
+> ` ```spytial-graph ` fence tag (and `spytial` for short) still renders, so pages
+> and embeds written before the rename keep working. New content should use
+> ` ```spytial-gdl `.
 
 > **Note** — The page must be **served** (any static server) rather than opened as
 > `file://`, because the tag is an ES module. See *Running locally* below.
@@ -69,7 +74,7 @@ the drop-in tag:
 
 ```html
 <script type="module">
-  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-graph/src/markdown.js';
+  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
   autoRender({ height: 420, theme: 'dark' });
 </script>
 ```
@@ -82,7 +87,7 @@ Or render a specific subtree after you inject HTML yourself — see
 The diagram fills its container, so a block needs a height:
 
 ```css
-.spytial-graph, .spytial-graph-editable { height: 340px; }
+.spytial-gdl, .spytial-gdl-editable { height: 340px; }
 ```
 
 A single block can override it with `data-height` (a number of pixels or any CSS
@@ -108,7 +113,7 @@ Any static server works — one is needed only because the pages load ES modules
 
 ## Pinning versions for production
 
-The CDN URLs above always fetch the latest published `spytial-graph` and, through
+The CDN URLs above always fetch the latest published `spytial-gdl` and, through
 it, a pinned `spytial-core`. For a reproducible deploy, vendor the three engine
 scripts locally (d3 v4, `webcola@3.4.0`, `spytial-core`) and point the tag at your
 own copy — see [Architecture](architecture.md#dependencies) for the exact set and

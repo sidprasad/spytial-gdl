@@ -1,15 +1,15 @@
-# spytial-graph
+# spytial-gdl
 
 *Diagramming in your browser, with semantics.*
 
-[![CI](https://github.com/sidprasad/spytial-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/sidprasad/spytial-graph/actions/workflows/ci.yml)
+[![CI](https://github.com/sidprasad/spytial-gdl/actions/workflows/ci.yml/badge.svg)](https://github.com/sidprasad/spytial-gdl/actions/workflows/ci.yml)
 
-Write a small graph notation — nodes, edges, and inline spatial `@annotations` — and
-SpyTial renders it as a **live, draggable constraint diagram**. Drop a fenced
-` ```spytial-graph ` block into Markdown and it comes alive client-side, the way
+Write in a small graph description language — nodes, edges, and inline spatial `@annotations` — and
+Spytial renders it as a **live, draggable constraint diagram**. Drop a fenced
+` ```spytial-gdl ` block into Markdown and it comes alive client-side, the way
 ` ```mermaid ` does.
 
-```spytial-graph
+```spytial-gdl
 A -> B : left
 A -> C : right
 
@@ -20,7 +20,7 @@ A -> C : right
 
 You get a faithful default layout for free; the `@annotations` refine it — orientation,
 alignment, grouping, cycles — without rebuilding anything. That block is tagged
-` ```spytial-graph `, so in any markdown pipeline it renders as a *live* diagram — this
+` ```spytial-gdl `, so in any markdown pipeline it renders as a *live* diagram — this
 README is dogfood. See it rendered live at `/examples/md-viewer.html?doc=../README.md`, or
 read the intro post, [Your diagram doesn't know what it's
 drawing](examples/your-diagram-doesnt-know.md).
@@ -34,12 +34,12 @@ No `npm install` — everything loads from CDN:
 npm run serve   # zero-dep static server, port 8100
 # /playground/                 live editor (View ⇄ Edit)
 # /examples/drop-in.html       minimal HTML drop-in — one tag + <div> blocks
-# /examples/guide.html         the guide, rendered by spytial-graph itself
+# /examples/guide.html         the guide, rendered by spytial-gdl itself
 # /examples/binary-tree.html   programmatic API demo
 # /examples/editable.html      editable graph — edit visually, re-get the notation
 # /examples/diagrams-that-edit-back.html   "explorable" post built on the editor
-# /examples/your-diagram-doesnt-know.html  intro post, self-contained (CDN engine)
-# /examples/md-viewer.html?doc=<file.md>   render any spytial-graph .md live (incl. this README)
+# /examples/md-viewer.html?doc=your-diagram-doesnt-know.md  intro post, rendered live
+# /examples/md-viewer.html?doc=<file.md>   render any spytial-gdl .md live (incl. this README)
 ```
 
 (Any static server works; one is needed only because the pages load ES modules.)
@@ -96,7 +96,7 @@ One tag turns on rendering for a whole page; the engine is injected if it isn't 
 loaded. **[GUIDE.md](GUIDE.md) is the full walkthrough** — the short version:
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
 `src/markdown.js` exports, if you'd rather drive it:
@@ -104,17 +104,17 @@ loaded. **[GUIDE.md](GUIDE.md) is the full walkthrough** — the short version:
 | export | |
 |---|---|
 | `autoRender(opts)` | render every block on the page (injects the engine if absent) |
-| `renderSpytialGraphs(root = document, opts)` | render blocks under `root`; returns per-block results |
+| `renderSpytialGdls(root = document, opts)` | render blocks under `root`; returns per-block results |
 | `ensureEngineLoaded(opts)` | inject d3 + WebCola + spytial-core if absent |
 | `whenEngineReady(ms)` | resolves once the engine is available |
 
 `opts`: `height` (default `360`; per-block `data-height`), `theme`, `injectEngine`. It picks
-up the `<pre><code class="language-spytial-graph">` markup that marked, markdown-it, MkDocs,
+up the `<pre><code class="language-spytial-gdl">` markup that marked, markdown-it, MkDocs,
 and Docusaurus emit — no plugin needed.
 
 Every embed frames the diagram beside a collapsible **Source** panel that mirrors the live
 notation (read-only blocks open with it collapsed to a thin rail; click to reveal). A block
-tagged ` ```spytial-graph-editable ` (or any block carrying `data-editable`, or
+tagged ` ```spytial-gdl-editable ` (or any block carrying `data-editable`, or
 `autoRender({ editable: true })`) renders the **editor** and opens that panel as a text editor
 too: drag the graph *or* edit the text and **Run ▸** (⌘⏎) it back in, the two staying in sync —
 and **⧉ Copy** lifts the notation out. So docs can ship a graph readers edit both ways and copy
@@ -123,10 +123,10 @@ back out.
 ## Programmatic API
 
 ```js
-import { renderSpytialGraph, mountGraph } from 'spytial-graph';
+import { renderSpytialGdl, mountGraph } from 'spytial-gdl';
 
 const graph = mountGraph(document.getElementById('out'), { width: 800, height: 600 });
-const result = await renderSpytialGraph(graph, `
+const result = await renderSpytialGdl(graph, `
 A -> B
 A -> C
 
@@ -134,8 +134,8 @@ A -> C
 `);
 ```
 
-`renderSpytialGraph(graphEl, source, opts)` →
-`{ applied, layout, error, selectorErrors, annotationErrors, parsed, data, instance, rules, hiddenRelations }`.
+`renderSpytialGdl(graphEl, source, opts)` →
+`{ applied, layout, error, selectorErrors, annotationErrors, parseErrors, parsed, data, instance, rules, hiddenRelations }`.
 `mountGraph(container, opts)` creates/returns a `<webcola-cnd-graph>`. `opts.validator` is
 `'qualitative'` (default, IIS clash reporting) or `'kiwi'`.
 
@@ -150,9 +150,9 @@ re-solve live — and **re-get the notation** at any time. That round-trip (`tex
 edit → text`) is the point.
 
 ```js
-import { renderSpytialGraphEditable } from 'spytial-graph';
+import { renderSpytialGdlEditable } from 'spytial-gdl';
 
-const h = await renderSpytialGraphEditable(document.getElementById('out'), `
+const h = await renderSpytialGdlEditable(document.getElementById('out'), `
 A -> B : left
 A -> C : right
 
@@ -160,28 +160,28 @@ A -> C : right
 `);
 
 h.onChange(({ source, value }) => {
-  console.log(source); // spytial-graph notation, re-derived from the edited graph
+  console.log(source); // spytial-gdl notation, re-derived from the edited graph
   console.log(value);  // its reified value — { atoms, relations } JSON
 });
 ```
 
-`renderSpytialGraphEditable(container, source, opts)` returns a **handle**:
+`renderSpytialGdlEditable(container, source, opts)` returns a **handle**:
 
 | handle | |
 |---|---|
-| `getSource()` | re-get spytial-graph notation for the current graph (your `@annotations` re-appended verbatim) |
+| `getSource()` | re-get spytial-gdl notation for the current graph (your `@annotations` re-appended verbatim) |
 | `getValue()` | the reified value — `{ atoms, relations }` JSON |
 | `onChange(cb)` | runs `cb({ source, value, error })` after every edit; returns an unsubscribe fn |
 | `element`, `dataInstance` | the live `<structured-input-graph>` and its data instance |
 
-`serializeToSpytialGraph(data, { annotations })` is that notation serializer on its own — the
+`serializeToSpytialGdl(data, { annotations })` is that notation serializer on its own — the
 inverse of the render pipeline — for a `{ atoms, relations }` object (or anything with
 `reify()`). The playground's **Edit** toggle and `/examples/editable.html` are built on it.
 
 ## How it renders
 
 ```
-spytial-graph source (+ @annotations)
+spytial-gdl source (+ @annotations)
   └─ annotations.js → lift @orientation(...) out     → { source, specYaml }
   └─ parse.js       → { nodes, edges, classesPerNode }
   └─ relationalize  → { atoms, relations, hiddenRelations }
@@ -191,7 +191,7 @@ spytial-graph source (+ @annotations)
 ```
 
 When constraints can't all hold, `generateLayout` returns a best-feasible counterfactual plus
-the minimal conflict (IIS); `renderSpytialGraph` sets the `unsat` attribute and the playground
+the minimal conflict (IIS); `renderSpytialGdl` sets the `unsat` attribute and the playground
 shows an explanation. Malformed selectors come back as `selectorErrors`.
 
 **Dependencies** (CDN, in order): d3 v4 · `webcola@3.4.0` · `spytial-core@2.9.1`. The last
@@ -203,5 +203,5 @@ Markdown path injects all three. Vendor them locally for an offline deploy.
 - A small notation — nodes, edges, labels, types, classes (see `parse.js`). No
   sequence/state/Gantt/pie diagrams.
 - Edge labels are relations, not free text.
-- The read-only view doesn't auto-re-render — call `renderSpytialGraph` again (the playground
+- The read-only view doesn't auto-re-render — call `renderSpytialGdl` again (the playground
   does this on ⌘⏎). For live editing with a notation round-trip, use [editable mode](#editable-mode).

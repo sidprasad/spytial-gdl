@@ -1,9 +1,10 @@
 {
-  "name": "spytial-graph",
+  "name": "spytial-gdl",
   "version": "0.0.5",
-  "description": "A small graph notation with inline spatial @annotations, rendered as live Spytial constraint diagrams in Markdown or anywhere.",
+  "description": "A small graph description language (GDL) with inline spatial @annotations, rendered as live Spytial constraint diagrams in Markdown or anywhere.",
   "keywords": [
     "graph",
+    "gdl",
     "diagram",
     "mermaid",
     "spytial",
@@ -13,13 +14,13 @@
   ],
   "author": "Siddhartha Prasad (https://github.com/sidprasad)",
   "license": "MIT",
-  "homepage": "https://github.com/sidprasad/spytial-graph#readme",
+  "homepage": "https://github.com/sidprasad/spytial-gdl#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sidprasad/spytial-graph.git"
+    "url": "git+https://github.com/sidprasad/spytial-gdl.git"
   },
   "bugs": {
-    "url": "https://github.com/sidprasad/spytial-graph/issues"
+    "url": "https://github.com/sidprasad/spytial-gdl/issues"
   },
   "type": "module",
   "main": "src/index.js",
@@ -36,7 +37,11 @@
   ],
   "scripts": {
     "serve": "node scripts/preview-server.mjs",
-    "test": "node test/roundtrip.test.mjs"
+    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/annotations.test.mjs && node test/sgq-integration.test.mjs",
+    "test:roundtrip": "node test/roundtrip.test.mjs",
+    "test:parse": "node test/parse.test.mjs",
+    "test:annotations": "node test/annotations.test.mjs",
+    "test:integration": "node test/sgq-integration.test.mjs"
   },
   "peerDependencies": {
     "spytial-core": ">=2.9"

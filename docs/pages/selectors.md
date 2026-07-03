@@ -25,7 +25,7 @@ that wants edges (like `@orientation`) takes an edge selector; one that wants no
 
 The label after a colon *is* the relation name. Target it directly:
 
-```spytial-graph
+```spytial-gdl
 A -> B : reports_to
 C -> B : reports_to
 B -> D : owns
@@ -37,7 +37,7 @@ B -> D : owns
 `_` is the relation that unlabeled edges carry; `_links` is the union of all edges.
 Use `_links` for a baseline that applies to everything, then refine per label:
 
-```spytial-graph
+```spytial-gdl
 root -> a : left
 root -> b : right
 a -> a1
@@ -56,7 +56,7 @@ a sideways bias on top. The plain `a -> a1` / `b -> b1` edges match only `_links
 A **type** comes from `:::Sort`; a **class** comes from `class … tag`. Both select
 node sets, and you can use either wherever a node selector is expected:
 
-```spytial-graph
+```spytial-gdl
 db[DB]:::Service
 api[API]:::Service -> db
 web[Web]:::Client -> api
@@ -77,7 +77,7 @@ A node with no `:::Sort` is **untyped**: it belongs to no named type, so a named
 selector never touches it by accident. To reach *every* node regardless of type —
 typed, classed, or plain — use `univ`, the universal set:
 
-```spytial-graph
+```spytial-gdl
 a[Root] -> b:::Service
 a -> c:::Client
 
@@ -124,7 +124,7 @@ the other. Rename one — e.g. edge label `member_of`, class `team`.
 ## Advanced: comprehensions
 
 A selector can also be a set comprehension, for finer targeting than a bare name —
-e.g. `'{x: Person | …}'`. These are passed through to SpyTial's query evaluator.
+e.g. `'{x: Person | …}'`. These are passed through to Spytial's query evaluator.
 Quote the whole expression so its braces and pipe survive parsing:
 
 ```text

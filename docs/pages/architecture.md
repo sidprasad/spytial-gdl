@@ -2,17 +2,17 @@
 
 *From source text to pixels — and what each module owns.*
 
-spytial-graph is a thin authoring layer over [SpyTial](https://github.com/sidprasad/spytial-core)'s
+spytial-gdl is a thin authoring layer over [Spytial](https://github.com/sidprasad/spytial-core)'s
 constraint-layout engine. It parses a small notation, turns it into a relational
 data instance, compiles your `@annotations` into a layout spec, and hands both to
 spytial-core — which owns *both* solving the layout and drawing it.
 
 ## The pipeline
 
-Here it is as a spytial-graph (of course):
+Here it is as a spytial-gdl (of course):
 
-```spytial-graph
-src[spytial-graph source]:::Ours -> anno[annotations.js]:::Ours
+```spytial-gdl
+src[spytial-gdl source]:::Ours -> anno[annotations.js]:::Ours
 anno -> parse[parse.js]:::Ours
 parse -> rel[relationalize.js]:::Ours
 rel -> core[spytial-core]:::Engine
@@ -35,7 +35,7 @@ Stage by stage:
 | draw | `<webcola-cnd-graph>` | `.renderLayout(layout)` |
 
 The key design choice: **the custom element owns layout *and* drawing.**
-spytial-graph never positions anything itself — it produces a spec and a data
+spytial-gdl never positions anything itself — it produces a spec and a data
 instance, and `LayoutInstance.generateLayout` does the constraint solving. That's
 why over-constrained inputs come back as a counterfactual + UNSAT core
 ([Conflicts](conflicts.md)) rather than a broken picture.
@@ -48,7 +48,7 @@ authoring YAML — one-line flow-map list items under `constraints:` / `directiv
 — so inline annotations, the per-class `registerSpec` registry, and a raw
 `opts.rules` string all merge through one shared concat
 ([API → composing rules](api.md#composing-rules-registry-and-yaml)). The decorator
-syntax mirrors SpyTial's Python DSL (`spytial-py`), so a graph and its layout travel
+syntax mirrors Spytial's Python DSL (`spytial-py`), so a graph and its layout travel
 together as one block of text.
 
 ## Selector-only relations
@@ -68,10 +68,10 @@ include them yourself.
 | dependency | role |
 |---|---|
 | d3 **v4** | WebCola's rendering/data substrate |
-| `webcola@3.4.0` | the constraint-layout solver SpyTial drives |
+| `webcola@3.4.0` | the constraint-layout solver Spytial drives |
 | `spytial-core@^2.9` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
-spytial-core is a **peer dependency** — spytial-graph does not `import` it, so its
+spytial-core is a **peer dependency** — spytial-gdl does not `import` it, so its
 own modules load as bare browser ES modules. spytial-core auto-registers the custom
 element and exposes the engine on `window.spytialcore` (legacy alias `CndCore`).
 Vendor all three locally for an offline or version-pinned deploy
@@ -85,17 +85,17 @@ Vendor all three locally for an offline or version-pinned deploy
 | `src/annotations.js` | inline `@annotation` extraction → authoring YAML |
 | `src/relationalize.js` | graph → `{ atoms, relations, hiddenRelations }` |
 | `src/registry.js` | per-class spec registry + `mergeSpecStrings` |
-| `src/serialize.js` | the inverse — value → spytial-graph notation |
-| `src/index.js` | `mountGraph` / `renderSpytialGraph` / editable + the render pipeline |
+| `src/serialize.js` | the inverse — value → spytial-gdl notation |
+| `src/index.js` | `mountGraph` / `renderSpytialGdl` / editable + the render pipeline |
 | `src/markdown.js` | block detection, the framed device, the UNSAT panel |
 | `src/auto.js` | the drop-in `autoRender()` tag |
 
 ## This site is dogfood
 
 These docs are a static, zero-build site that renders its own Markdown client-side
-(marked) and lights up every ` ```spytial-graph ` block with the very
-`renderSpytialGraphs` you'd embed — so the documentation is itself an instance of
-the system it documents. The shell is [`docs/app.js`](https://github.com/sidprasad/spytial-graph/blob/main/docs/app.js);
+(marked) and lights up every ` ```spytial-gdl ` block with the very
+`renderSpytialGdls` you'd embed — so the documentation is itself an instance of
+the system it documents. The shell is [`docs/app.js`](https://github.com/sidprasad/spytial-gdl/blob/main/docs/app.js);
 it imports from the same `src/` you'd use.
 
 ## Next

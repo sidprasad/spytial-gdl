@@ -1,8 +1,8 @@
 # Annotations
 
-*Spatial operations, inline, one per line. Annotations are the layout.*
+*Spatial operations, written inline. Annotations are the layout.*
 
-There is no `TD`/`LR` keyword in spytial-graph. Every layout and styling decision
+There is no `TD`/`LR` keyword in spytial-gdl. Every layout and styling decision
 is an `@annotation` — a one-line operation that targets a [selector](selectors.md)
 and applies a constraint or a directive. A single block of text fully describes
 both the graph and how it should be drawn.
@@ -13,8 +13,18 @@ both the graph and how it should be drawn.
 @name(arg=value, arg2=[a, b], …)
 ```
 
-- **One per line.** An annotation occupies its own line, anywhere in the block
-  (convention: after the graph).
+- **One annotation per statement,** anywhere in the block (convention: after the
+  graph). It usually fits on one line, but the arguments may **wrap across lines**
+  up to the closing `)` — handy for long lists:
+
+  ```text
+  @orientation(
+    selector=left,
+    directions=[left],
+  )
+  ```
+
+  A trailing comma before the `)` is fine, as is a trailing `;` or `%%` comment.
 - **Arguments are `key=value`,** comma-separated.
 - **Values** are barewords (`below`), quoted strings (`'left subtree'`), numbers
   (`3`, `3.5`), lists (`[below, left]`), or a quoted comprehension
@@ -37,7 +47,7 @@ which bucket they compile to — the value syntax is identical.
 The workhorse. `directions` is a list of one or more of `above`, `below`, `left`,
 `right`, applied to every edge in the selector (target relative to source):
 
-```spytial-graph
+```spytial-gdl
 A -> B : left
 A -> C : right
 B -> D
@@ -55,7 +65,7 @@ Stacking directions combines them — `[below, right]` puts the target down-and-
 Arrange the nodes of a cycle as a ring. `direction` is `clockwise` or
 `counterclockwise`:
 
-```spytial-graph
+```spytial-gdl
 A -> B
 B -> C
 C -> D
@@ -69,7 +79,7 @@ D -> A
 Draw a labeled region around the nodes a selector matches. `name` is the region's
 caption:
 
-```spytial-graph
+```spytial-gdl
 api -> db : reads
 web -> api : calls
 
@@ -87,7 +97,7 @@ Line the two endpoints of each edge in a relation up on a shared axis. `directio
 is `horizontal` or `vertical`. Unlike `group`, `align` takes a **binary (edge)
 selector** — it aligns *pairs*, not a node set:
 
-```spytial-graph
+```spytial-gdl
 a -> b : sib
 b -> c : sib
 c -> d : sib
@@ -116,7 +126,7 @@ whole chain settles into a row.
 
 The common ones — color:
 
-```spytial-graph
+```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
@@ -128,7 +138,7 @@ bob[Bob]:::Person     -> acme
 
 > **Note** — Directives map generically onto spytial-core's directive vocabulary:
 > an annotation `@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. The exact
-> keyword arguments for `size`, `icon`, `attribute`, and friends are SpyTial
+> keyword arguments for `size`, `icon`, `attribute`, and friends are Spytial
 > directive kwargs; the [spytial-core](https://github.com/sidprasad/spytial-core)
 > reference is authoritative for those. The four names above cover most diagrams.
 
@@ -159,7 +169,7 @@ Annotations are validated as they're lifted out of the source:
   [Conflicts & UNSAT](conflicts.md).
 
 From the API, all three arrive on the result object from
-[`renderSpytialGraph`](api.md#renderspytialgraph). In an embed, they surface in the
+[`renderSpytialGdl`](api.md#renderspytialgdl). In an embed, they surface in the
 attached conflict panel.
 
 ## Composing with raw rules

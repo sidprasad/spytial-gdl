@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown viewer · spytial-graph</title>
+  <title>Markdown viewer · spytial-gdl</title>
   <style>
     :root {
       --ink: #1c1f26; --soft: #565d6a; --faint: #8b93a1; --line: #e7e9ee;
@@ -26,10 +26,20 @@
     #doc hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
     #doc table { border-collapse: collapse; font-size: 15px; margin: 8px 0 24px; }
     #doc th, #doc td { border: 1px solid var(--line); padding: 7px 12px; text-align: left; }
-    /* Code blocks that AREN'T spytial-graph render as plain code; the spytial
+    /* Code blocks that AREN'T spytial-gdl render as plain code; the spytial
        ones get replaced by auto.js with a bordered live diagram. */
     #doc pre { background: var(--code-bg); border-radius: 10px; padding: 14px 16px; overflow: auto; font-size: 13px; }
-    #doc .spytial-graph-rendered { box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 26px rgba(16,24,40,.05); }
+    #doc .mermaid {
+      margin: 28px 0 30px; min-height: 360px; display: flex; align-items: center; justify-content: center;
+      overflow: auto; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 26px rgba(16,24,40,.05);
+    }
+    #doc .mermaid svg { max-width: 100%; height: auto; }
+    #doc .mermaid-error {
+      color: #b00020; background: #fff3f3; border-color: #f3c2c2; white-space: pre-wrap;
+      align-items: flex-start; justify-content: flex-start; min-height: 0; font: 13px/1.5 var(--mono);
+    }
+    #doc .spytial-gdl-rendered { box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 26px rgba(16,24,40,.05); }
     #status { max-width: 680px; margin: 0 auto; padding: 16px 24px; font-family: var(--mono); font-size: 12px; color: var(--faint); }
   </style>
 </head>
@@ -41,10 +51,34 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <script type="module">
-    import { renderSpytialGraphs } from '../src/markdown.js';
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    import { renderSpytialGdls } from '../src/markdown.js';
 
     const status = document.getElementById('status');
     const doc = document.getElementById('doc');
+    mermaid.initialize({ startOnLoad: false });
+
+    async function renderMermaidBlocks(root) {
+      const nodes = Array.from(root.querySelectorAll('pre > code.language-mermaid')).map((code) => {
+        const host = document.createElement('div');
+        host.className = 'mermaid';
+        host.textContent = code.textContent;
+        code.parentElement.replaceWith(host);
+        return host;
+      });
+      if (!nodes.length) return 0;
+
+      try {
+        await mermaid.run({ nodes });
+      } catch (err) {
+        nodes.forEach((node) => {
+          node.classList.add('mermaid-error');
+          node.textContent = `Mermaid failed to render:\n${err.message || err}`;
+        });
+        console.error(err);
+      }
+      return nodes.length;
+    }
 
     // ?doc=<path> chooses the markdown file; default to the intro post.
     const params = new URLSearchParams(location.search);
@@ -57,16 +91,20 @@
       });
 
       // 1. markdown -> HTML. marked tags fenced blocks as
-      //    <pre><code class="language-spytial-graph">, which is exactly what
+      //    <pre><code class="language-spytial-gdl">, which is exactly what
       //    auto.js looks for. (The .md's own trailing <script> is inert here —
       //    innerHTML never executes scripts — so the host drives rendering.)
       doc.innerHTML = marked.parse(md);
 
-      // 2. light up every spytial-graph block in the rendered HTML (the engine
+      // 2. Marked leaves Mermaid fences as code; turn them into live diagrams.
+      const mermaidCount = await renderMermaidBlocks(doc);
+
+      // 3. Light up every spytial-gdl block in the rendered HTML (the engine
       //    is injected from the CDN if it isn't already present).
-      const results = await renderSpytialGraphs(doc);
+      const results = await renderSpytialGdls(doc);
       const live = results.filter(r => !r.error).length;
-      status.textContent = `${src} — ${live} live diagram${live === 1 ? '' : 's'}`;
+      const mermaidLabel = mermaidCount ? `, ${mermaidCount} Mermaid diagram${mermaidCount === 1 ? '' : 's'}` : '';
+      status.textContent = `${src} — ${live} live Spytial diagram${live === 1 ? '' : 's'}${mermaidLabel}`;
     } catch (err) {
       status.textContent = `failed to load ${src}: ${err.message}`;
       console.error(err);

@@ -2,13 +2,13 @@
 
 *Diagramming in your browser, with semantics.*
 
-**spytial-graph** is a small text notation for a graph with its *layout written
-inline*. You write nodes, edges, and spatial operations as `@annotations`; SpyTial
+**spytial-gdl** is a small **graph description language (GDL)**: a text notation
+for a graph with its *layout written inline*. You write nodes, edges, and spatial operations as `@annotations`; Spytial
 solves the layout and draws a live, draggable diagram. Drop a fenced
-` ```spytial-graph ` block into Markdown and it comes alive client-side, the way
+` ```spytial-gdl ` block into Markdown and it comes alive client-side, the way
 ` ```mermaid ` does — no build step, no server beyond static hosting.
 
-```spytial-graph
+```spytial-gdl
 A -> B : left
 A -> C : right
 B -> D : left
@@ -43,7 +43,7 @@ flowchart TD
   C --> G
 ```
 
-In spytial-graph the edge label **is** a relation, and the relation is what the
+In spytial-gdl the edge label **is** a relation, and the relation is what the
 layout rule targets: `@orientation(selector=left, directions=[left])` says *every
 `left` edge points its child to the left* — a fact about the model, not about this
 drawing. Change the data and the meaning carries over. That difference is the whole
@@ -55,7 +55,7 @@ drawing](../examples/md-viewer.html?doc=your-diagram-doesnt-know.md) walks throu
 A node's identity, type, and class are all addressable, so layout and styling are
 *queries over the model*, not per-node markup:
 
-```spytial-graph
+```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 carol[Carol]:::Person -> acme
@@ -69,11 +69,11 @@ carol[Carol]:::Person -> acme
 ## When constraints conflict
 
 You can over-constrain a layout. When the rules can't all hold, nothing silently
-disappears: SpyTial draws the closest feasible diagram **and** reports the minimal
+disappears: Spytial draws the closest feasible diagram **and** reports the minimal
 set of rules in conflict (the UNSAT core). Try it — this one asks two edges to go
 in opposite incompatible directions:
 
-```spytial-graph
+```spytial-gdl
 A -> B : x
 B -> A : y
 
@@ -92,5 +92,5 @@ See [Conflicts & UNSAT](conflicts.md) for how to read that panel.
 - **[Editable diagrams](editable.md)** — the `text → visual → edit → text` round-trip.
 
 > **Note** — Every diagram on this site is live. The docs are themselves a
-> spytial-graph instance: each example is the exact notation you'd write, rendered
+> spytial-gdl instance: each example is the exact notation you'd write, rendered
 > by the same engine you'd embed. View source on any block via its **Source** panel.

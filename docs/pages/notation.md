@@ -2,7 +2,7 @@
 
 *Nodes, edges, labels, types, classes. No header, no layout direction — layout comes from [annotations](annotations.md).*
 
-A spytial-graph is a tiny text syntax. You write the graph; SpyTial lays it out.
+A spytial-gdl is a tiny text syntax. You write the graph; Spytial lays it out.
 There is no required header and no `TD`/`LR` direction: spatial operations come
 from inline `@annotations`, so a `graph TD` preamble would do nothing. Leave it
 out (it's tolerated and ignored, so pasted Mermaid still works).
@@ -11,14 +11,14 @@ out (it's tolerated and ignored, so pasted Mermaid still works).
 
 A node is implicit from any edge, so the smallest graph is one line:
 
-```spytial-graph
+```spytial-gdl
 A -> B
 ```
 
 Label an edge after a colon. The **label is also a selector** you can target in
 annotations — that's the heart of the model (see [Selectors](selectors.md)):
 
-```spytial-graph
+```spytial-gdl
 A -> B : hit
 A -> C : miss
 
@@ -36,7 +36,7 @@ A node's **id is its name**. A `[bracket]` gives it a display **label**,
 mermaid-style — without one, the id is shown. The id stays the stable identity
 that edges reference (handy for generated ids):
 
-```spytial-graph
+```spytial-gdl
 u1[Alice] -> u2[Bob]
 u1 -> u3[Carol]
 ```
@@ -44,7 +44,7 @@ u1 -> u3[Carol]
 `u1` is written once with its label and then referenced bare; both edges attach to
 the same node. You can also declare a node on its own line, with no edge:
 
-```spytial-graph
+```spytial-gdl
 solo[Just here]
 ```
 
@@ -55,7 +55,7 @@ node of that type. A plain node is **untyped** — with no sort it carries no ty
 name, so no named `selector` matches it; only `univ` (the universal set) reaches
 every node regardless of type:
 
-```spytial-graph
+```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
@@ -73,7 +73,7 @@ segment wins.
 For a cross-cutting group that isn't a type, tag nodes with `class A,B,C tag`. A
 class is a selector too, so you can style or group the whole set at once:
 
-```spytial-graph
+```spytial-gdl
 A -> B
 A -> C
 D -> E
@@ -93,7 +93,7 @@ class D,E teamB
 
 `%%` starts a line comment (Mermaid-style); the rest of the line is ignored:
 
-```spytial-graph
+```spytial-gdl
 A -> B   %% the spine
 B -> C
 ```
@@ -117,7 +117,7 @@ Existing flowcharts paste in. These are all accepted and normalized:
 So the canonical arrow is `->`, but `-->` works; the canonical label is `A -> B : left`,
 but `A -->|left| B` works. Pick one style and stay consistent.
 
-```spytial-graph
+```spytial-gdl
 flowchart TD
   A -->|left| B
   A -->|right| C
@@ -138,7 +138,7 @@ For the curious, `parseGraph(source)` returns three structures:
 
 These are relationalized into atoms and relations before layout — see
 [Architecture](architecture.md#the-pipeline). The full grammar lives in
-[`src/parse.js`](https://github.com/sidprasad/spytial-graph/blob/main/src/parse.js).
+[`src/parse.js`](https://github.com/sidprasad/spytial-gdl/blob/main/src/parse.js).
 
 ## Next
 

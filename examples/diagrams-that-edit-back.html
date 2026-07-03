@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diagrams that edit back · spytial-graph</title>
+  <title>Diagrams that edit back · spytial-gdl</title>
   <style>
     :root {
       --ink: #1d2230; --soft: #5b6472; --faint: #8c95a3; --line: #e6e8ec;
@@ -56,12 +56,12 @@
     <div class="prose">
       <h1>Diagrams that edit back</h1>
       <p class="dek">Most diagrams are dead pictures. These are live values — drag one, and it rewrites its own source.</p>
-      <p class="byline">spytial-graph · an explorable</p>
+      <p class="byline">spytial-gdl · an explorable</p>
 
       <p>
         You draw a diagram, export a PNG, and that's the end of it. The picture and the
         text that made it drift apart immediately; the next person to change it starts over.
-        A <strong>spytial-graph</strong> doesn't end there. It's a small text notation — nodes,
+        A <strong>spytial-gdl</strong> doesn't end there. It's a small text notation — nodes,
         edges, and inline spatial rules — but the rendered diagram is the same object as the
         text, in both directions. Edit either; the other follows.
       </p>
@@ -96,7 +96,7 @@ B -> D
       <p>
         The trick to that flexing is that you never gave any coordinates. You stated
         <em>relationships</em>, and an inline rule — <code>@orientation</code> — says which way
-        edges should point. SpyTial solves for positions that satisfy the rules. So the layout
+        edges should point. Spytial solves for positions that satisfy the rules. So the layout
         isn't a thing you maintain by hand; it's a thing the graph keeps true on its own.
       </p>
       <p>
@@ -161,13 +161,13 @@ a -> c : knows
       <p>
         Hit <em>copy notation</em> on any figure above and you have plain text you can paste into
         a doc, a commit, an issue. Drop it back into a page as a
-        <code>```spytial-graph</code> block and it renders again; tag the block
-        <code>```spytial-graph-editable</code> and your readers get exactly what you've been
+        <code>```spytial-gdl</code> block and it renders again; tag the block
+        <code>```spytial-gdl-editable</code> and your readers get exactly what you've been
         using here — a diagram that edits back.
       </p>
 
       <p class="end">
-        Built with <a href="../playground/">spytial-graph</a>. Open the
+        Built with <a href="../playground/">spytial-gdl</a>. Open the
         <a href="../playground/">playground</a> to start from a blank one, or read the
         <a href="../GUIDE.md">guide</a>.
       </p>
@@ -175,7 +175,7 @@ a -> c : knows
   </div>
 
   <script type="module">
-    import { renderSpytialGraphEditable } from '../src/index.js';
+    import { renderSpytialGdlEditable } from '../src/index.js';
 
     function ready() {
       const c = window.spytialcore || window.CndCore;
@@ -195,7 +195,7 @@ a -> c : knows
       const valueEl = fig.querySelector('.fig-value');
       const source = fig.querySelector('script[type="text/spytial"]').textContent.trim();
 
-      const handle = await renderSpytialGraphEditable(host, source);
+      const handle = await renderSpytialGdlEditable(host, source);
       const paint = (detail) => {
         if (notationEl) notationEl.textContent = detail ? detail.source : handle.getSource();
         if (valueEl) valueEl.textContent = JSON.stringify(detail ? detail.value : handle.getValue(), null, 2);
@@ -215,7 +215,7 @@ a -> c : knows
           await navigator.clipboard.writeText(handle.getSource());
           copy.textContent = 'copied ✓';
           setTimeout(() => { copy.textContent = 'copy notation'; }, 1200);
-        } catch (_) { window.prompt('spytial-graph notation:', handle.getSource()); }
+        } catch (_) { window.prompt('spytial-gdl notation:', handle.getSource()); }
       });
     }
 

@@ -12,7 +12,7 @@ A few inline, to show the modes side by side.
 
 **A read-only diagram** — a labeled DAG with grouped layers:
 
-```spytial-graph
+```spytial-gdl
 ui[UI]:::Layer -> api[API]:::Layer : calls
 api -> svc[Service]:::Layer : calls
 svc -> db[(Store)]:::Layer : reads
@@ -23,7 +23,7 @@ svc -> db[(Store)]:::Layer : reads
 
 **An editable diagram** — drag it, or edit the source and **Run ▸**:
 
-```spytial-graph-editable
+```spytial-gdl-editable
 root -> a : left
 root -> b : right
 
@@ -34,7 +34,7 @@ root -> b : right
 
 **A conflict** — the UNSAT core, attached below the diagram:
 
-```spytial-graph
+```spytial-gdl
 A -> B : up
 B -> C : up
 C -> A : up
@@ -51,7 +51,7 @@ C -> A : up
 | [editable.html](../examples/editable.html) | examine, update, and re-read a diagram's notation in code |
 | [diagrams-that-edit-back.html](../examples/diagrams-that-edit-back.html) | an explorable post built on the editor — edit the picture, the source follows |
 | [conflict.html](../examples/conflict.html) | the UNSAT core rendered under a clashing graph |
-| [guide.html](../examples/guide.html) | the embedding guide, rendered live by spytial-graph itself |
+| [guide.html](../examples/guide.html) | the embedding guide, rendered live by spytial-gdl itself |
 
 ## Essays, rendered live
 
