@@ -65,21 +65,50 @@ function parseNodeExpr(raw) {
   const id = m[1];
   const rest = m[2].trim();
 
-  // A [bracket] holds the display label (mermaid-style), not the type.
+  // A [bracket] holds the display label (mermaid-style), not the type. If the
+  // whole remainder is a label bracket, that's the label; if a label bracket is
+  // followed by more text, that trailing text is garbage (`A[x] oops`) — we peel
+  // the label and hand the leftover back as `trailing` for the caller to report,
+  // rather than dropping it silently.
   let label = null;
+  let trailing = null;
   if (rest) {
-    const bm = rest.match(LABEL_BRACKET);
-    if (bm) label = unquote(bm[1].trim()) || null;
+    const full = rest.match(LABEL_BRACKET);            // whole rest is one label bracket
+    if (full) {
+      label = unquote(full[1].trim()) || null;
+    } else {
+      const lead = rest.match(/^[[({>]+(.+?)[\])}]+/);  // a label bracket, then leftover
+      if (lead) {
+        label = unquote(lead[1].trim()) || null;
+        trailing = rest.slice(lead[0].length).trim() || null;
+      } else {
+        trailing = rest;                                // no bracket at all → all garbage
+      }
+    }
   }
 
   const type = sorts.length ? sorts[sorts.length - 1] : null;
-  return { id, type, label };
+  return { id, type, label, trailing };
 }
 
+// The first arrow token in `line`, at bracket depth 0 and outside quotes — so an
+// arrow inside a `[label]` or a quoted string (`A["a --> b"] -> B`) is not
+// mistaken for the edge delimiter. Longest token wins at a given position (`-->`
+// before the `->` it contains).
 function findArrow(line) {
-  for (const tok of ARROW_TOKENS) {
-    const i = line.indexOf(tok);
-    if (i !== -1) return { tok, i };
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quote) { if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '[' || ch === '(' || ch === '{') { depth++; continue; }
+    if (ch === ']' || ch === ')' || ch === '}') { if (depth > 0) depth--; continue; }
+    if (depth === 0) {
+      for (const tok of ARROW_TOKENS) {
+        if (line.startsWith(tok, i)) return { tok, i };
+      }
+    }
   }
   return null;
 }
@@ -188,6 +217,10 @@ export function parseGraph(source) {
         addNode(left);
         addNode(right);
         edges.push({ source: left.id, target: right.id, kind: edge.kind, label: edge.label });
+        for (const [side, n] of [['source', left], ['target', right]]) {
+          if (n.trailing) errors.push({ line: at, text: line, severity: 'error',
+            message: `unexpected text after ${side} node "${n.id}": ${n.trailing}` });
+        }
       } else {
         errors.push({ line: at, text: line, severity: 'error',
           message: 'malformed edge — could not read a node id on one side of the arrow' });
@@ -200,6 +233,8 @@ export function parseGraph(source) {
     const node = parseNodeExpr(stripped);
     if (node) {
       addNode(node);
+      if (node.trailing) errors.push({ line: at, text: line, severity: 'error',
+        message: `unexpected text after node "${node.id}": ${node.trailing}` });
       return;
     }
 

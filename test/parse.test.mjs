@@ -75,5 +75,39 @@ const j = (v) => JSON.stringify(v);
     g.errors.length === 0 && g.edges.length === 2, j(g));
 }
 
+// ── an arrow inside a quoted/bracketed label is not an edge delimiter ─────────
+{
+  const g = parseGraph('A["Node with --> arrow"] -> B');
+  check('arrow inside a quoted label → edge splits at the real arrow',
+    g.edges.length === 1 && g.edges[0].source === 'A' && g.edges[0].target === 'B', j(g.edges));
+  check('arrow inside a quoted label → label survives, no error',
+    g.nodes.get('A') && g.nodes.get('A').label === 'Node with --> arrow' && g.errors.length === 0, j(g));
+}
+{
+  const g = parseGraph('A[x -> y] -> B[p -> q]');
+  check('unquoted arrows inside brackets on both sides → one clean edge',
+    g.edges.length === 1 && g.edges[0].source === 'A' && g.edges[0].target === 'B' && g.errors.length === 0, j(g));
+}
+
+// ── trailing garbage after a node is reported, not silently dropped ───────────
+{
+  const g = parseGraph('A[Alice]:::Person JUNK');
+  check('trailing text after a node → one error',
+    g.errors.length === 1 && g.errors[0].severity === 'error' && /unexpected text after node "A"/.test(g.errors[0].message), j(g.errors));
+  check('trailing text → the node is still added (best-effort), label kept',
+    g.nodes.has('A') && g.nodes.get('A').label === 'Alice' && g.nodes.get('A').type === 'Person', j([...g.nodes]));
+}
+{
+  const g = parseGraph('A -> B[Bob] oops');
+  check('trailing text after an edge target → reported on that side',
+    g.edges.length === 1 && g.errors.some((e) => /unexpected text after target node "B"/.test(e.message)), j(g));
+}
+{
+  // Regression: valid label/paren/brace node forms must NOT be flagged.
+  const g = parseGraph('A[Alice Smith] -> B(Bob)\nC((deep)):::Role\nsolo[Just here]');
+  check('valid label/paren/brace forms → no false-positive trailing errors',
+    g.errors.length === 0, j(g.errors));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

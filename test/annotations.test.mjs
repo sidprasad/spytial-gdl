@@ -207,5 +207,20 @@ const j = (v) => JSON.stringify(v);
     r.errors.length === 0 && r.specYaml === '' && r.annotationLines.length === 0, j(r));
 }
 
+// ── mismatched bracket types are rejected, not silently accepted ─────────────
+{
+  const r = extractAnnotations('@orientation(selector=[left}, directions=[left])');
+  check('mismatched brackets → reported as an error',
+    r.errors.length === 1 && r.errors[0].line === 1, j(r.errors));
+  check('mismatched brackets → not compiled to a bogus selector',
+    r.specYaml === '' && !r.specYaml.includes('[left}'), j(r.specYaml));
+}
+{
+  // Regression: correctly matched (and quoted) brackets still parse cleanly.
+  const r = extractAnnotations("@group(selector='{p: Person | some p.x}', name=[a, [b, c]])");
+  check('type-matched + quoted brackets still parse',
+    r.errors.length === 0 && /group/.test(r.specYaml), j(r));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -85,10 +85,32 @@ function findClose(s, open) {
   return -1;
 }
 
+// Are all () [] {} in `s` balanced AND type-matched (quotes/escapes respected)?
+// findClose uses one shared depth counter to locate the boundary, which accepts a
+// mismatched pair like `[left}`; this catches that so the annotation is reported
+// malformed instead of silently yielding a bogus value.
+const CLOSER = { '(': ')', '[': ']', '{': '}' };
+function bracketsMatched(s) {
+  const stack = [];
+  let quote = null;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) {
+      if (ch === '\\') { i++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '(' || ch === '[' || ch === '{') { stack.push(CLOSER[ch]); continue; }
+    if (ch === ')' || ch === ']' || ch === '}') { if (stack.pop() !== ch) return false; }
+  }
+  return stack.length === 0 && quote === null;
+}
+
 // Split a complete annotation block (already `%%`-guard-stripped) into its name
 // and raw arg string: `@orientation(selector=left)` → { name, args: 'selector=left' }.
-// Returns null unless it's a well-formed `@name( … )` with nothing but an
-// optional `;` and trailing `%%` comment after the closing paren.
+// Returns null unless it's a well-formed `@name( … )` with type-matched brackets
+// and nothing but an optional `;` and trailing `%%` comment after the closing paren.
 function splitAnnotation(text) {
   const open = text.match(ANNOTATION_OPEN);
   if (!open) return null;
@@ -96,7 +118,9 @@ function splitAnnotation(text) {
   const close = findClose(text, parenIdx);
   if (close === -1) return null;
   if (!/^\s*;?\s*(?:%%.*)?$/.test(text.slice(close + 1))) return null;
-  return { name: open[1], args: text.slice(parenIdx + 1, close) };
+  const args = text.slice(parenIdx + 1, close);
+  if (!bracketsMatched(args)) return null;
+  return { name: open[1], args };
 }
 
 // Split a comma-separated argument list at the TOP level only — commas inside
