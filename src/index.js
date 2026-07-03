@@ -68,7 +68,7 @@ export function mountGraph(container, opts = {}) {
 
 // Create (or reuse) an editable <structured-input-graph> element inside
 // `container`. Returns the element to pass to renderSpytialGdlEditable. The
-// custom element is registered by spytial-core's global build (≥ 2.9).
+// custom element is registered by spytial-core's global build (≥ 2.10.1).
 export function mountInputGraph(container, opts = {}) {
   return mountElement(container, 'structured-input-graph', opts);
 }
@@ -141,7 +141,7 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial;
   for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 2.9`);
+    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 2.10.1`);
   }
 
   // 0. lift inline `@orientation(...)` annotations out of the source before
@@ -309,7 +309,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance } = spytial;
   if (!JSONDataInstance) {
-    throw new Error('spytial-gdl: spytial-core is missing JSONDataInstance; need spytial-core ≥ 2.9');
+    throw new Error('spytial-gdl: spytial-core is missing JSONDataInstance; need spytial-core ≥ 2.10.1');
   }
 
   const el =
@@ -319,7 +319,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   if (typeof el.setDataInstance !== 'function' || typeof el.setCnDSpec !== 'function') {
     throw new Error(
       'renderSpytialGdlEditable: <structured-input-graph> is not registered. ' +
-        'Load spytial-core ≥ 2.9 (its global build registers the element).'
+        'Load spytial-core ≥ 2.10.1 (its global build registers the element).'
     );
   }
 
