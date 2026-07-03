@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>spytial-graph — playground</title>
+    <title>spytial-gdl — playground</title>
 
     <!-- Bootstrap powers the constraint-clash explanation card (IIS table). -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -247,7 +247,7 @@
     <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/components/react-component-integration.global.js"></script>
 
     <script type="module">
-        import { renderSpytialGraph, renderSpytialGraphEditable } from '../src/index.js';
+        import { renderSpytialGdl, renderSpytialGdlEditable } from '../src/index.js';
 
         // ─── Examples (one combined source: graph + inline @annotations) ──────
         // Selectors below match what relationalize.js emits:
@@ -262,7 +262,7 @@ Build -> Test
 Test -> Release : ship
 Test -> Build : retry
 
-%% No annotations yet — SpyTial places nodes freely. Add a spatial operation to
+%% No annotations yet — Spytial places nodes freely. Add a spatial operation to
 %% constrain the space — try @orientation(selector=_links, directions=[below])
 %% to point every edge downward. See the "Binary tree" example for more.`,
 
@@ -301,7 +301,7 @@ c -> a : r3
 
 %% These rules cannot all hold at once: r1, r2, r3 chase each
 %% other around the cycle a -> b -> c -> a, but each demands its
-%% target sit further left. SpyTial renders the best feasible
+%% target sit further left. Spytial renders the best feasible
 %% layout and explains the minimal clash.
 @orientation(selector=r1, directions=[left])
 @orientation(selector=r2, directions=[left])
@@ -324,7 +324,7 @@ c -> a : r3
         // render a read-only diagram. In Edit, the structured-input graph is the
         // source of truth and the textarea mirrors its serialized notation.
         let mode = 'view';
-        let editHandle = null;   // handle from renderSpytialGraphEditable
+        let editHandle = null;   // handle from renderSpytialGdlEditable
         let editUnsub = null;    // its onChange unsubscribe
         let valueOpen = false;
 
@@ -357,7 +357,7 @@ c -> a : r3
             graphEl.setAttribute('theme', t);
             inputGraphEl.setAttribute('theme', t);
             document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
-            try { localStorage.setItem('spytial-graph-theme', theme); } catch (e) {}
+            try { localStorage.setItem('spytial-gdl-theme', theme); } catch (e) {}
         }
         document.getElementById('theme-btn').onclick = () => {
             const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -412,7 +412,7 @@ c -> a : r3
             let result;
             try {
                 // Spatial operations come from inline @annotations in the source.
-                result = await renderSpytialGraph(graphEl, src);
+                result = await renderSpytialGdl(graphEl, src);
             } catch (err) {
                 console.error(err);
                 setStatus('Error: ' + err.message, 'error');
@@ -490,7 +490,7 @@ c -> a : r3
 
             let handle;
             try {
-                handle = await renderSpytialGraphEditable(inputGraphEl, sourceEl.value);
+                handle = await renderSpytialGdlEditable(inputGraphEl, sourceEl.value);
             } catch (err) {
                 console.error(err); setStatus('Edit error: ' + err.message, 'error'); return;
             }
@@ -586,7 +586,7 @@ c -> a : r3
 
         window.addEventListener('load', async () => {
             let theme = 'light';
-            try { theme = localStorage.getItem('spytial-graph-theme') || 'light'; } catch (e) {}
+            try { theme = localStorage.getItem('spytial-gdl-theme') || 'light'; } catch (e) {}
             applyTheme(theme);
 
             try { await waitForEngine(); }

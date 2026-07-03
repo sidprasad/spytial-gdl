@@ -1,107 +1,184 @@
-# Your diagram doesn't know what it's drawing
+# Your diagram doesn't know it's a family tree
 
-*A box-and-arrow picture is a drawing. I wanted a model — something with a
-meaning under it, that I can constrain, query, and get back as text.*
+I picked up *Wuthering Heights* again recently and, as usual, lost track of who
+was who. Two houses, two generations of Earnshaws and Lintons, a foundling who
+marries into both, and, because Brontë shows no mercy, a mother and daughter who
+share a name. Somewhere around the second Catherine I gave up and did what
+anyone would do: I went to draw the family tree.
 
-I draw a lot of diagrams. Boxes, arrows, a dashed line for the part I'm not sure
-of yet. For years the workflow was: draw it by hand, fight a layout tool, and
-either way end up with a flat, final, *dead* picture. A PNG you screenshot,
-paste, and three weeks later redraw from scratch because one box moved.
+(Actually, the audiobook. Same problem.)
 
-Mermaid fixed one real thing about this: the diagram became *text*. You write
-`A --> B`, you get an arrow, and the diagram now lives in your repo, diffs in
-your PR, survives. That's a genuine win and I don't want to undersell it.
-spytial-graph keeps it — drop one block into a page and it comes alive in the
-browser, no build step:
+I immediately reached for Mermaid, which is a tool I find useful. The source
+lives with the text, changes in a diff, and renders where the reader already is;
+that bargain is still a little miraculous. The source looks like a genealogy:
 
-```spytial-graph
-a[Alice] -> b[Bob]   : knows
-b        -> c[Carol] : knows
-a        -> c        : knows
+```mermaid
+flowchart TD
+  mr_e[Mr. Earnshaw] <-->|spouse| mrs_e[Mrs. Earnshaw]
+  mr_l[Mr. Linton] <-->|spouse| mrs_l[Mrs. Linton]
+
+  mr_e -->|parentOf| hindley[Hindley]
+  mrs_e -->|parentOf| hindley
+  mr_e -->|parentOf| catherine[Catherine Earnshaw]
+  mrs_e -->|parentOf| catherine
+  mr_e -.->|adopts| heathcliff[Heathcliff]
+
+  mr_l -->|parentOf| edgar[Edgar]
+  mrs_l -->|parentOf| edgar
+  mr_l -->|parentOf| isabella[Isabella]
+  mrs_l -->|parentOf| isabella
+
+  catherine <-->|spouse| edgar
+  heathcliff <-->|spouse| isabella
+  catherine -->|parentOf| cathy[Cathy Linton]
+  edgar -->|parentOf| cathy
 ```
 
-But notice what that Mermaid text *is*. It's a drawing program. `graph TD` means
-"lay this out top-down." `A --> B` means "draw an arrow." The text describes the
-*picture*. It does not describe the *thing*. The renderer doesn't know A and B
-are people, or files, or states — it knows they're boxes and you'd like an
-arrow. Ask it to "put every Person to the left of the File they own" and it has
-no idea what you mean. There are no Persons, no Files, no *owns*. Boxes and
-arrows, all the way down.
+But look at what that source actually tells the renderer: draw a graph
+top-down. A genealogy is not just a graph. Generations are rows, spouses are
+adjacent, and a child belongs below the pair. You and I read those facts into a
+family tree, but the source never says them.
 
-## Start from the meaning
+That gap is the point.
 
-spytial-graph starts from the other end. The text isn't a drawing program; it's
-a tiny model. `a[Alice]:::Person` says: there's an atom, its identity is `a`,
-you'd display it as Alice, and its *sort* is Person. `a -> f : owns` says:
-there's an *owns* relation from `a` to `f`. None of that mentions the picture.
-The picture is what you get when you stop talking.
+## A Diagram Of A Model
 
-And when you *do* want to say something about the picture, you say it in terms of
-the model, not the pixels:
+The fix is not a better flowchart. It is a different thing for the text to
+describe.
 
-```spytial-graph
-a[Alice]:::Person -> f[budget.xlsx]:::File : owns
-b[Bob]:::Person   -> f                     : owns
-c[Carol]:::Person -> g[notes.md]:::File    : owns
+> Mermaid has a model of a diagram. What I need is a diagram of a model.
 
-@orientation(selector=owns, directions=[right])
-@atomColor(selector=Person, value='#e7f0ff')
-@atomColor(selector=File,   value='#fff1d9')
+Here are the Earnshaws, the Lintons, and Heathcliff in Spytial Graph:
+
+<div class="spytial-gdl" data-height="600">
+mr_e[Mr. Earnshaw]:::Earnshaw -> mrs_e[Mrs. Earnshaw]:::Earnshaw : spouse
+mrs_e -> mr_e : spouse
+mr_l[Mr. Linton]:::Linton -> mrs_l[Mrs. Linton]:::Linton : spouse
+mrs_l -> mr_l : spouse
+
+mr_e -> hindley[Hindley]:::Earnshaw : parentOf
+mrs_e -> hindley : parentOf
+mr_e -> catherine[Catherine Earnshaw]:::Earnshaw : parentOf
+mrs_e -> catherine : parentOf
+mr_e -> heathcliff[Heathcliff]:::Heathcliff : adopts
+
+mr_l -> edgar[Edgar]:::Linton : parentOf
+mrs_l -> edgar : parentOf
+mr_l -> isabella[Isabella]:::Linton : parentOf
+mrs_l -> isabella : parentOf
+
+hindley -> frances[Frances]:::Earnshaw : spouse
+frances -> hindley : spouse
+catherine -> edgar : spouse
+edgar -> catherine : spouse
+heathcliff -> isabella : spouse
+isabella -> heathcliff : spouse
+
+hindley -> hareton[Hareton]:::Earnshaw : parentOf
+frances -> hareton : parentOf
+catherine -> cathy[Cathy Linton]:::Linton : parentOf
+edgar -> cathy : parentOf
+heathcliff -> linton[Linton Heathcliff]:::Heathcliff : parentOf
+isabella -> linton : parentOf
+
+cathy -> linton : spouse
+linton -> cathy : spouse
+cathy -> hareton : spouse
+hareton -> cathy : spouse
+
+@orientation(selector=parentOf, directions=[below])
+@orientation(selector=adopts, directions=[below])
+@align(selector=spouse, direction=horizontal)
+@orientation(selector=Earnshaw->Linton, directions=[right])
+</div>
+
+The notation is small. `catherine`, `edgar`, and `heathcliff` are atoms.
+`Earnshaw`, `Linton`, and `Heathcliff` are sorts. `spouse`, `parentOf`, and
+`adopts` are named relations. Three lines carry the shape:
+
+```text
+@orientation(selector=parentOf, directions=[below])
+@orientation(selector=adopts, directions=[below])
+@align(selector=spouse, direction=horizontal)
 ```
 
-`selector=owns` is *every owns-edge*; `selector=Person` is *every Person* —
-because owns and Person are real things in the model, not spellings on a box.
-You're not nudging boxes. You state a constraint and a solver finds a layout
-that satisfies it — or tells you, precisely, that it can't, and which
-constraints are fighting. A picture can't be wrong. A picture-*with-claims* can,
-and that's the entire point.
+Those are claims about relations, not hints about node IDs. Wherever `parentOf`
+holds, the parent sits above the child. Wherever `spouse` holds, the partners
+line up. The shape is a consequence of what the relations mean.
 
-## The arrow goes both ways
+## You Assert; The System Arranges
 
-Here's the part I find genuinely delightful. Because the text is a model and not
-a drawing, you can run it backwards. Render a graph into an *editor*, rearrange
-it by hand, add a node, draw an edge — then ask for the notation back. You get
-text again: the same little language you started from, your annotations
-re-appended verbatim.
+Once the source carries a model, the work splits. You assert the facts: these
+people, this `parentOf`, that `spouse`. You assert the spatial obligations:
+parents above children, spouses aligned. Then you stop arranging boxes.
 
-```spytial-graph-editable
-a[Alice] -> b[Bob]   : reports
-c[Carol] -> b        : reports
+The system searches the space of layouts for one that satisfies what you said.
+That also means it can refuse. The editable diagram below carries one extra
+fact:
 
-@orientation(selector=reports, directions=[below])
+```text
+cathy -> catherine : parentOf
 ```
 
-Drag a node, add one, connect it — and watch the **Source** panel beside it rewrite
-itself. Or edit that text and **Run ▸** it back in. Either way you've got your graph
-as text you can paste into the repo. The picture and the source aren't two artifacts
-you keep in sync by hand. They're one object seen from two sides. Edit either; the
-other is just a projection away.
+That makes the daughter her own mother's parent. If `parentOf` always points
+down, there is no arrangement where that can hold. The right answer is not a
+cleverer drawing. It is that there isn't one.
 
-## Small on purpose
+<div class="spytial-gdl-editable" data-height="600">
+mr_e[Mr. Earnshaw]:::Earnshaw -> mrs_e[Mrs. Earnshaw]:::Earnshaw : spouse
+mrs_e -> mr_e : spouse
+mr_l[Mr. Linton]:::Linton -> mrs_l[Mrs. Linton]:::Linton : spouse
+mrs_l -> mr_l : spouse
 
-This is a small language, deliberately. Nodes, edges, labels, sorts, classes; a
-handful of spatial annotations; no swimlanes, no Gantt charts, no sequence
-diagrams. What the smallness buys is that the diagram *means something*: there's
-a model under the picture, the layout is a consequence you can argue with, and
-you can always recover your text.
+mr_e -> hindley[Hindley]:::Earnshaw : parentOf
+mrs_e -> hindley : parentOf
+mr_e -> catherine[Catherine Earnshaw]:::Earnshaw : parentOf
+mrs_e -> catherine : parentOf
+mr_e -> heathcliff[Heathcliff]:::Heathcliff : adopts
 
-A diagram you can't query, can't constrain, and can't get back as source isn't a
-model of your system. It's a drawing of one. I wanted the model.
+mr_l -> edgar[Edgar]:::Linton : parentOf
+mrs_l -> edgar : parentOf
+mr_l -> isabella[Isabella]:::Linton : parentOf
+mrs_l -> isabella : parentOf
+
+hindley -> frances[Frances]:::Earnshaw : spouse
+frances -> hindley : spouse
+catherine -> edgar : spouse
+edgar -> catherine : spouse
+heathcliff -> isabella : spouse
+isabella -> heathcliff : spouse
+
+hindley -> hareton[Hareton]:::Earnshaw : parentOf
+frances -> hareton : parentOf
+catherine -> cathy[Cathy Linton]:::Linton : parentOf
+edgar -> cathy : parentOf
+heathcliff -> linton[Linton Heathcliff]:::Heathcliff : parentOf
+isabella -> linton : parentOf
+
+cathy -> catherine : parentOf
+
+cathy -> linton : spouse
+linton -> cathy : spouse
+cathy -> hareton : spouse
+hareton -> cathy : spouse
+
+@orientation(selector=parentOf, directions=[below])
+@orientation(selector=adopts, directions=[below])
+@align(selector=spouse, direction=horizontal)
+</div>
+
+The Source panel is open because this is the editable version. Delete
+`cathy -> catherine : parentOf`, hit **Run ▸**, and the report clears. Or drag
+and edit the picture; the source rewrites itself. The point is not that the
+diagram is interactive. The point is that the interaction still has a model
+under it.
+
+Mermaid made diagrams cheap enough to keep. Spytial Graph is an attempt to make
+graph diagrams say enough to be worth trusting.
 
 ---
 
-*spytial-graph is a few kilobytes over a CDN — the one tag below turns every
-`spytial-graph` block on this page into a live diagram. [Source and the notation
-guide are on GitHub](https://github.com/sidprasad/spytial-graph).*
+*The notation, source, and a playground are [on GitHub](https://github.com/sidprasad/spytial-gdl).*
 
-<!--
-  This is what makes the blocks above live. It runs in any markdown pipeline
-  that passes raw HTML through and executes scripts (a blog engine, MkDocs,
-  Docusaurus, VitePress, a `marked`-based viewer). GitHub's preview strips
-  <script>, so there the blocks just show as code fences.
-
-  The CDN line works once spytial-graph is published to npm:
-    <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-graph/src/auto.js"></script>
-  Until then, point it at a local checkout (as below) and serve with `npm run serve`.
--->
+<!-- This module turns every spytial-gdl block above into a live diagram. -->
 <script type="module" src="../src/auto.js"></script>

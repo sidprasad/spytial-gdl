@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>spytial-graph — UNSAT core, below the graph</title>
+  <title>spytial-gdl — UNSAT core, below the graph</title>
   <style>
     body {
       font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -24,7 +24,7 @@
   </p>
 
   <h2>1 — Satisfiable (read-only): no report</h2>
-  <div class="spytial-graph" data-height="240">
+  <div class="spytial-gdl" data-height="240">
 a -> b : prereq
 b -> c : prereq
 
@@ -32,7 +32,7 @@ b -> c : prereq
   </div>
 
   <h2>2 — Clash (editable): delete <code>algo -&gt; intro</code> and the report clears</h2>
-  <div class="spytial-graph-editable" data-height="320">
+  <div class="spytial-gdl-editable" data-height="320">
 intro[CS 101]:::Course -> data[CS 201]:::Course : prereq
 data                   -> algo[CS 301]:::Course : prereq
 algo                   -> intro                  : prereq

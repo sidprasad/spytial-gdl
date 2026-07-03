@@ -1,4 +1,4 @@
-// Drop-in auto-render. Add this one tag to a page and every ```spytial-graph
+// Drop-in auto-render. Add this one tag to a page and every ```spytial-gdl
 // block renders itself (the engine is injected if it isn't already present):
 //
 //     <script type="module" src=".../src/auto.js"></script>

@@ -1,6 +1,6 @@
-// Parser for spytial-graph notation — a tiny graph syntax.
+// Parser for spytial-gdl notation — a tiny graph syntax.
 //
-// You write nodes and edges; SpyTial lays them out. There is no required header
+// You write nodes and edges; Spytial lays them out. There is no required header
 // and no layout direction: spatial operations come from inline @annotations (see
 // annotations.js), so a `graph TD` preamble would do nothing. Leave it out.
 //
@@ -65,21 +65,50 @@ function parseNodeExpr(raw) {
   const id = m[1];
   const rest = m[2].trim();
 
-  // A [bracket] holds the display label (mermaid-style), not the type.
+  // A [bracket] holds the display label (mermaid-style), not the type. If the
+  // whole remainder is a label bracket, that's the label; if a label bracket is
+  // followed by more text, that trailing text is garbage (`A[x] oops`) — we peel
+  // the label and hand the leftover back as `trailing` for the caller to report,
+  // rather than dropping it silently.
   let label = null;
+  let trailing = null;
   if (rest) {
-    const bm = rest.match(LABEL_BRACKET);
-    if (bm) label = unquote(bm[1].trim()) || null;
+    const full = rest.match(LABEL_BRACKET);            // whole rest is one label bracket
+    if (full) {
+      label = unquote(full[1].trim()) || null;
+    } else {
+      const lead = rest.match(/^[[({>]+(.+?)[\])}]+/);  // a label bracket, then leftover
+      if (lead) {
+        label = unquote(lead[1].trim()) || null;
+        trailing = rest.slice(lead[0].length).trim() || null;
+      } else {
+        trailing = rest;                                // no bracket at all → all garbage
+      }
+    }
   }
 
   const type = sorts.length ? sorts[sorts.length - 1] : null;
-  return { id, type, label };
+  return { id, type, label, trailing };
 }
 
+// The first arrow token in `line`, at bracket depth 0 and outside quotes — so an
+// arrow inside a `[label]` or a quoted string (`A["a --> b"] -> B`) is not
+// mistaken for the edge delimiter. Longest token wins at a given position (`-->`
+// before the `->` it contains).
 function findArrow(line) {
-  for (const tok of ARROW_TOKENS) {
-    const i = line.indexOf(tok);
-    if (i !== -1) return { tok, i };
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quote) { if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '[' || ch === '(' || ch === '{') { depth++; continue; }
+    if (ch === ']' || ch === ')' || ch === '}') { if (depth > 0) depth--; continue; }
+    if (depth === 0) {
+      for (const tok of ARROW_TOKENS) {
+        if (line.startsWith(tok, i)) return { tok, i };
+      }
+    }
   }
   return null;
 }
@@ -116,12 +145,19 @@ function parseEdgeLine(line) {
   return { leftExpr: leftRaw.trim(), rightExpr: node, kind: arrow.tok, label };
 }
 
+// Returns { nodes, edges, classesPerNode, errors }, where `errors` is a list of
+// { line, text, severity, message } with 1-based `line` numbers:
+//   severity 'error'   — a line we couldn't read (a broken edge/class, or junk)
+//   severity 'warning' — a Mermaid construct we accept for paste-compatibility
+//                        but ignore (a `graph`/`flowchart` header, `classDef`)
+// Rendering stays best-effort: a bad line is reported and skipped, never fatal.
 export function parseGraph(source) {
-  const lines = source.split(/\r?\n/).map(stripComments).map(l => l.trim()).filter(Boolean);
+  const rawLines = String(source ?? '').split(/\r?\n/);
 
   const nodes = new Map();
   const edges = [];
   const classesPerNode = new Map();
+  const errors = [];
 
   const addClass = (id, c) => {
     if (!classesPerNode.has(id)) classesPerNode.set(id, new Set());
@@ -139,19 +175,37 @@ export function parseGraph(source) {
     }
   };
 
-  for (const line of lines) {
-    // Tolerated (and ignored): a leading `graph`/`flowchart [direction]` header.
-    if (/^(?:graph|flowchart)\b/i.test(line)) continue;
+  rawLines.forEach((raw, idx) => {
+    const line = stripComments(raw).trim();
+    if (!line) return;                       // blank or comment-only — nothing to do
+    const at = idx + 1;
 
-    // classDef foo fill:#fff;   (mermaid CSS is not our domain)
-    if (/^classDef\s+/.test(line)) continue;
+    // Tolerated-but-ignored Mermaid constructs. We accept them so pasted diagrams
+    // render, but flag them (as warnings) so authors learn the native notation:
+    // there is no layout direction here, and styling is a directive, not CSS.
+    if (/^(?:graph|flowchart)\b/i.test(line)) {
+      errors.push({ line: at, text: line, severity: 'warning',
+        message: "ignored: spytial-gdl has no 'graph'/'flowchart' header — layout comes from @annotations" });
+      return;
+    }
+    if (/^classDef\b/.test(line)) {
+      errors.push({ line: at, text: line, severity: 'warning',
+        message: 'ignored: Mermaid classDef is not used — style nodes with directives like @atomColor / @size' });
+      return;
+    }
 
     // class A,B,C someClass
     const classAssign = line.match(/^class\s+([\w,\s-]+)\s+([\w-]+)\s*;?$/);
     if (classAssign) {
       const ids = classAssign[1].split(',').map(s => s.trim()).filter(Boolean);
       for (const id of ids) addClass(id, classAssign[2]);
-      continue;
+      return;
+    }
+    // Starts like a class line but doesn't fit `class id1,id2 name`.
+    if (/^class\b/.test(line)) {
+      errors.push({ line: at, text: line, severity: 'error',
+        message: 'malformed class line — expected `class id1,id2 name`' });
+      return;
     }
 
     // Edge?
@@ -163,15 +217,30 @@ export function parseGraph(source) {
         addNode(left);
         addNode(right);
         edges.push({ source: left.id, target: right.id, kind: edge.kind, label: edge.label });
+        for (const [side, n] of [['source', left], ['target', right]]) {
+          if (n.trailing) errors.push({ line: at, text: line, severity: 'error',
+            message: `unexpected text after ${side} node "${n.id}": ${n.trailing}` });
+        }
+      } else {
+        errors.push({ line: at, text: line, severity: 'error',
+          message: 'malformed edge — could not read a node id on one side of the arrow' });
       }
-      continue;
+      return;
     }
 
     // Standalone node declaration (e.g. `A[Alice]:::Person;`)
     const stripped = line.replace(/;$/, '').trim();
     const node = parseNodeExpr(stripped);
-    if (node) addNode(node);
-  }
+    if (node) {
+      addNode(node);
+      if (node.trailing) errors.push({ line: at, text: line, severity: 'error',
+        message: `unexpected text after node "${node.id}": ${node.trailing}` });
+      return;
+    }
 
-  return { nodes, edges, classesPerNode };
+    // Nothing recognized this line.
+    errors.push({ line: at, text: line, severity: 'error', message: 'unrecognized line' });
+  });
+
+  return { nodes, edges, classesPerNode, errors };
 }

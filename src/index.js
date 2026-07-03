@@ -1,9 +1,9 @@
-// spytial-graph — render a small graph notation (nodes, edges, inline spatial
-// @annotations) through SpyTial's standard WebCola CnD renderer.
+// spytial-gdl — render a small graph notation (nodes, edges, inline spatial
+// @annotations) through Spytial's standard WebCola CnD renderer.
 //
 // Pipeline (webcola-cnd-graph owns both layout AND drawing):
 //
-//   spytial-graph source
+//   spytial-gdl source
 //     → annotations.js    extract inline @orientation(...) → { source, specYaml }
 //     → parse.js          { nodes, edges, classesPerNode }
 //     → relationalize.js  { atoms, relations, hiddenRelations }
@@ -20,9 +20,9 @@ import { parseGraph } from './parse.js';
 import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } from './registry.js';
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
-import { serializeToSpytialGraph } from './serialize.js';
+import { serializeToSpytialGdl } from './serialize.js';
 
-export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGraph };
+export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGdl };
 
 function getSpytialCore() {
   const s =
@@ -31,7 +31,7 @@ function getSpytialCore() {
     globalThis.CndCore;
   if (!s) {
     throw new Error(
-      'spytial-graph: spytial-core is not loaded. Include ' +
+      'spytial-gdl: spytial-core is not loaded. Include ' +
         'spytial-core-complete.global.js (plus d3 v4 and cola.js) on the page.'
     );
   }
@@ -61,13 +61,13 @@ function mountElement(container, tagName, opts) {
 }
 
 // Create (or reuse) a read-only <webcola-cnd-graph> element inside `container`.
-// Returns the graph element to pass to renderSpytialGraph.
+// Returns the graph element to pass to renderSpytialGdl.
 export function mountGraph(container, opts = {}) {
   return mountElement(container, 'webcola-cnd-graph', opts);
 }
 
 // Create (or reuse) an editable <structured-input-graph> element inside
-// `container`. Returns the element to pass to renderSpytialGraphEditable. The
+// `container`. Returns the element to pass to renderSpytialGdlEditable. The
 // custom element is registered by spytial-core's global build (≥ 2.10.1).
 export function mountInputGraph(container, opts = {}) {
   return mountElement(container, 'structured-input-graph', opts);
@@ -120,20 +120,20 @@ function hideRelations(spec, hiddenRelations) {
   }
 }
 
-// Render a spytial-graph `source` onto a <webcola-cnd-graph> element using
-// SpyTial's standard constraint-layout pipeline.
+// Render a spytial-gdl `source` onto a <webcola-cnd-graph> element using
+// Spytial's standard constraint-layout pipeline.
 //
 //   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
-//   source   — spytial-graph text (nodes/edges) with inline `@orientation(...)`
+//   source   — spytial-gdl text (nodes/edges) with inline `@orientation(...)`
 //              spatial annotations (see annotations.js)
 //   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
 //
 // Returns { applied, layout, error, selectorErrors, annotationErrors, parsed,
 //           data, instance, rules, hiddenRelations }.
-export async function renderSpytialGraph(graphEl, source, opts = {}) {
+export async function renderSpytialGdl(graphEl, source, opts = {}) {
   if (!graphEl || typeof graphEl.renderLayout !== 'function') {
     throw new Error(
-      'renderSpytialGraph: graphEl must be a <webcola-cnd-graph> element. ' +
+      'renderSpytialGdl: graphEl must be a <webcola-cnd-graph> element. ' +
         'Use mountGraph(container) to create one.'
     );
   }
@@ -141,7 +141,7 @@ export async function renderSpytialGraph(graphEl, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial;
   for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-graph: spytial-core is missing ${name}; need spytial-core ≥ 2.10.1`);
+    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 2.10.1`);
   }
 
   // 0. lift inline `@orientation(...)` annotations out of the source before
@@ -150,8 +150,9 @@ export async function renderSpytialGraph(graphEl, source, opts = {}) {
     extractAnnotations(source);
 
   const parsed = parseGraph(cleanSource);
+  const parseErrors = parsed.errors || [];
   if (parsed.nodes.size === 0) {
-    return { applied: false, reason: 'no nodes parsed from source', parsed, annotationErrors };
+    return { applied: false, reason: 'no nodes parsed from source', parsed, annotationErrors, parseErrors };
   }
 
   // 1. graph → relational data instance (+ which relations are selector-only)
@@ -169,7 +170,7 @@ export async function renderSpytialGraph(graphEl, source, opts = {}) {
   try {
     spec = parseLayoutSpec(rules || '');
   } catch (err) {
-    throw new Error(`spytial-graph: layout rules parse error: ${err.message}`);
+    throw new Error(`spytial-gdl: layout rules parse error: ${err.message}`);
   }
   hideRelations(spec, hiddenRelations);
 
@@ -195,7 +196,7 @@ export async function renderSpytialGraph(graphEl, source, opts = {}) {
     applied = true;
   }
 
-  return { applied, layout, error, selectorErrors, annotationErrors, parsed, data, instance, rules, hiddenRelations };
+  return { applied, layout, error, selectorErrors, annotationErrors, parseErrors, parsed, data, instance, rules, hiddenRelations };
 }
 
 // ── Editable rendering ───────────────────────────────────────────────────────
@@ -230,15 +231,15 @@ function liveInstance(el, fallback) {
   }
 }
 
-// Build the handle returned by renderSpytialGraphEditable.
+// Build the handle returned by renderSpytialGdlEditable.
 function buildEditableHandle(el, initialInstance, annotationLines, meta) {
   const getValue = () => {
     const inst = liveInstance(el, initialInstance);
     return inst && typeof inst.reify === 'function' ? inst.reify() : { atoms: [], relations: [] };
   };
-  // The headline: re-get spytial-graph notation for the current (edited) graph,
+  // The headline: re-get spytial-gdl notation for the current (edited) graph,
   // with the original spatial @annotations re-appended verbatim.
-  const getSource = () => serializeToSpytialGraph(getValue(), { annotations: annotationLines });
+  const getSource = () => serializeToSpytialGdl(getValue(), { annotations: annotationLines });
 
   // Subscribe to edits. Every mutation — toolbar, drag-to-connect, delete,
   // keyboard — flows through the data instance, which emits these four events;
@@ -285,6 +286,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
     dataInstance: initialInstance,
     parsed: meta.parsed,
     annotationErrors: meta.annotationErrors,
+    parseErrors: meta.parseErrors,
     hiddenRelations: meta.hiddenRelations,
     rules: meta.rules,
     getValue,
@@ -293,21 +295,21 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
   };
 }
 
-// Render a spytial-graph `source` onto an editable <structured-input-graph>.
+// Render a spytial-gdl `source` onto an editable <structured-input-graph>.
 //
 //   container — an Element to mount into, or a <structured-input-graph> itself
-//   source    — spytial-graph text with inline @annotations (same as renderSpytialGraph)
+//   source    — spytial-gdl text with inline @annotations (same as renderSpytialGdl)
 //   opts      — { rules?, extraSpec?, width?, height?, theme?, ariaLabel? }
 //
 // Returns a handle:
 //   { applied, element, dataInstance, parsed, annotationErrors, hiddenRelations,
 //     rules, getSource(), getValue(), onChange(cb) → unsubscribe }
 // or { applied:false, reason, ... } if the source has no nodes.
-export async function renderSpytialGraphEditable(container, source, opts = {}) {
+export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance } = spytial;
   if (!JSONDataInstance) {
-    throw new Error('spytial-graph: spytial-core is missing JSONDataInstance; need spytial-core ≥ 2.10.1');
+    throw new Error('spytial-gdl: spytial-core is missing JSONDataInstance; need spytial-core ≥ 2.10.1');
   }
 
   const el =
@@ -316,7 +318,7 @@ export async function renderSpytialGraphEditable(container, source, opts = {}) {
       : mountInputGraph(container, opts);
   if (typeof el.setDataInstance !== 'function' || typeof el.setCnDSpec !== 'function') {
     throw new Error(
-      'renderSpytialGraphEditable: <structured-input-graph> is not registered. ' +
+      'renderSpytialGdlEditable: <structured-input-graph> is not registered. ' +
         'Load spytial-core ≥ 2.10.1 (its global build registers the element).'
     );
   }
@@ -327,8 +329,9 @@ export async function renderSpytialGraphEditable(container, source, opts = {}) {
     extractAnnotations(source);
 
   const parsed = parseGraph(cleanSource);
+  const parseErrors = parsed.errors || [];
   if (parsed.nodes.size === 0) {
-    return { applied: false, reason: 'no nodes parsed from source', element: el, parsed, annotationErrors };
+    return { applied: false, reason: 'no nodes parsed from source', element: el, parsed, annotationErrors, parseErrors };
   }
 
   // 1. graph → input-capable data instance (the editor mutates it in place)
@@ -347,6 +350,7 @@ export async function renderSpytialGraphEditable(container, source, opts = {}) {
   return buildEditableHandle(el, instance, annotationLines, {
     parsed,
     annotationErrors,
+    parseErrors,
     hiddenRelations,
     rules: mergedYaml,
   });

@@ -39,10 +39,89 @@ export const DIRECTIVE_NAMES = new Set([
   'hideField', 'hideAtom', 'inferredEdge', 'tag', 'flag', 'projection',
 ]);
 
-// An annotation occupies a whole line. We accept an optional `%%`/`%% ` guard.
-const ANNOTATION_LINE = /^\s*(?:%%\s*)?@([A-Za-z_]\w*)\s*\(([\s\S]*)\)\s*;?\s*$/;
-// A faster pre-check so we don't run the strict regex on every diagram line.
+// An annotation is `@name( args )`, optionally behind a mermaid-comment `%%`
+// guard so the block still degrades gracefully in a vanilla Mermaid renderer.
+// The args may span multiple lines — extractAnnotations keeps consuming lines
+// until the `(` opened after `@name` is balanced, so all of these are legal:
+//
+//     @orientation(selector=left, directions=[left])   -- one line
+//
+//     @orientation(                                    -- wrapped
+//       selector=left,
+//       directions=[left],
+//     )
+//
+//     %%@group(                                        -- wrapped + %%-guarded
+//     %%  selector=Person,
+//     %%  name='People',
+//     %%)
+//
+// A cheap pre-check so we don't scan every ordinary diagram line.
 const LOOKS_LIKE_ANNOTATION = /^\s*(?:%%\s*)?@/;
+// The opening of an annotation: `@name(`. The `(` may be the last thing on the
+// line, with the args following on subsequent lines.
+const ANNOTATION_OPEN = /^\s*(?:%%\s*)?@([A-Za-z_]\w*)\s*\(/;
+// A per-line `%%` guard, stripped from each line before the args are parsed so a
+// fully guarded block parses the same as a bare one.
+const GUARD = /^\s*%%\s?/;
+
+// Index of the `)` matching the `(` at index `open` in `s`, tracking quotes and
+// nested () [] {} so a paren inside a string or list can't close it early.
+// Returns -1 if the paren never closes (block continues later, or is truncated).
+function findClose(s, open) {
+  let depth = 0;
+  let quote = null;
+  for (let i = open; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) {
+      if (ch === '\\') { i++; continue; }   // a backslash-escaped char can't close the string
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '(' || ch === '[' || ch === '{') { depth++; continue; }
+    if (ch === ')' || ch === ']' || ch === '}') { depth--; if (depth === 0) return i; }
+  }
+  return -1;
+}
+
+// Are all () [] {} in `s` balanced AND type-matched (quotes/escapes respected)?
+// findClose uses one shared depth counter to locate the boundary, which accepts a
+// mismatched pair like `[left}`; this catches that so the annotation is reported
+// malformed instead of silently yielding a bogus value.
+const CLOSER = { '(': ')', '[': ']', '{': '}' };
+function bracketsMatched(s) {
+  const stack = [];
+  let quote = null;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) {
+      if (ch === '\\') { i++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '(' || ch === '[' || ch === '{') { stack.push(CLOSER[ch]); continue; }
+    if (ch === ')' || ch === ']' || ch === '}') { if (stack.pop() !== ch) return false; }
+  }
+  return stack.length === 0 && quote === null;
+}
+
+// Split a complete annotation block (already `%%`-guard-stripped) into its name
+// and raw arg string: `@orientation(selector=left)` → { name, args: 'selector=left' }.
+// Returns null unless it's a well-formed `@name( … )` with type-matched brackets
+// and nothing but an optional `;` and trailing `%%` comment after the closing paren.
+function splitAnnotation(text) {
+  const open = text.match(ANNOTATION_OPEN);
+  if (!open) return null;
+  const parenIdx = open[0].length - 1;            // position of the `(`
+  const close = findClose(text, parenIdx);
+  if (close === -1) return null;
+  if (!/^\s*;?\s*(?:%%.*)?$/.test(text.slice(close + 1))) return null;
+  const args = text.slice(parenIdx + 1, close);
+  if (!bracketsMatched(args)) return null;
+  return { name: open[1], args };
+}
 
 // Split a comma-separated argument list at the TOP level only — commas inside
 // [...], {...}, (...), or quotes are preserved. Returns trimmed pieces.
@@ -55,6 +134,7 @@ function splitTopLevel(s) {
     const ch = s[i];
     if (quote) {
       buf += ch;
+      if (ch === '\\' && i + 1 < s.length) { buf += s[++i]; continue; }   // keep an escaped char verbatim
       if (ch === quote) quote = null;
       continue;
     }
@@ -74,7 +154,11 @@ function hasTopLevelEquals(s) {
   let quote = null;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
-    if (quote) { if (ch === quote) quote = null; continue; }
+    if (quote) {
+      if (ch === '\\') { i++; continue; }
+      if (ch === quote) quote = null;
+      continue;
+    }
     if (ch === '"' || ch === "'") { quote = ch; continue; }
     if (ch === '[' || ch === '{' || ch === '(') { depth++; continue; }
     if (ch === ']' || ch === '}' || ch === ')') { depth--; continue; }
@@ -174,12 +258,14 @@ function emitEntry(name, kwargs) {
 //   specYaml        — authoring YAML for the compiled constraints/directives, or
 //                     '' if none. Shape:
 //                     `constraints:\n  - <entry>\n directives:\n  - <entry>`
-//   annotationLines — the raw `@...` lines that compiled successfully, verbatim
-//                     and in source order. The serializer re-appends these to
-//                     round-trip the notation: editing the graph's *data* never
-//                     touches the layout directives, and specYaml is a lossy
+//   annotationLines — the raw `@...` blocks that compiled successfully, verbatim
+//                     and in source order (one entry per annotation; a multi-line
+//                     annotation keeps its newlines). The serializer re-appends
+//                     these to round-trip the notation: editing the graph's *data*
+//                     never touches the layout directives, and specYaml is a lossy
 //                     compiled form, so we keep the originals.
-//   errors          — [{ line, text, message }] for unknown names / malformed args
+//   errors          — [{ line, text, message }] for malformed / unknown / unterminated
+//                     annotations. `line` is the 1-based line the annotation starts on.
 export function extractAnnotations(rawSource) {
   const lines = String(rawSource ?? '').split(/\r?\n/);
   const kept = [];
@@ -188,42 +274,91 @@ export function extractAnnotations(rawSource) {
   const annotationLines = [];
   const errors = [];
 
-  lines.forEach((line, i) => {
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Ordinary diagram line — hand it to the graph parser untouched.
     if (!LOOKS_LIKE_ANNOTATION.test(line)) {
       kept.push(line);
-      return;
+      i++;
+      continue;
     }
-    const m = line.match(ANNOTATION_LINE);
-    if (!m) {
-      // Looks like an annotation but doesn't parse — report it, and drop the
-      // line so it can't confuse the flowchart parser.
-      errors.push({ line: i + 1, text: line.trim(), message: 'malformed annotation' });
-      return;
+
+    // Starts like an annotation but has no `@name(` opener, so it can't be
+    // well-formed. Report it and drop just this line (don't swallow the rest of
+    // the source hunting for a `)` that may never come). A blank placeholder
+    // keeps the graph parser's line numbers aligned with the original source.
+    if (!ANNOTATION_OPEN.test(line)) {
+      errors.push({ line: i + 1, text: line.trim(), message: 'malformed annotation: expected @name(...)' });
+      kept.push('');
+      i++;
+      continue;
     }
-    const name = m[1];
+
+    // Accumulate lines until the annotation's `(` closes — the args may wrap over
+    // several lines. `block` holds the verbatim lines (for round-tripping);
+    // `stripped` drops each line's `%%` guard so a guarded block parses the same
+    // as a bare one. We re-scan `stripped` after each line: cheap, blocks are short.
+    const startLine = i;
+    const block = [];
+    let stripped = '';
+    let close = -1;
+    while (i < lines.length) {
+      block.push(lines[i]);
+      stripped += (stripped ? '\n' : '') + lines[i].replace(GUARD, '');
+      i++;
+      const open = stripped.match(ANNOTATION_OPEN);
+      close = open ? findClose(stripped, open[0].length - 1) : -1;
+      if (close !== -1) break;
+    }
+
+    // Replace every consumed line with a blank so `source` stays line-for-line
+    // aligned with the original — parse errors then report the line the author
+    // actually sees, not one shifted by the removed annotation.
+    for (let b = 0; b < block.length; b++) kept.push('');
+
+    const verbatim = block.join('\n');
+    const at = startLine + 1;
+
+    if (close === -1) {
+      errors.push({ line: at, text: lines[startLine].trim(), message: 'unterminated annotation: missing ")"' });
+      continue;   // consumed lines are dropped, so they can't confuse the graph parser
+    }
+
+    const split = splitAnnotation(stripped);
+    if (!split) {
+      errors.push({ line: at, text: verbatim.trim(), message: 'malformed annotation' });
+      continue;
+    }
+
+    const { name, args } = split;
     const isConstraint = CONSTRAINT_NAMES.has(name);
     const isDirective = DIRECTIVE_NAMES.has(name);
     if (!isConstraint && !isDirective) {
-      errors.push({ line: i + 1, text: line.trim(), message: `unknown annotation "@${name}"` });
-      return;
+      errors.push({ line: at, text: verbatim.trim(), message: `unknown annotation "@${name}"` });
+      continue;
     }
+
     let kwargs;
     try {
-      kwargs = parseArgs(m[2]);
+      kwargs = parseArgs(args);
     } catch (err) {
-      errors.push({ line: i + 1, text: line.trim(), message: err.message });
-      return;
+      errors.push({ line: at, text: verbatim.trim(), message: err.message });
+      continue;
     }
+
     let entry;
     try {
       entry = emitEntry(name, kwargs);
     } catch (err) {
-      errors.push({ line: i + 1, text: line.trim(), message: err.message });
-      return;
+      errors.push({ line: at, text: verbatim.trim(), message: err.message });
+      continue;
     }
+
     (isConstraint ? constraints : directives).push(entry);
-    annotationLines.push(line);
-  });
+    annotationLines.push(verbatim);
+  }
 
   const source = kept.join('\n');
 

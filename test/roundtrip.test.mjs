@@ -10,7 +10,7 @@
 
 import { parseGraph } from '../src/parse.js';
 import { relationalize } from '../src/relationalize.js';
-import { serializeToSpytialGraph } from '../src/serialize.js';
+import { serializeToSpytialGdl } from '../src/serialize.js';
 import { extractAnnotations } from '../src/annotations.js';
 
 let pass = 0, fail = 0;
@@ -35,7 +35,7 @@ function fingerprint(text) {
 function roundTrip(text) {
   const { source, annotationLines } = extractAnnotations(text);
   const data = relationalize(parseGraph(source));
-  return serializeToSpytialGraph(data, { annotations: annotationLines });
+  return serializeToSpytialGdl(data, { annotations: annotationLines });
 }
 
 const cases = {
@@ -76,7 +76,7 @@ for (const [name, text] of Object.entries(cases)) {
 {
   const src = `A -> B : left\nA -> C\nclass A team`;
   const { atoms, relations } = relationalize(parseGraph(src));
-  const out = serializeToSpytialGraph({ atoms, relations, types: [] });
+  const out = serializeToSpytialGdl({ atoms, relations, types: [] });
   check('reify-shaped input skips _links/unary',
     fingerprint(out) === fingerprint(src), `\n${out}`);
   check('no _links leaked into output', !out.includes('_links'), `\n${out}`);
@@ -95,7 +95,7 @@ for (const [name, text] of Object.entries(cases)) {
         tuples: [{ atoms: ['Person1', 'Person2'], types: ['Person', 'Person'] }] },
     ],
   };
-  const out = serializeToSpytialGraph(data);
+  const out = serializeToSpytialGdl(data);
   check('id≠label emits [label]:::sort',
     /Person1\[Alice\]:::Person/.test(out) && /Person2\[Bob\]:::Person/.test(out), `\n${out}`);
   const g = parseGraph(out);
@@ -104,15 +104,15 @@ for (const [name, text] of Object.entries(cases)) {
     g.nodes.get('Person2').label === 'Bob', `\n${out}`);
   // Untyped default (DEFAULT_TYPE === '') stays bare — via '' or a null type.
   check('id==label, empty-string default sort stays bare',
-    serializeToSpytialGraph({ atoms: [{ id: 'A', type: '', label: 'A' }], relations: [] }) === 'A');
+    serializeToSpytialGdl({ atoms: [{ id: 'A', type: '', label: 'A' }], relations: [] }) === 'A');
   check('id==label, null type stays bare',
-    serializeToSpytialGraph({ atoms: [{ id: 'A', type: null, label: 'A' }], relations: [] }) === 'A');
+    serializeToSpytialGdl({ atoms: [{ id: 'A', type: null, label: 'A' }], relations: [] }) === 'A');
   // 'Node' is no longer the default — it's an ordinary named sort now, so it must
   // be emitted (regression guard against the old hard-coded default).
   check('explicit "Node" type now emits :::Node',
-    serializeToSpytialGraph({ atoms: [{ id: 'A', type: 'Node', label: 'A' }], relations: [] }) === 'A:::Node');
+    serializeToSpytialGdl({ atoms: [{ id: 'A', type: 'Node', label: 'A' }], relations: [] }) === 'A:::Node');
   check('sort-only emits :::sort',
-    serializeToSpytialGraph({ atoms: [{ id: 'A', type: 'Person', label: 'A' }], relations: [] }) === 'A:::Person');
+    serializeToSpytialGdl({ atoms: [{ id: 'A', type: 'Person', label: 'A' }], relations: [] }) === 'A:::Person');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

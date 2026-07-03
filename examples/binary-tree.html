@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>spytial-graph · binary-tree (library API demo)</title>
+  <title>spytial-gdl · binary-tree (library API demo)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #fafafa; }
     h1 { font-size: 18px; margin: 0 0 8px 0; }
@@ -24,7 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js"></script>
 </head>
 <body>
-  <h1>spytial-graph — binary-tree (programmatic API)</h1>
+  <h1>spytial-gdl — binary-tree (programmatic API)</h1>
   <div class="status" id="status">initializing…</div>
   <div style="margin: 8px 0;">
     <button id="btn-sat">render satisfiable</button>
@@ -34,19 +34,19 @@
 
   <div class="panel">
     <div class="col">
-      <h2>spytial-graph source (nodes/edges + inline @annotations)</h2>
+      <h2>spytial-gdl source (nodes/edges + inline @annotations)</h2>
       <pre id="source"></pre>
     </div>
     <div class="col">
       <h2>rendered (standard webcola-cnd-graph)</h2>
       <div id="out"></div>
-      <h2>renderSpytialGraph() result</h2>
+      <h2>renderSpytialGdl() result</h2>
       <pre id="result" style="max-height: 220px;"></pre>
     </div>
   </div>
 
   <script type="module">
-    import { renderSpytialGraph, mountGraph } from '../src/index.js';
+    import { renderSpytialGdl, mountGraph } from '../src/index.js';
 
     // ── Inline @annotations live in the source itself ───────────────────
     // The spatial operations are part of the diagram now: every edge points
@@ -108,8 +108,8 @@ class A root`;
       document.getElementById('source').textContent = src.trim();
       try {
         // The spatial operations come from the inline @annotations in `src` —
-        // renderSpytialGraph extracts and compiles them automatically.
-        const result = await renderSpytialGraph(graphEl, src);
+        // renderSpytialGdl extracts and compiles them automatically.
+        const result = await renderSpytialGdl(graphEl, src);
         if (result.reason) { setStatus(`[${mode}] ${result.reason}`, false); return; }
 
         const conflict = (result.selectorErrors && result.selectorErrors.length)

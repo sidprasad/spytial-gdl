@@ -5,8 +5,8 @@ name: Release
 # One-time bootstrap (npm has no "pending publisher", so the package must exist
 # on npm before a trusted publisher can be attached):
 #   1. Publish the first version locally:   npm login && npm publish
-#   2. npmjs.com -> spytial-graph -> Settings -> Trusted Publisher, add:
-#        repository: sidprasad/spytial-graph
+#   2. npmjs.com -> spytial-gdl -> Settings -> Trusted Publisher, add:
+#        repository: sidprasad/spytial-gdl
 #        workflow:   release.yml
 # After that, every `git push origin vX.Y.Z` tag publishes via OIDC here — no token.
 
