@@ -1,28 +1,6 @@
 [
   { "title": "Introduction", "slug": "introduction" },
-  { "title": "Getting started", "slug": "getting-started" },
-  {
-    "section": "Notation",
-    "pages": [
-      { "title": "The notation", "slug": "notation" },
-      { "title": "Selectors", "slug": "selectors" },
-      { "title": "Annotations", "slug": "annotations" }
-    ]
-  },
-  {
-    "section": "Embedding",
-    "pages": [
-      { "title": "Markdown & HTML", "slug": "embedding" },
-      { "title": "Editable diagrams", "slug": "editable" }
-    ]
-  },
-  {
-    "section": "Reference",
-    "pages": [
-      { "title": "Programmatic API", "slug": "api" },
-      { "title": "Conflicts & UNSAT", "slug": "conflicts" },
-      { "title": "Architecture", "slug": "architecture" }
-    ]
-  },
-  { "title": "Examples", "slug": "examples" }
+  { "title": "The notation", "slug": "notation" },
+  { "title": "Annotations", "slug": "annotations" },
+  { "title": "Embedding & API", "slug": "embedding" }
 ]

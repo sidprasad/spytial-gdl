@@ -3,7 +3,7 @@
 *Spatial operations, written inline. Annotations are the layout.*
 
 There is no `TD`/`LR` keyword in spytial-gdl. Every layout and styling decision
-is an `@annotation` — a one-line operation that targets a [selector](selectors.md)
+is an `@annotation` — a one-line operation that targets a [selector](notation.md#selectors)
 and applies a constraint or a directive. A single block of text fully describes
 both the graph and how it should be drawn.
 
@@ -154,32 +154,120 @@ while still compiling here:
 
 Both the bare `@…` and the guarded `%% @…` forms compile identically.
 
-## When an annotation is wrong
+## Errors and conflicts
 
-Annotations are validated as they're lifted out of the source:
+Every failure has a distinct home. Source problems are caught before layout runs;
+selectors that name nothing are reported apart from layouts that can't hold. The
+diagram renders best-effort at every stage, and an embed surfaces each kind in its
+own panel.
 
-- **Unknown name** (`@orientaiton(...)`) or **malformed args** (a missing comma, a
-  bad `key=value`) come back as `annotationErrors` — `[{ line, text, message }]` —
-  and that line is dropped so it can't confuse the parser. The rest of the diagram
-  still renders.
-- A **selector that doesn't resolve** is a `selectorError` (see
-  [Conflicts & UNSAT](conflicts.md#selector-errors)).
-- A set of constraints that **can't all hold** draws the closest feasible layout
-  plus the minimal conflict (the UNSAT core) — see
-  [Conflicts & UNSAT](conflicts.md).
+### Parse and annotation errors
 
-From the API, all three arrive on the result object from
-[`renderSpytialGdl`](api.md#renderspytialgdl). In an embed, they surface in the
-attached conflict panel.
+Earliest of all: problems in the *source text*, before any layout runs. Two kinds,
+both caught up front and both reported with line numbers:
+
+- **Annotation errors** — an annotation that doesn't parse (unknown `@name`, a
+  missing comma, an unterminated `(`). Come back as `annotationErrors` —
+  `[{ line, text, message }]`; the offending annotation is dropped.
+- **Parse errors** — a graph line the parser flagged. `parseErrors` —
+  `[{ line, text, severity, message }]`. `severity: 'error'` is a line it couldn't
+  read (a broken edge, junk); `severity: 'warning'` is a tolerated-but-ignored
+  Mermaid construct (a `graph`/`flowchart` header, `classDef`).
+
+Both are **non-fatal**: the diagram still renders best-effort, and an embed shows a
+**⚠ … in this source** band beneath it listing each problem by line. So the four
+stages are distinct, easy to tell apart:
+
+| stage | failure | result field | embed panel |
+|---|---|---|---|
+| parse graph | bad line / ignored Mermaid | `parseErrors` | ⚠ … in this source |
+| lift annotations | bad `@name` / args | `annotationErrors` | ⚠ … in this source |
+| resolve selectors | `selector=` matches nothing | `selectorErrors` | ⚠ A selector didn't resolve |
+| solve constraints | rules can't all hold | `error` (UNSAT core) | ⚠ These rules can't all hold |
+
+### Selector errors
+
+A different failure: a `selector=` that doesn't resolve to anything in the model
+(a typo'd label, a class you never assigned). That's **not** a layout conflict — the
+spec itself is malformed — so it's reported separately as `selectorErrors`, and the
+degenerate layout is *not* drawn:
+
+```js
+const r = await renderSpytialGdl(graph, source);
+if (r.selectorErrors.length) {
+  // e.g. selector 'lft' didn't match any edges or nodes
+}
+```
+
+In an embed this is the **⚠ A selector didn't resolve** panel. Fix the selector to
+one of the [five forms](notation.md#the-built-in-selectors) and it resolves.
+
+### When constraints conflict
+
+Because layout is a set of constraints, you can ask for the impossible: two edges
+that must both point right *and* form a cycle, a group that must enclose nodes
+pulled apart by an orientation, and so on. Spytial treats this as a first-class
+outcome, not a crash.
+
+When the constraints can't all hold, the solver returns the **closest feasible
+layout** — it still draws something useful — together with the **minimal conflict**:
+the smallest subset of rules that, taken together, are unsatisfiable. That subset
+is the *Irreducible Inconsistent Subsystem* (IIS), commonly called the UNSAT core.
+
+This block asks two opposing edges of a 2-cycle to both go right — impossible:
+
+```spytial-gdl
+A -> B : x
+B -> A : y
+
+@orientation(selector=x, directions=[right])
+@orientation(selector=y, directions=[right])
+```
+
+The diagram still renders a best-effort layout, and the attached **⚠ These rules
+can't all hold** panel (expand it under the diagram) names exactly the constraints
+in tension — not the whole spec, just the irreducible core.
+
+### Reading it in an embed
+
+Every embed reserves space for the conflict *inside the diagram's border*, so the
+report obviously belongs to that diagram and not the surrounding prose:
+
+- The panel only appears when there's a clash; it's collapsible.
+- In an [editable block](embedding.md#editable-diagrams), it's **live** — resolve the clash (delete an
+  offending edge, change a direction) and the panel clears on the spot.
+
+The report is rendered by spytial-core's own IIS component — the same one the
+[playground](../playground/) mounts — lazy-loaded the first time a clash appears, so
+conflict-free pages never pay for it.
+
+### Reading it from the API
+
+[`renderSpytialGdl`](embedding.md#renderspytialgdl) surfaces the same information on
+its result object:
+
+```js
+const r = await renderSpytialGdl(graph, source);
+if (r.error) {
+  // r.error — the constraint conflict (UNSAT core / positional / group-overlap)
+  console.warn('layout conflict:', r.error.message);
+}
+// r.layout is still the best-feasible counterfactual; r.applied tells you if it drew.
+```
+
+`error` carries a shape that depends on the kind of clash — positional conflicts
+carry `errorMessages`, group overlaps carry `overlappingNodes`/`source`, and so on.
+The Markdown layer maps these onto spytial-core's `show*Error` dispatch to render
+the panel; if you build your own UI, branch on those fields the same way.
 
 ## Composing with raw rules
 
 Inline annotations are the primary authoring model, but they **compose** with two
 lower-level inputs that feed the same layout spec: `opts.rules` (raw CnD YAML) and
 the per-class `registerSpec` registry. All three are merged before solving. See
-[Programmatic API → composing rules](api.md#composing-rules-registry-and-yaml).
+[Programmatic API → composing rules](embedding.md#composing-rules-registry-and-yaml).
 
 ## Next
 
-- **[Selectors](selectors.md)** — what the `selector=` argument can name.
-- **[Conflicts & UNSAT](conflicts.md)** — reading the panel when rules clash.
+- **[Embedding & API](embedding.md)** — put the diagram in a page, or drive it from JavaScript.
+- **[The notation](notation.md)** — where selectors come from.

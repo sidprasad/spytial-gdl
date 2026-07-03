@@ -38,7 +38,7 @@ The key design choice: **the custom element owns layout *and* drawing.**
 spytial-gdl never positions anything itself — it produces a spec and a data
 instance, and `LayoutInstance.generateLayout` does the constraint solving. That's
 why over-constrained inputs come back as a counterfactual + UNSAT core
-([Conflicts](conflicts.md)) rather than a broken picture.
+([Conflicts](annotations.md#errors-and-conflicts)) rather than a broken picture.
 
 ## Why annotations become YAML
 
@@ -47,7 +47,7 @@ Spatial operations used to live in a separate CnD "rules" YAML spec.
 authoring YAML — one-line flow-map list items under `constraints:` / `directives:`
 — so inline annotations, the per-class `registerSpec` registry, and a raw
 `opts.rules` string all merge through one shared concat
-([API → composing rules](api.md#composing-rules-registry-and-yaml)). The decorator
+([API → composing rules](embedding.md#composing-rules-registry-and-yaml)). The decorator
 syntax mirrors Spytial's Python DSL (`spytial-py`), so a graph and its layout travel
 together as one block of text.
 
@@ -100,5 +100,5 @@ it imports from the same `src/` you'd use.
 
 ## Next
 
-- **[Programmatic API](api.md)** — the entry points named above.
-- **[Conflicts & UNSAT](conflicts.md)** — what `generateLayout` returns on a clash.
+- **[Embedding & API](embedding.md#programmatic-api)** — the entry points named above.
+- **[Conflicts & errors](annotations.md#errors-and-conflicts)** — what `generateLayout` returns on a clash.
