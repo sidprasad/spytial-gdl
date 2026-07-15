@@ -328,6 +328,19 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     'edgeStyle: { field: f, lineStyle: { color: red } }', j(w));
 }
 {
+  // A quoted legacy weight was numeric by the time 2.x core saw it (the string
+  // 2 emits as bare YAML), so it must survive the desugar as a number.
+  check('a quoted legacy weight coerces to a number, not a drop',
+    body("@edgeColor(field=f, value=red, weight='2')") ===
+    'edgeStyle: { field: f, lineStyle: { color: red, weight: 2 } }');
+  check('inferredEdge: a quoted weight coerces too',
+    body("@inferredEdge(name=p, selector=s, weight='2.5')") ===
+    'inferredEdge: { name: p, selector: s, lineStyle: { weight: 2.5 } }');
+  check('a non-numeric quoted weight still drops the leaf',
+    body("@edgeColor(field=f, value=red, weight='abc')") ===
+    'edgeStyle: { field: f, lineStyle: { color: red } }');
+}
+{
   // atomStyle reads an absent selector as *every atom*, so a selectorless
   // atomColor must not desugar into a whole-graph repaint. core drops it; we say why.
   const r = extractAnnotations("@atomColor(value='#fff')");

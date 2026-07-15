@@ -398,10 +398,13 @@ function legacyPattern(raw, where) {
   return null;
 }
 
-// Mirrors core's weight check: finite and positive, or dropped.
+// Mirrors core's weight check: finite and positive, or dropped. A *quoted*
+// weight (`weight='2'`) counts: emitScalar writes the string 2 as bare YAML,
+// which parses numeric, so 2.x core always saw it as a number — coerce first.
 function legacyWeight(raw, where) {
   if (raw === undefined) return null;
-  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw;
+  const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
+  if (typeof n === 'number' && Number.isFinite(n) && n > 0) return n;
   warn(`ignoring invalid ${where} weight "${raw}" (expected a positive number)`);
   return null;
 }
