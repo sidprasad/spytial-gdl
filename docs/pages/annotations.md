@@ -112,8 +112,8 @@ whole chain settles into a row.
 
 | directive | what it does |
 |---|---|
-| `atomColor` | fill color of matching nodes — `value='#rrggbb'` |
-| `edgeColor` | color of matching edges — `value='#rrggbb'` |
+| `atomStyle` | how matching nodes look — outline, fill, label ([style blocks](#style-blocks)) |
+| `edgeStyle` | how matching edges look — line, label ([style blocks](#style-blocks)) |
 | `size` | sizing of matching nodes |
 | `icon` | render matching nodes with an icon |
 | `attribute` | show a field as a node attribute instead of an edge |
@@ -130,17 +130,97 @@ The common ones — color:
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
-@atomColor(selector=Person, value='#cfe8d8')
-@atomColor(selector=Company, value='#ffe7b3')
-@edgeColor(selector=_links, value='#2d8659')
+@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
+@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
+@edgeStyle(field=_, lineStyle(color='#2d8659'))
 @orientation(selector=_links, directions=[left])
 ```
+
+Note the asymmetry in how the two styling directives *match*, because it's the
+easiest thing to get wrong here:
+
+- `atomStyle` takes a **node selector** — a type, a class, `univ`.
+- `edgeStyle` takes a **`field`**: the relation's name. Unlabeled edges are all
+  named `_` (see [drawn once](notation.md#drawn-once)), so `field=_` is "every
+  plain edge"; a labeled edge is styled by its label, `field=works_at`. Its
+  optional `selector=` does *not* choose the edges — it only narrows which
+  **source nodes'** edges match.
+
+  `_links` is the wrong answer here even though it works for `@orientation`:
+  it's a selector-only relation, hidden from drawing, and `edgeStyle` never
+  matches it.
 
 > **Note** — Directives map generically onto spytial-core's directive vocabulary:
 > an annotation `@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. The exact
 > keyword arguments for `size`, `icon`, `attribute`, and friends are Spytial
 > directive kwargs; the [spytial-core](https://github.com/sidprasad/spytial-core)
 > reference is authoritative for those. The four names above cover most diagrams.
+
+## Style blocks
+
+`atomStyle` and `edgeStyle` don't take a single `color`. A node is a composite —
+an outline, an interior fill, a label — and so is an edge: a drawn line and a
+label. Each part is its own **block**, written as a nested call:
+
+```spytial-gdl
+@edgeStyle(field=next,
+  lineStyle(color=crimson, pattern=dashed, weight=2),
+  textStyle(size=small, color=gray),
+  showLabel=true)
+
+@atomStyle(selector=Person,
+  borderStyle(color=steelblue, width=2),
+  fillStyle(color='#eef6ff'),
+  textStyle(size=large))
+```
+
+The blocks are one shared vocabulary, so the same names mean the same thing
+wherever they appear:
+
+| block | fields | styles |
+|---|---|---|
+| `lineStyle` | `color`, `pattern` (`solid`/`dashed`/`dotted`), `weight`, `highlight` | a drawn line |
+| `textStyle` | `size` (`small`/`normal`/`large`), `color` | a label |
+| `borderStyle` | `color`, `width` | a node's outline |
+| `fillStyle` | `color` | a node's interior |
+
+`inferredEdge`, `attribute`, `tag`, and a group's `addEdge` connector take them too:
+
+```spytial-gdl
+@inferredEdge(name=parent, selector='~children', lineStyle(color=gray, pattern=dotted))
+@attribute(field=weight, textStyle(size=small))
+@group(selector=Team.members, name=Team,
+  addEdge(points=togroup, lineStyle(pattern=dashed)),
+  textStyle(color=navy))
+```
+
+Blocks wrap across lines and take the `%%` guard like any other annotation, and
+everything is optional — write only the parts you mean.
+
+> **Outline, not fill** — a node's `borderStyle(color=…)` is what tints it in the
+> default rendering; `fillStyle` paints the interior and is opt-in. If a diagram
+> looks unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
+
+### The older `atomColor` / `edgeColor`
+
+Both still compile — they're rewritten to the blocks above — so existing diagrams
+keep working unchanged:
+
+| you wrote | it compiles to |
+|---|---|
+| `@atomColor(selector=S, value=V)` | `@atomStyle(selector=S, borderStyle(color=V))` |
+| `@edgeColor(field=F, value=V, style=P)` | `@edgeStyle(field=F, lineStyle(color=V, pattern=P))` |
+| `@inferredEdge(…, color=V, style=P)` | `@inferredEdge(…, lineStyle(color=V, pattern=P))` |
+
+`atomColor`'s `value` becomes the **outline**, not the fill — that's what it has
+always drawn. Prefer the block forms in new diagrams.
+
+> **Breaking in spytial-core 3.0: style collisions are an error.** Two rules that
+> set the *same* style leaf to *different* values now fail with a
+> `StyleCollisionError` instead of one silently winning. Rules that touch
+> different leaves still compose freely — `borderStyle(color=…)` from one rule and
+> `textStyle(size=…)` from another is fine. This is checked when the diagram is
+> drawn, so it surfaces in the browser rather than as an annotation error.
 
 ## Mermaid-safe annotations
 

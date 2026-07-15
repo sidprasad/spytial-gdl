@@ -65,7 +65,7 @@ Spatial operations, inline, one per line — `@name(arg=value, …)`:
 | kind | annotations |
 |---|---|
 | **constraints** (layout) | `orientation`, `cyclic`, `align`, `group` |
-| **directives** (styling) | `atomColor`, `size`, `icon`, `edgeColor`, `attribute`, `hideField`, `hideAtom`, `inferredEdge`, `tag`, `flag`, `projection` |
+| **directives** (styling) | `atomStyle`, `size`, `icon`, `edgeStyle`, `attribute`, `hideField`, `hideAtom`, `inferredEdge`, `tag`, `flag`, `projection` |
 
 Values are barewords (`below`), quoted strings (`'left subtree'`, or a comprehension
 `'{x: Person | …}'`), numbers, or lists (`[below, left]`). A `%%@name(...)` form is accepted
@@ -194,7 +194,7 @@ When constraints can't all hold, `generateLayout` returns a best-feasible counte
 the minimal conflict (IIS); `renderSpytialGdl` sets the `unsat` attribute and the playground
 shows an explanation. Malformed selectors come back as `selectorErrors`.
 
-**Dependencies** (CDN, in order): d3 v4 · `webcola@3.4.0` · `spytial-core@2.9.1`. The last
+**Dependencies** (CDN, in order): d3 v4 · `webcola@3.4.0` · `spytial-core@3.1.0`. The last
 auto-registers `<webcola-cnd-graph>` and exposes the engine on `window.spytialcore`; the
 Markdown path injects all three. Vendor them locally for an offline deploy.
 

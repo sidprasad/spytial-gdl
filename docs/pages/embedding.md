@@ -334,7 +334,7 @@ B -> C:::Person : knows
 C -> A : knows
 
 @cyclic(selector=knows, direction=clockwise)
-@atomColor(selector=Person, value='#e7defb')
+@atomStyle(selector=Person, borderStyle(color='#e7defb'))
 ```
 
 ### Composing rules: registry and YAML
@@ -354,7 +354,7 @@ import { registerSpec, renderSpytialGdl, mountGraph } from 'spytial-gdl';
 // Reusable layout for any node tagged `class … server`:
 registerSpec('server', `
 directives:
-  - atomColor: { selector: server, value: '#dbe9ff' }
+  - atomStyle: { selector: server, borderStyle: { color: '#dbe9ff' } }
 `);
 
 const g = mountGraph(el);

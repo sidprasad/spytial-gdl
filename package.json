@@ -1,6 +1,6 @@
 {
   "name": "spytial-gdl",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "A small graph description language (GDL) with inline spatial @annotations, rendered as live Spytial constraint diagrams in Markdown or anywhere.",
   "keywords": [
     "graph",
@@ -37,13 +37,14 @@
   ],
   "scripts": {
     "serve": "node scripts/preview-server.mjs",
-    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/annotations.test.mjs && node test/sgq-integration.test.mjs",
+    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/annotations.test.mjs && node test/sgq-integration.test.mjs && node test/pins.test.mjs",
     "test:roundtrip": "node test/roundtrip.test.mjs",
     "test:parse": "node test/parse.test.mjs",
     "test:annotations": "node test/annotations.test.mjs",
-    "test:integration": "node test/sgq-integration.test.mjs"
+    "test:integration": "node test/sgq-integration.test.mjs",
+    "test:pins": "node test/pins.test.mjs"
   },
   "peerDependencies": {
-    "spytial-core": "^2.10.1"
+    "spytial-core": "^3.1.0"
   }
 }
