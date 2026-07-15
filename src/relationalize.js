@@ -11,7 +11,7 @@
 //   SELECTOR-ONLY (hidden, so edges aren't drawn twice — see index.js):
 //     - `_links` — every edge, a single handle for "all links"
 //     - <class>  — the nodes carrying a class  (`class A,B team` → `team`),
-//                  for node annotations like @group / @atomColor
+//                  for node annotations like @group / @atomStyle
 //
 // Atom type = the node's `:::Sort` tag (`A:::Person` → 'Person') or '' (untyped)
 // for a plain `A`. An untyped atom carries no named type, so only `univ` (the
@@ -107,7 +107,7 @@ export function relationalize({ nodes, edges, classesPerNode }) {
   }
 
   // One unary relation per class, naming its member nodes — so node annotations
-  // (@group, @atomColor, …) can target `selector: <class>`. Hidden, since the
+  // (@group, @atomStyle, …) can target `selector: <class>`. Hidden, since the
   // renderer would otherwise draw a unary relation as a self-loop on each member.
   //
   // Name classes and edge labels distinctly: a shared spelling would put a unary

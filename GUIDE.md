@@ -105,7 +105,7 @@ every node of that type:
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
-@atomColor(selector=Person, value='#cfe8d8')
+@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
 ```
 
 The id stays the identity that edges reference; the label is just what's drawn,
@@ -125,7 +125,12 @@ Annotations *are* the layout. Each is one line, `@name(arg=value, …)`:
 | `@align(selector=row, direction=top)` | line nodes up on an axis |
 | `@cyclic(selector=_links, direction=clockwise)` | arrange a cycle as a ring |
 | `@group(selector=team, name='Team A')` | draw a labeled region around a set |
-| `@atomColor(selector=root, value='#ffe7b3')` | tint nodes |
+| `@atomStyle(selector=root, borderStyle(color='#ffe7b3'))` | tint a node's outline |
+| `@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))` | style a relation's edges |
+
+Styling is written in **blocks** — `borderStyle`/`fillStyle`/`textStyle` on a node,
+`lineStyle`/`textStyle` on an edge — so each part of a node or edge is set
+independently. See [Annotations → style blocks](docs/pages/annotations.md#style-blocks).
 
 A `selector` names nodes or edges:
 

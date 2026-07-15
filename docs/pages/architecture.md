@@ -19,9 +19,9 @@ rel -> core[spytial-core]:::Engine
 core -> draw[webcola-cnd-graph]:::Renderer
 
 @orientation(selector=_links, directions=[below])
-@atomColor(selector=Ours, value='#eef0f3')
-@atomColor(selector=Engine, value='#cfe8d8')
-@atomColor(selector=Renderer, value='#ffe7b3')
+@atomStyle(selector=Ours, borderStyle(color='#eef0f3'))
+@atomStyle(selector=Engine, borderStyle(color='#cfe8d8'))
+@atomStyle(selector=Renderer, borderStyle(color='#ffe7b3'))
 ```
 
 Stage by stage:
@@ -69,7 +69,7 @@ include them yourself.
 |---|---|
 | d3 **v4** | WebCola's rendering/data substrate |
 | `webcola@3.4.0` | the constraint-layout solver Spytial drives |
-| `spytial-core@^2.9` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
+| `spytial-core@^3.1` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
 spytial-core is a **peer dependency** — spytial-gdl does not `import` it, so its
 own modules load as bare browser ES modules. spytial-core auto-registers the custom

@@ -190,7 +190,7 @@ export function parseGraph(source) {
     }
     if (/^classDef\b/.test(line)) {
       errors.push({ line: at, text: line, severity: 'warning',
-        message: 'ignored: Mermaid classDef is not used — style nodes with directives like @atomColor / @size' });
+        message: 'ignored: Mermaid classDef is not used — style nodes with directives like @atomStyle / @size' });
       return;
     }
 

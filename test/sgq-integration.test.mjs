@@ -16,6 +16,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { parseGraph } from '../src/parse.js';
 import { relationalize, DEFAULT_TYPE } from '../src/relationalize.js';
+import { extractAnnotations } from '../src/annotations.js';
+import { mergeSpecStrings } from '../src/registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CORE_DIR = resolve(__dirname, '../../spytial-core/dist');
@@ -172,12 +174,100 @@ if (!browserCore) {
 
   // C2: a spec whose selector is `univ` — must resolve against untyped atoms.
   let r2, e2 = null;
-  const univSpec = `directives:\n  - atomColor: { selector: univ, value: "#eeeeee" }`;
+  const univSpec = `directives:\n  - atomStyle: { selector: univ, borderStyle: { color: "#eeeeee" } }`;
   try { r2 = runLayout(`A -> B\nC:::Widget -> A`, univSpec); } catch (e) { e2 = e; }
   check('C2: generateLayout(univ selector) does not throw', e2 === null, e2 && (e2.stack || e2.message));
   if (!e2) check('C2: univ-selector spec applied with no selectorErrors',
     (r2.selectorErrors || []).length === 0,
     JSON.stringify({ err: r2.error, sel: r2.selectorErrors }));
+
+  // ===========================================================================
+  // Case D — style directives resolve the way the docs claim (core 3.x).
+  // The whole client pipeline: @annotations → compiled spec → resolved layout.
+  // ===========================================================================
+  console.log('\nCase D: style directives resolve as documented');
+
+  // The whole client pipeline, exactly as index.js runs it: lift the inline
+  // annotations, relationalize, and hide the selector-only relations. That last
+  // step matters here — without it `_links` is drawn as a duplicate of every
+  // edge, and these assertions would be measuring a graph no user ever sees.
+  function runAnnotated(src) {
+    const { source, specYaml } = extractAnnotations(src);
+    const { atoms, relations, hiddenRelations } = relationalize(parseGraph(source));
+    const instance = new BJSON({ atoms, relations });
+    const evaluator = new BEval();
+    evaluator.initialize({ sourceData: instance });
+    const hideYaml = hiddenRelations.length
+      ? 'directives:\n' + hiddenRelations.map((f) => `  - hideField: { field: '${f}' }\n`).join('')
+      : '';
+    const spec = parseLayoutSpec(mergeSpecStrings([specYaml || '', hideYaml]));
+    const li = new LayoutInstance(spec, evaluator, 0, true, undefined, 'qualitative');
+    return li.generateLayout(instance);
+  }
+  const firstNode = (r) => ((r.layout && r.layout.nodes) || [])[0];
+  const edgeColors = (r) => ((r.layout && r.layout.edges) || []).map((e) => e.color);
+
+  const GRAPH = 'alice:::Person -> bob:::Person';
+
+  // D1: the legacy → block rewrite is look-preserving. This is the claim the
+  // docs/examples migration rests on, so assert it against the real resolver
+  // rather than trusting the mapping. atomColor drives the *outline* (`color`),
+  // which is why it desugars to borderStyle and not fillStyle.
+  const legacy = firstNode(runAnnotated(`${GRAPH}\n@atomColor(selector=Person, value='#cfe8d8')`));
+  const modern = firstNode(runAnnotated(`${GRAPH}\n@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))`));
+  check('D1: legacy atomColor and atomStyle+borderStyle resolve identically',
+    !!legacy && !!modern && legacy.color === modern.color &&
+    legacy.colorSource === modern.colorSource && legacy.fillColor === modern.fillColor,
+    JSON.stringify({ legacy: legacy && { color: legacy.color, fill: legacy.fillColor },
+      modern: modern && { color: modern.color, fill: modern.fillColor } }));
+  check("D1: atomColor's value lands on the outline, from the directive",
+    !!legacy && legacy.color === '#cfe8d8' && legacy.colorSource === 'directive',
+    JSON.stringify(legacy && { color: legacy.color, colorSource: legacy.colorSource }));
+
+  // D2: fillStyle is a genuinely different knob — it paints the interior and
+  // leaves the outline to the default palette. (Rewriting atomColor onto it would
+  // have restyled every diagram, which is why the migration uses borderStyle.)
+  const filled = firstNode(runAnnotated(`${GRAPH}\n@atomStyle(selector=Person, fillStyle(color='#cfe8d8'))`));
+  check('D2: fillStyle paints the interior, not the outline',
+    !!filled && filled.fillColor === '#cfe8d8' && filled.color !== '#cfe8d8',
+    JSON.stringify(filled && { color: filled.color, fill: filled.fillColor }));
+
+  // D3: edgeStyle matches on `field` — the relation name. Unlabeled edges are
+  // all `_`. A `selector` does NOT choose edges (it only narrows source atoms),
+  // and `_links` is selector-only + hidden, so neither styles anything.
+  check('D3: edgeStyle(field=_) colours the unlabeled edges',
+    edgeColors(runAnnotated(`${GRAPH}\n@edgeStyle(field=_, lineStyle(color='#2d8659'))`))
+      .every((c) => c === '#2d8659'));
+  check('D3: edgeStyle with only a selector colours nothing',
+    edgeColors(runAnnotated(`${GRAPH}\n@edgeStyle(selector=_links, lineStyle(color='#2d8659'))`))
+      .every((c) => c !== '#2d8659'));
+  check('D3: edgeStyle(field=_links) colours nothing (it is hidden from drawing)',
+    edgeColors(runAnnotated(`${GRAPH}\n@edgeStyle(field=_links, lineStyle(color='#2d8659'))`))
+      .every((c) => c !== '#2d8659'));
+
+  // D4: a labeled edge is styled by its label, and lineStyle.pattern carries.
+  const labeled = runAnnotated('a -> b : next\n@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))');
+  const nextEdge = ((labeled.layout && labeled.layout.edges) || []).find((e) => e.relationName === 'next');
+  check('D4: edgeStyle(field=<label>) styles that relation, pattern included',
+    !!nextEdge && nextEdge.color === 'crimson' && /dash/i.test(JSON.stringify(nextEdge)),
+    JSON.stringify(nextEdge && { color: nextEdge.color, relationName: nextEdge.relationName }));
+
+  // D5: the payoff of rewriting legacy forms at compile time instead of passing
+  // them through — core warns on every legacy directive it parses, so a spec we
+  // compiled correctly is one it has nothing to say about. This is what keeps a
+  // 2.x-era diagram from filling its host page's console with deprecations.
+  const legacySource = [
+    'alice:::Person -> bob:::Person',
+    "@atomColor(selector=Person, value='#cfe8d8')",
+    '@edgeColor(field=_, value=red, style=dashed)',
+    "@inferredEdge(name=p, selector='~_', color=gray, style=dotted)",
+  ].join('\n');
+  const warnings = [];
+  const realWarn = console.warn;
+  console.warn = (...a) => warnings.push(a.map(String).join(' '));
+  try { runAnnotated(legacySource); } finally { console.warn = realWarn; }
+  check('D5: an all-legacy source compiles to a spec core raises no deprecation on',
+    !warnings.some((w) => /\[spytial\]/.test(w)), JSON.stringify(warnings));
 }
 
 console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped`);

@@ -35,9 +35,88 @@ export const CONSTRAINT_NAMES = new Set([
 ]);
 
 export const DIRECTIVE_NAMES = new Set([
-  'atomColor', 'size', 'icon', 'edgeColor', 'attribute',
+  'atomStyle', 'edgeStyle', 'size', 'icon', 'attribute',
   'hideField', 'hideAtom', 'inferredEdge', 'tag', 'flag', 'projection',
+  // Legacy (core 2.x). Still accepted, but desugared onto atomStyle / edgeStyle
+  // before compilation — see desugarLegacy.
+  'atomColor', 'edgeColor',
 ]);
+
+// ── Style blocks (spytial-core 3.x) ─────────────────────────────────────────
+// core 3.0 replaced the flat `edgeColor {value, style, weight}` / `atomColor
+// {value}` directives with `edgeStyle` / `atomStyle` carrying *nested blocks*
+// from one shared vocabulary: a drawn line, a label, a border, a fill. The same
+// blocks reappear on inferredEdge, on a group's addEdge connector, and on
+// attribute / tag lines.
+//
+// They're authored as nested calls — a `name(...)` argument — mirroring the Rust
+// derive attributes:
+//
+//   @edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed), textStyle(size=small))
+//     → edgeStyle: { field: next, lineStyle: { color: crimson, pattern: dashed },
+//                    textStyle: { size: small } }
+//
+// `lineStyle={color: crimson}` was not an option: a bare comprehension selector
+// (`{x: Person | x}`) already parses as a bareword value, so a brace map would be
+// ambiguous with sources that work today.
+const LINE_PATTERNS = ['solid', 'dashed', 'dotted'];
+const TEXT_SIZES = ['small', 'normal', 'large'];
+const GROUP_EDGE_POINTS = ['none', 'togroup', 'fromgroup'];
+
+// The block vocabulary, keyed by *block name* rather than by directive: core 3.x
+// shares these blocks across directives, so one table covers all of them and
+// compilation stays generic. Which directive accepts which block remains core's
+// business — as it already is for every other directive kwarg.
+//
+// We validate the leaves because core's parsers do not: an invalid pattern /
+// size / weight is dropped silently there, so a typo renders as an unstyled edge
+// with no diagnostic at all. Here it becomes an `errors` entry with a line number.
+const STYLE_BLOCKS = {
+  lineStyle: { color: 'string', pattern: LINE_PATTERNS, weight: 'number+', highlight: 'string' },
+  textStyle: { size: TEXT_SIZES, color: 'string' },
+  borderStyle: { color: 'string', width: 'number+' },
+  fillStyle: { color: 'string' },
+  addEdge: { points: GROUP_EDGE_POINTS, lineStyle: 'block', textStyle: 'block' },
+};
+
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+// Check one parsed block against STYLE_BLOCKS. Throws (→ an `errors` entry, and
+// the annotation is dropped) on an unknown block, an unknown key within a known
+// block, a value outside a closed vocabulary, or a non-positive weight/width.
+function validateBlock(name, block) {
+  const schema = STYLE_BLOCKS[name];
+  if (!schema) {
+    throw new Error(
+      `unknown style block "${name}(...)"; expected one of ${Object.keys(STYLE_BLOCKS).join(', ')}`
+    );
+  }
+  for (const [key, value] of Object.entries(block)) {
+    const rule = schema[key];
+    if (!rule) {
+      throw new Error(
+        `unknown "${key}" in ${name}(...); expected one of ${Object.keys(schema).join(', ')}`
+      );
+    }
+    if (Array.isArray(rule)) {
+      if (!rule.includes(value)) {
+        throw new Error(`invalid ${name}.${key} "${value}"; expected one of ${rule.join(', ')}`);
+      }
+    } else if (rule === 'number+') {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+        throw new Error(`invalid ${name}.${key} "${value}"; expected a positive number`);
+      }
+    } else if (rule === 'block') {
+      if (!isPlainObject(value)) {
+        throw new Error(`${name}.${key} must be a block, e.g. ${key}(color=gray)`);
+      }
+    } else if (typeof value !== 'string') {
+      throw new Error(`invalid ${name}.${key} "${value}"; expected a string`);
+    }
+  }
+}
 
 // An annotation is `@name( args )`, optionally behind a mermaid-comment `%%`
 // guard so the block still degrades gracefully in a vanilla Mermaid renderer.
@@ -192,12 +271,43 @@ function parseValue(raw) {
   return s;
 }
 
-// Parse `key=value, key2=[a, b], …` into an object. Throws on a malformed pair.
+// The opening of a nested style block: `lineStyle(`. Deliberately requires the
+// `(` to follow the name directly, so a *value* that merely contains parens
+// (`value='rgb(1, 2, 3)'` — an `=` comes first) can't be mistaken for one.
+const BLOCK_OPEN = /^([A-Za-z_]\w*)\s*\(/;
+
+// Parse an argument that is a nested style block — `lineStyle(color=crimson)` —
+// into { name, block }. Returns null if `piece` isn't shaped like one, leaving it
+// to the ordinary key=value path. Blocks nest (addEdge(lineStyle(…))) via the
+// mutual recursion with parseArgs, which validates each block as it's built.
+function parseBlock(piece) {
+  const open = piece.match(BLOCK_OPEN);
+  if (!open) return null;
+  const parenIdx = open[0].length - 1;
+  // The `(` must close on the piece's very last character. Anything trailing
+  // (`lineStyle(color=red) junk`) is malformed rather than a block, so fall
+  // through and let the key=value path report it.
+  if (findClose(piece, parenIdx) !== piece.length - 1) return null;
+  const name = open[1];
+  const block = parseArgs(piece.slice(parenIdx + 1, piece.length - 1));
+  validateBlock(name, block);
+  return { name, block };
+}
+
+// Parse `key=value, key2=[a, b], block(k=v), …` into an object. Throws on a
+// malformed pair or an invalid style block.
 function parseArgs(argStr) {
   const kwargs = {};
   const trimmed = argStr.trim();
   if (trimmed === '') return kwargs;
   for (const piece of splitTopLevel(trimmed)) {
+    // A nested style block carries its name with it, so it's checked before the
+    // key=value split (which would otherwise read `lineStyle(color` as the key).
+    const nested = parseBlock(piece);
+    if (nested) {
+      kwargs[nested.name] = nested.block;
+      continue;
+    }
     const eq = piece.indexOf('=');
     if (eq === -1) {
       throw new Error(`expected key=value, got "${piece}"`);
@@ -233,13 +343,22 @@ function emitScalar(v) {
   return s;
 }
 
+// A mapping as compact flow-style YAML: `{ color: crimson, weight: 2 }`. Used for
+// an annotation's own kwargs and, recursively, for each nested style block.
+function emitMap(obj) {
+  const pairs = Object.entries(obj).map(([k, v]) => `${k}: ${emitValue(v)}`);
+  return pairs.length > 0 ? `{ ${pairs.join(', ')} }` : '{}';
+}
+
 function emitValue(v) {
   if (Array.isArray(v)) return `[${v.map(emitValue).join(', ')}]`;
+  if (isPlainObject(v)) return emitMap(v);
   return emitScalar(v);
 }
 
 // Compile a single annotation to a YAML list-item body, e.g.
 //   orientation: { selector: _links, directions: [below] }
+//   edgeStyle: { field: next, lineStyle: { color: crimson, pattern: dashed } }
 // `flag` is special-cased to a scalar payload (`flag: hideDisconnected`),
 // matching the Python serializer.
 function emitEntry(name, kwargs) {
@@ -247,8 +366,109 @@ function emitEntry(name, kwargs) {
     const flagName = kwargs.name != null ? kwargs.name : Object.values(kwargs)[0];
     return `flag: ${emitScalar(flagName != null ? flagName : '')}`;
   }
-  const pairs = Object.entries(kwargs).map(([k, v]) => `${k}: ${emitValue(v)}`);
-  return `${name}: { ${pairs.join(', ')} }`;
+  return `${name}: ${emitMap(kwargs)}`;
+}
+
+// ── Legacy → 3.x desugar ─────────────────────────────────────────────────────
+// core 3.x still parses `edgeColor` / `atomColor` / inferredEdge's inline style
+// keys, but `console.warn`s on every one. Rewriting them here keeps the compiled
+// spec pure 3.x: the browser console stays quiet, and a legacy diagram compiles
+// to byte-identical YAML to its modern equivalent. The author's *source* is
+// untouched — `annotationLines` keeps it verbatim, so the round-trip still hands
+// back what they wrote.
+//
+// New-form blocks are strict (validateBlock); the legacy path below is lenient,
+// mirroring core's own normalization, because a 2.x-era diagram has to keep
+// rendering exactly as it does today.
+
+function warn(message) {
+  if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+    console.warn(`spytial-gdl: ${message}`);
+  }
+}
+
+// core's normalizeEdgeStyle: trim + lowercase, so `style=Dashed` / `style=' dashed '`
+// rendered dashed at 2.x. Normalize the same way rather than strict-matching, or
+// those specs would silently fall back to solid.
+function legacyPattern(raw, where) {
+  if (raw === undefined) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (LINE_PATTERNS.includes(s)) return s;
+  warn(`ignoring invalid ${where} style "${raw}" (expected ${LINE_PATTERNS.join(', ')})`);
+  return null;
+}
+
+// Mirrors core's weight check: finite and positive, or dropped.
+function legacyWeight(raw, where) {
+  if (raw === undefined) return null;
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw;
+  warn(`ignoring invalid ${where} weight "${raw}" (expected a positive number)`);
+  return null;
+}
+
+// Gather legacy inline styling into a lineStyle block. `colorKey` differs by
+// directive: edgeColor spells it `value`, inferredEdge spells it `color`.
+function legacyLineStyle(kwargs, colorKey, where) {
+  const line = {};
+  if (kwargs[colorKey] !== undefined) line.color = kwargs[colorKey];
+  const pattern = legacyPattern(kwargs.style, where);
+  if (pattern) line.pattern = pattern;
+  const weight = legacyWeight(kwargs.weight, where);
+  if (weight) line.weight = weight;
+  if (kwargs.highlight !== undefined) line.highlight = kwargs.highlight;
+  return line;
+}
+
+// Rewrite a legacy annotation onto its 3.x form; everything else passes through
+// untouched. Throws when the legacy input can't be carried over faithfully.
+function desugarLegacy(name, kwargs) {
+  if (name === 'edgeColor') {
+    const out = {};
+    for (const k of ['field', 'selector', 'filter']) {
+      if (kwargs[k] !== undefined) out[k] = kwargs[k];
+    }
+    const line = legacyLineStyle(kwargs, 'value', 'edgeColor');
+    if (Object.keys(line).length > 0) out.lineStyle = line;
+    for (const k of ['showLabel', 'hidden']) {
+      if (kwargs[k] !== undefined) out[k] = kwargs[k];
+    }
+    return { name: 'edgeStyle', kwargs: out };
+  }
+
+  if (name === 'atomColor') {
+    // core drops a selectorless atomColor — it was always a no-op, never a global
+    // recolor. atomStyle reads an *absent* selector as "every atom", so blindly
+    // desugaring one would repaint the whole graph. Report it instead.
+    if (kwargs.selector === undefined || String(kwargs.selector).trim() === '') {
+      throw new Error('atomColor requires a selector');
+    }
+    const out = { selector: kwargs.selector };
+    // The border-preserving mapping: atomColor drives a node's *outline*, so
+    // value → borderStyle.color leaves existing diagrams looking identical.
+    // fillStyle is the opt-in interior fill.
+    if (kwargs.value !== undefined) out.borderStyle = { color: kwargs.value };
+    return { name: 'atomStyle', kwargs: out };
+  }
+
+  if (name === 'inferredEdge') {
+    const INLINE = ['color', 'style', 'weight', 'highlight'];
+    const used = INLINE.filter((k) => kwargs[k] !== undefined);
+    if (used.length === 0) return { name, kwargs };
+    if (kwargs.lineStyle !== undefined) {
+      throw new Error(
+        `inferredEdge: inline ${used.join('/')} conflicts with the lineStyle block — keep the block`
+      );
+    }
+    const out = {};
+    for (const [k, v] of Object.entries(kwargs)) {
+      if (!INLINE.includes(k)) out[k] = v;
+    }
+    const line = legacyLineStyle(kwargs, 'color', 'inferredEdge');
+    if (Object.keys(line).length > 0) out.lineStyle = line;
+    return { name, kwargs: out };
+  }
+
+  return { name, kwargs };
 }
 
 // Extract inline annotations from `rawSource`.
@@ -350,7 +570,10 @@ export function extractAnnotations(rawSource) {
 
     let entry;
     try {
-      entry = emitEntry(name, kwargs);
+      // Legacy forms are rewritten onto their 3.x equivalents before emission,
+      // so the compiled spec is pure 3.x even when the source isn't.
+      const modern = desugarLegacy(name, kwargs);
+      entry = emitEntry(modern.name, modern.kwargs);
     } catch (err) {
       errors.push({ line: at, text: verbatim.trim(), message: err.message });
       continue;

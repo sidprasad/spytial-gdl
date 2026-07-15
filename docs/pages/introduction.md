@@ -61,8 +61,8 @@ bob[Bob]:::Person     -> acme
 carol[Carol]:::Person -> acme
 
 @orientation(selector=_links, directions=[left])
-@atomColor(selector=Person, value='#cfe8d8')
-@atomColor(selector=Company, value='#ffe7b3')
+@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
+@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
 @group(selector=Person, name='People')
 ```
 

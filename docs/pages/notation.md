@@ -59,8 +59,8 @@ every node regardless of type:
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
-@atomColor(selector=Person, value='#cfe8d8')
-@atomColor(selector=Company, value='#ffe7b3')
+@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
+@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
 ```
 
 The id is the identity edges reference; the label is what's drawn; the sort is what
@@ -159,7 +159,7 @@ per-node markup — one rule, every matching element.
 
 The first three select **edges**; the last three select **nodes**. An annotation
 that wants edges (like `@orientation`) takes an edge selector; one that wants nodes
-(like `@group` or `@atomColor`) takes a node selector.
+(like `@group` or `@atomStyle`) takes a node selector.
 
 ### Edge selectors
 
@@ -203,8 +203,8 @@ web[Web]:::Client -> api
 
 class db critical
 
-@atomColor(selector=Service, value='#dce8ff')
-@atomColor(selector=Client, value='#e7defb')
+@atomStyle(selector=Service, borderStyle(color='#dce8ff'))
+@atomStyle(selector=Client, borderStyle(color='#e7defb'))
 @group(selector=critical, name='Critical')
 @orientation(selector=_links, directions=[left])
 ```
@@ -221,21 +221,23 @@ typed, classed, or plain — use `univ`, the universal set:
 a[Root] -> b:::Service
 a -> c:::Client
 
-@atomColor(selector=univ, value='#f3f4f6')
+@atomStyle(selector=univ, borderStyle(color='#f3f4f6'))
 @orientation(selector=_links, directions=[below])
 ```
 
 One `univ` rule tints all three nodes the same — the untyped `Root` included.
 Reach for it when a rule should apply to the whole diagram; when you want *some*
 nodes styled differently, give those a type or a class and target that instead —
-two `atomColor` rules that both match a node (say `univ` and `Service`) are a
-color conflict, not a last-one-wins override (see the note below).
+two `atomStyle` rules that both match a node (say `univ` and `Service`) and set
+the same thing are a conflict, not a last-one-wins override (see the note below).
 
-> **Note** — `atomColor` won't paint one node two colors: if a node is matched by
-> two `atomColor` selectors with different values, the engine reports a color
-> conflict rather than picking one. Keep a node's color coming from a single
-> selector (here, its type), and use other directives (`group`, `tag`) for the
-> cross-cutting set.
+> **Note** — `atomStyle` won't paint one node two colors: if a node is matched by
+> two selectors that set the *same* style leaf to different values, the engine
+> reports a `StyleCollisionError` rather than picking one. Rules that set
+> *different* leaves do compose — a `univ` rule setting `textStyle(size=small)`
+> and a `Service` rule setting `borderStyle(color=…)` is fine. So keep any one
+> leaf coming from a single selector (here, the node's type), and use other
+> directives (`group`, `tag`) for the cross-cutting set.
 
 ### Drawn once
 

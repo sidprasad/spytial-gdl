@@ -21,7 +21,7 @@
   <!-- d3 v4 + WebCola (constraint solver) + spytial-core (engine + <webcola-cnd-graph>) -->
   <script src="https://d3js.org/d3.v4.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/spytial-core@2.9.1/dist/browser/spytial-core-complete.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/spytial-core@3.1.0/dist/browser/spytial-core-complete.global.js"></script>
 </head>
 <body>
   <h1>spytial-gdl — binary-tree (programmatic API)</h1>
@@ -57,7 +57,7 @@
 @orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])
-@atomColor(selector=root, value='#ffe7b3')`;
+@atomStyle(selector=root, borderStyle(color='#ffe7b3'))`;
 
     // ── Source: a small binary tree with one shared child (D) ───────────
     const baseGraph = `
