@@ -194,7 +194,7 @@ When constraints can't all hold, `generateLayout` returns a best-feasible counte
 the minimal conflict (IIS); `renderSpytialGdl` sets the `unsat` attribute and the playground
 shows an explanation. Malformed selectors come back as `selectorErrors`.
 
-**Dependencies** (CDN, in order): d3 v4 · `webcola@3.4.0` · `spytial-core@3.1.0`. The last
+**Dependencies** (CDN, in order): d3 v4 · `webcola@3.4.0` · `spytial-core@3`. The last
 auto-registers `<webcola-cnd-graph>` and exposes the engine on `window.spytialcore`; the
 Markdown path injects all three. Vendor them locally for an offline deploy.
 
