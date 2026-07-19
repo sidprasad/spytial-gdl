@@ -1,6 +1,6 @@
 {
   "name": "spytial-gdl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A small graph description language (GDL) with inline spatial @annotations, rendered as live Spytial constraint diagrams in Markdown or anywhere.",
   "keywords": [
     "graph",
