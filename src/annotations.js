@@ -370,7 +370,7 @@ function emitEntry(name, kwargs) {
 }
 
 // ── Legacy → 3.x desugar ─────────────────────────────────────────────────────
-// core 3.x still parses `edgeColor` / `atomColor` / inferredEdge's inline style
+// core still parses `edgeColor` / `atomColor` / inferredEdge's inline style
 // keys, but `console.warn`s on every one. Rewriting them here keeps the compiled
 // spec pure 3.x: the browser console stays quiet, and a legacy diagram compiles
 // to byte-identical YAML to its modern equivalent. The author's *source* is
