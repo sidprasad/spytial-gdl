@@ -326,6 +326,46 @@ export function explainGroup(group, data, opts = {}) {
   return best;
 }
 
+// ONE RELATION NAME PER DEMONSTRATED PAIR.
+//
+// An exact-match search over a single pair always succeeds, and the success
+// carries no information. Measured against the real synthesizer on the
+// playground's four-node graph, every pair you can name has an expression:
+//
+//   (Build, Release) → `_.ship`        (Start, Test)    → `_._`
+//   (Start, Release) → `(_._).ship`
+//
+// none of which is a relationship anyone has a word for. The search is not at
+// fault — with one point to fit, the grammar has too many curves through it.
+//
+// A pair count is the wrong bound, though: the demonstrations this feature
+// exists for are exactly one pair long. Aligning two siblings in `p -> a,
+// p -> b` is one pair, and `~parentOf.parentOf - iden` is the right answer.
+//
+// What separates them is not size but *vocabulary*. Siblings is one relation
+// composed with itself; `_.ship` stitches two unrelated ones together, and
+// stitching is a coincidence until you have shown it twice. So the bound is on
+// distinct names: a demonstration of n pairs supports an expression drawing on
+// at most n of them. It clears every case above — siblings and grandparents
+// pass on one name, `_.ship` and `(_._).ship` and `~(retry).ship` fail on two —
+// and it rejects enumeration (`a->b + c->d` spends four names on two pairs) for
+// the same reason MAX_EXPRESSION_LENGTH does, measured in words rather than
+// characters.
+const SELECTOR_KEYWORDS = new Set(['iden', 'univ', 'none']);
+
+function distinctNames(selector) {
+  const names = new Set();
+  for (const token of String(selector).match(/[A-Za-z_][A-Za-z0-9_]*/g) || []) {
+    if (!SELECTOR_KEYWORDS.has(token)) names.add(token);
+  }
+  return names.size;
+}
+
+function tooManyNames(selector, group, opts) {
+  const budget = typeof opts.maxNames === 'number' ? opts.maxNames : group.pairs.length;
+  return distinctNames(selector) > budget;
+}
+
 // The synthesis half of `explainGroup`, on its own so `generalize` can spend its
 // one attempt on a group it has *already* found no name for — rather than
 // handing the budget to a group that turns out not to need it.
@@ -335,6 +375,7 @@ export function explainGroup(group, data, opts = {}) {
 // all mean "no proposal", never a broken generalization pass.
 function synthesizeFor(group, opts = {}) {
   if (typeof opts.synthesize !== 'function') return null;
+  if (!group || !group.pairs || group.pairs.length === 0) return null;
   try {
     // An alignment is symmetric, but the group stores one direction per
     // unordered pair. A derived symmetric relation denotes both — `~r.r - iden`
@@ -345,6 +386,9 @@ function synthesizeFor(group, opts = {}) {
       : group.pairs;
     const expr = opts.synthesize(target);
     if (!expr || !String(expr).trim()) return null;
+    // An expression that spends more names than the demonstration has pairs is
+    // fitted to those pairs rather than characterizing them. See above.
+    if (tooManyNames(String(expr).trim(), group, opts)) return null;
     const { selector, value } = normalize(String(expr).trim(), group.kind, group.value);
     return {
       kind: group.kind, selector, value, source: 'synthesized',

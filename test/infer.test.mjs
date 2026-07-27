@@ -386,6 +386,55 @@ e -> f : s`);
     simple[0] && simple[0].value === 'above', simple[0] && simple[0].line);
 }
 
+// ── one relation name per demonstrated pair ─────────────────────────────────
+//
+// An exact-match search over a single pair always finds something. Measured on
+// the playground's four-node graph, every pair has an expression — (Build,
+// Release) is `_.ship`, (Start, Test) is `_._` — and none of them is a
+// relationship anyone has a word for.
+//
+// A pair count is the wrong bound, because the demonstrations worth
+// synthesizing for are one pair long: two siblings, two grandparents. What
+// separates those from the noise is vocabulary. Siblings is one relation
+// composed with itself; `_.ship` stitches two unrelated relations together, and
+// stitching is a coincidence until it has been shown twice.
+
+{
+  const data = dataFor(`p -> a : parentOf\np -> b : parentOf\nq -> c : owns`);
+  const onePair = { kind: 'align', value: 'horizontal', pairs: [['a', 'b']] };
+
+  // One name, spent once: the canonical derived relation, and the whole reason
+  // synthesis exists. A count-based threshold would have killed this.
+  const siblings = explainGroup(onePair, data, { synthesize: () => '~parentOf.parentOf - iden' });
+  check('one pair still buys a one-name expression',
+    siblings.length === 1 && siblings[0].selector === '~parentOf.parentOf - iden',
+    JSON.stringify(siblings.map((p) => p.line)));
+  check('and the grammar keywords are not charged for it',
+    siblings.length === 1, 'iden must not count as a relation name');
+
+  // Two names on one pair: the shape the playground produced.
+  const stitched = explainGroup(onePair, data, { synthesize: () => '_.owns' });
+  check('one pair does not buy an expression that stitches two relations',
+    stitched.length === 0, JSON.stringify(stitched.map((p) => p.line)));
+
+  // Guard the guard: it is the name budget doing the rejecting, nothing else.
+  const lifted = explainGroup(onePair, data, { synthesize: () => '_.owns', maxNames: 9 });
+  check('and lifting the budget lets that same expression through',
+    lifted.length === 1 && lifted[0].selector === '_.owns',
+    JSON.stringify(lifted.map((p) => p.line)));
+
+  // A second pair is a second chance to see the same stitch, so it pays for it.
+  const twoPairs = { kind: 'align', value: 'horizontal', pairs: [['a', 'b'], ['a', 'c']] };
+  const earned = explainGroup(twoPairs, data, { synthesize: () => '_.owns' });
+  check('two pairs do buy it', earned.length === 1, JSON.stringify(earned.map((p) => p.line)));
+
+  // Enumeration spends a name per node, so it can never fit inside the budget —
+  // the same thing MAX_EXPRESSION_LENGTH catches, counted in words.
+  const enumerated = explainGroup(twoPairs, data, { synthesize: () => 'a->b + a->c' });
+  check('but neither buys an expression that just lists the nodes',
+    enumerated.length === 0, JSON.stringify(enumerated.map((p) => p.line)));
+}
+
 // ── merging into `directly*` is scored, not assumed ─────────────────────────
 
 {
