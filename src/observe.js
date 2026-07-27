@@ -187,13 +187,40 @@ export function observeArrangement(graphEl, opts = {}) {
       });
 
       // Prefer the tight reading — pairs where the user moved *both* endpoints,
-      // which is the strongest evidence and keeps the candidate set small. But
-      // the commonest gesture of all is dragging one node to line it up with one
-      // that stays put, and that marks only the node that moved. So when the
-      // tight reading finds nothing, widen to pairs with one marked endpoint
-      // rather than concluding the user demonstrated nothing.
+      // which keeps the candidate set small. But the commonest gesture of all is
+      // dragging one node to line it up with one that stays put, and that marks
+      // only the node that moved, so the tight reading has to be able to widen.
+      //
+      // WIDEN ON UNEXPLAINABLE, NOT ON EMPTY. "Both endpoints moved" is stronger
+      // evidence only when the pair is one a relation connects. Drag two nodes
+      // that share no edge and the tight reading is a pair nothing in the source
+      // explains — while the pair the user actually meant, with one endpoint
+      // left where it was, has been excluded. The tight reading is not empty, so
+      // the old rule kept it, no name fitted, and synthesis manufactured an
+      // exact expression for the incidental pair: dragging `Build` and `Release`
+      // in the playground proposed `_.ship` (which denotes exactly (Build,
+      // Release)) instead of naming `ship` for (Test, Release).
+      //
+      // So the test is whether a *name* fits the tight reading. The probe runs
+      // without synthesis — an expression search would defeat the point, since
+      // finding one is the failure being detected — and it is only the cheap
+      // candidate scoring, which this call is about to do again anyway.
+      const named = (ev) => {
+        if (ev.groups.length === 0) return false;
+        if (!data) return true;   // nothing to name it with; the reading is all there is
+        return generalize(ev.groups, data, {
+          ...options, satisfied: ev.satisfied, synthesize: undefined,
+        }).length > 0;
+      };
+
       let evidence = read(options.scope || 'both');
-      if (evidence.groups.length === 0 && !options.scope) evidence = read('any');
+      if (!options.scope && !named(evidence)) {
+        const wider = read('any');
+        // Only take the wider reading if it is an improvement. When neither has
+        // a name, the tight one is still the more conservative demonstration.
+        if (named(wider)) evidence = wider;
+        else if (evidence.groups.length === 0) evidence = wider;
+      }
       // `satisfied` lets generalization distinguish a pair the constraint would
       // move from one the drawing already honours — see scoreAgainst.
       //

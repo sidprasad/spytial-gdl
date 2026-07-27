@@ -203,6 +203,60 @@ i -> h : spouse
     obs.propose(data, { scope: 'both' }).proposals.length === 0);
 }
 
+// ── a marked pair is not automatically the better reading ───────────────────
+//
+// `propose` prefers pairs where both endpoints were dragged. That is stronger
+// evidence only when the pair is one a relation connects. Drag two nodes that
+// share no edge and the tight reading is a pair nothing in the source explains,
+// while the pair actually demonstrated — one endpoint dragged, one left where it
+// was — has been excluded. Widening only when the tight reading came back
+// *empty* kept the useless one, and synthesis then manufactured an exact
+// expression for it.
+
+{
+  // The playground's own example. `ship` is the only relation between Test and
+  // Release; Build and Release share no edge at all.
+  const data = dataFor(`Start -> Build
+Build -> Test
+Test -> Release : ship
+Test -> Build : retry`);
+  const el = new FakeGraph([
+    { id: 'Start', x: 50, y: 30 }, { id: 'Build', x: 50, y: 190 },
+    { id: 'Test', x: 50, y: 350 }, { id: 'Release', x: 50, y: 510 },
+  ]);
+  const obs = observeArrangement(el);
+
+  // Lift Release above Test — "ship points upward" — and nudge Build on the way.
+  // Both end up marked, so the tight reading is the pair (Build, Release).
+  el.drag('Release', 50, 150);
+  el.drag('Build', 50, 200);
+
+  let synthesized = 0;
+  const { proposals } = obs.propose(data, {
+    synthesize: (pairs) => { synthesized++; return `SYNTH<${pairs.map((p) => p.join('>')).join(',')}>`; },
+  });
+  const lines = proposals.map((p) => p.line);
+
+  check('the demonstration is named, not synthesized',
+    lines.includes('@orientation(selector=ship, directions=[above])'), lines.join(' | '));
+  check('and nothing was invented for the pair that shares no edge',
+    synthesized === 0 && !lines.some((l) => /SYNTH/.test(l)),
+    `${synthesized} attempts: ${lines.join(' | ')}`);
+
+  // The tight reading is still preferred when it *is* explainable — dragging
+  // both ends of a real edge must not be widened away.
+  const el2 = new FakeGraph([
+    { id: 'Start', x: 50, y: 30 }, { id: 'Build', x: 50, y: 190 },
+    { id: 'Test', x: 50, y: 350 }, { id: 'Release', x: 50, y: 510 },
+  ]);
+  const obs2 = observeArrangement(el2);
+  el2.drag('Test', 50, 400);
+  el2.drag('Release', 50, 300);
+  const tight = obs2.propose(data).proposals.map((p) => p.line);
+  check('a named tight reading is kept',
+    tight.includes('@orientation(selector=ship, directions=[above])'), tight.join(' | '));
+}
+
 // ── the synthesizer outlives one propose() ──────────────────────────────────
 //
 // Synthesis is the expensive path: a search that finds nothing has to exhaust
