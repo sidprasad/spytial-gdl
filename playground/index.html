@@ -365,19 +365,71 @@ c -> a : r3
         };
 
         // ─── Shareable state (URL hash) ─────────────────────────────────
+        // The whole diagram lives in the URL *fragment*, which a browser never
+        // sends to a server — so a share link needs nothing hosted anywhere.
+        //
+        // Two codecs, distinguished by prefix:
+        //   #z=  deflate-raw + base64url  (what we write; ~3x shorter)
+        //   #g=  base64 of the JSON       (the original; still read, so links
+        //                                  already in the wild keep working)
+        // Long URLs get mangled by chat clients and mailers, and the raw form
+        // grows to ~1.33x the source, so compression is what makes a
+        // medium-sized diagram shareable at all.
         function b64e(s) { return btoa(unescape(encodeURIComponent(s))); }
         function b64d(s) { return decodeURIComponent(escape(atob(s))); }
-        function writeHash() {
-            const payload = JSON.stringify({ m: sourceEl.value });
-            history.replaceState(null, '', '#g=' + b64e(payload));
+
+        function bytesToB64url(bytes) {
+            let bin = '';
+            // Chunked: String.fromCharCode blows the argument limit on big inputs.
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+            }
+            return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         }
-        function readHash() {
-            const m = location.hash.match(/#g=(.+)$/);
-            if (!m) return null;
-            try { return JSON.parse(b64d(m[1])); } catch (e) { return null; }
+        function b64urlToBytes(s) {
+            const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+            const out = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+            return out;
+        }
+        // CompressionStream is native everywhere we care about; where it isn't
+        // (or where 'deflate-raw' is unsupported), these throw and the caller
+        // falls back to the uncompressed codec.
+        async function deflateRaw(str) {
+            const stream = new Blob([new TextEncoder().encode(str)]).stream()
+                .pipeThrough(new CompressionStream('deflate-raw'));
+            return new Uint8Array(await new Response(stream).arrayBuffer());
+        }
+        async function inflateRaw(bytes) {
+            const stream = new Blob([bytes]).stream()
+                .pipeThrough(new DecompressionStream('deflate-raw'));
+            return await new Response(stream).text();
+        }
+
+        async function writeHash() {
+            const src = sourceEl.value;
+            const payload = JSON.stringify({ m: src });
+            let hash;
+            try { hash = '#z=' + bytesToB64url(await deflateRaw(payload)); }
+            catch (e) { hash = '#g=' + b64e(payload); }
+            // Compression is async, so a slow write from an earlier keystroke
+            // must not clobber the hash a newer one already put up.
+            if (sourceEl.value !== src) return;
+            history.replaceState(null, '', hash);
+        }
+        async function readHash() {
+            const z = location.hash.match(/#z=(.+)$/);
+            if (z) {
+                try { return JSON.parse(await inflateRaw(b64urlToBytes(z[1]))); } catch (e) { return null; }
+            }
+            const g = location.hash.match(/#g=(.+)$/);
+            if (g) {
+                try { return JSON.parse(b64d(g[1])); } catch (e) { return null; }
+            }
+            return null;
         }
         document.getElementById('share-btn').onclick = async () => {
-            writeHash();
+            await writeHash();   // must land before location.href is read
             try { await navigator.clipboard.writeText(location.href); toast('Link copied to clipboard'); }
             catch (e) { toast('Copy this URL from the address bar'); }
         };
@@ -594,7 +646,7 @@ c -> a : r3
 
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
-            const shared = readHash();
+            const shared = await readHash();
             sourceEl.value = shared && shared.m != null ? shared.m : EXAMPLES.flowchart;
 
             applyBtn.disabled = false;

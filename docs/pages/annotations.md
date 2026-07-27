@@ -60,6 +60,16 @@ C -> E
 
 Stacking directions combines them — `[below, right]` puts the target down-and-to-the-right.
 
+Each direction has a **`directly`** form — `directlyAbove`, `directlyBelow`,
+`directlyLeft`, `directlyRight` — which additionally pins the two nodes to a
+shared axis, so the target lands squarely on the source rather than merely on
+that side of it. `directions=[directlyBelow]` is `[below]` plus the vertical
+`align` you would otherwise write by hand:
+
+```text
+@orientation(selector=stands_for, directions=[directlyBelow])
+```
+
 ### cyclic
 
 Arrange the nodes of a cycle as a ring. `direction` is `clockwise` or
@@ -150,11 +160,76 @@ easiest thing to get wrong here:
   it's a selector-only relation, hidden from drawing, and `edgeStyle` never
   matches it.
 
-> **Note** — Directives map generically onto spytial-core's directive vocabulary:
-> an annotation `@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. The exact
-> keyword arguments for `size`, `icon`, `attribute`, and friends are Spytial
-> directive kwargs; the [spytial-core](https://github.com/sidprasad/spytial-core)
-> reference is authoritative for those. The four names above cover most diagrams.
+### Recipes
+
+Copy-paste, then swap the names. Throughout: **`rel`** is an edge label
+(`a -> b : rel`) and **`Person`** is a node sort (`a[Ann]:::Person`) — a class
+from `class a,b tag` works anywhere `Person` does.
+
+| to do this | write |
+|---|---|
+| draw `rel` dotted | `@edgeStyle(field=rel, lineStyle(pattern=dotted))` |
+| draw `rel` dashed | `@edgeStyle(field=rel, lineStyle(pattern=dashed))` |
+| colour `rel` | `@edgeStyle(field=rel, lineStyle(color=crimson))` |
+| thicken `rel` | `@edgeStyle(field=rel, lineStyle(weight=3))` |
+| drop `rel`'s label | `@edgeStyle(field=rel, showLabel=false)` |
+| restyle `rel`'s label | `@edgeStyle(field=rel, textStyle(size=small, color=gray))` |
+| style the **unlabeled** edges | `@edgeStyle(field=_, lineStyle(color=gray))` |
+| stop drawing `rel` entirely | `@hideField(field=rel)` |
+| tint a node's outline | `@atomStyle(selector=Person, borderStyle(color=steelblue, width=2))` |
+| fill a node's interior | `@atomStyle(selector=Person, fillStyle(color='#eef6ff'))` |
+| restyle a node's label | `@atomStyle(selector=Person, textStyle(size=large))` |
+| resize nodes | `@size(selector=Person, width=140, height=60)` |
+| hide nodes | `@hideAtom(selector=Person)` |
+
+One rule carries as many blocks as you want, so combine freely — a dotted,
+grey, unlabeled connector is a single line:
+
+```spytial-gdl
+concept[blood pressure] -> measure[BP@6mo] : stands_for
+
+@edgeStyle(field=stands_for, lineStyle(pattern=dotted, color='#94a3b8'), showLabel=false)
+@orientation(selector=stands_for, directions=[below])
+```
+
+Two names to keep straight, because they are the ones you reach for first:
+`edgeStyle` matches on **`field`** (the relation) and `atomStyle` on
+**`selector`** (a sort or class) — see the asymmetry note above. An `atomStyle`
+with no `selector` at all styles *every* node.
+
+### Directive reference
+
+Directives map generically onto spytial-core's vocabulary: an annotation
+`@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. That genericity is why
+every directive works with no per-directive code here — and why **spytial-gdl
+validates the [style blocks](#style-blocks) but not the other kwargs**. Misspell
+an argument and nothing reports it: the key rides through to core, which ignores
+what it doesn't recognise, and the diagram renders unstyled.
+
+So the argument names matter. These are the ones core accepts, keyed by
+directive (`?` = optional):
+
+| directive | arguments |
+|---|---|
+| `atomStyle` | `selector?` (absent = **every** node), `borderStyle(…)`, `fillStyle(…)`, `textStyle(…)` |
+| `edgeStyle` | `field`, `selector?`, `filter?`, `lineStyle(…)`, `textStyle(…)`, `showLabel?`, `hidden?` |
+| `size` | `selector`, `height`, `width` |
+| `icon` | `selector`, `path`, `showLabels?` |
+| `attribute` | `field`, `selector?`, `filter?`, `textStyle(…)` |
+| `tag` | `toTag`, `name`, `value`, `textStyle(…)` |
+| `hideField` | `field`, `selector?`, `filter?` |
+| `hideAtom` | `selector` |
+| `inferredEdge` | `selector`, `name`, `lineStyle(…)`, `textStyle(…)`, `draw?` |
+| `flag` | `name` — `hideDisconnected` or `hideDisconnectedBuiltIns` |
+| `projection` | `sig`, `orderBy?` |
+| `group` | `selector`, `name`, `addEdge(…)?`, `textStyle(…)` — or the field form `field`, `groupOn`, `addToGroup`, `selector?` |
+
+Note `showLabel` (singular) on `edgeStyle` against `showLabels` (plural) on
+`icon` — different directives, and the spellings don't cross over.
+
+> The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
+> authoritative — this table tracks its directive interfaces (verified against
+> `spytial-core@3`) rather than restating them.
 
 ## Style blocks
 
