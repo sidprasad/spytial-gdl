@@ -386,6 +386,45 @@ e -> f : s`);
     simple[0] && simple[0].value === 'above', simple[0] && simple[0].line);
 }
 
+// ── a two-way relation carries an alignment, never an order ─────────────────
+//
+// `catherine -> edgar : spouse` written both ways round is the normal way to
+// say that a relationship has no direction. An order over it asks for Catherine
+// to be left of Edgar and Edgar to be left of Catherine at once, and
+// spytial-core reports exactly that: `Constraint "a must be to the left of b"
+// conflicts with existing constraints`. Alignment is the one constraint in this
+// family that a two-way relation can carry.
+
+{
+  const data = dataFor(`a -> b : spouse
+b -> a : spouse
+p -> q : owns`);
+
+  const order = explainGroup({ kind: 'orientation', value: 'left', pairs: [['a', 'b']] }, data);
+  check('a two-way relation is never offered as an order',
+    !order.some((x) => x.selector === 'spouse'), order.map((x) => x.line).join(' | '));
+
+  const level = explainGroup({ kind: 'align', value: 'horizontal', pairs: [['a', 'b']] }, data);
+  check('but it is offered as an alignment',
+    level.some((x) => x.selector === 'spouse' && x.coverage === 1),
+    level.map((x) => x.line).join(' | '));
+
+  // A one-way relation is unaffected: this is a rule about the selector, not
+  // about the kind of demonstration.
+  const oneWay = explainGroup({ kind: 'orientation', value: 'left', pairs: [['p', 'q']] }, data);
+  check('a one-way relation still carries an order',
+    oneWay.some((x) => x.selector === 'owns'), oneWay.map((x) => x.line).join(' | '));
+
+  // The rule must not lean on the precision bar. An order can match at most half
+  // of a two-way relation, so it used to score 0.5 against a bar of 0.6 — and
+  // would have come back the moment anyone tuned that bar down.
+  const lowBar = explainGroup(
+    { kind: 'orientation', value: 'left', pairs: [['a', 'b']] }, data, { minCoverage: 0.1 }
+  );
+  check('and it stays rejected when the precision bar is lowered',
+    !lowBar.some((x) => x.selector === 'spouse'), lowBar.map((x) => x.line).join(' | '));
+}
+
 // ── one relation name per demonstrated pair ─────────────────────────────────
 //
 // An exact-match search over a single pair always finds something. Measured on

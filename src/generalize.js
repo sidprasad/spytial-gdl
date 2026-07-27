@@ -281,6 +281,21 @@ function satisfiedPairsFor(satisfied, group, symmetric) {
   return s;
 }
 
+// Does this selector hold a pair in both directions?
+//
+// A relation written both ways round — `catherine -> edgar : spouse` and
+// `edgar -> catherine : spouse` — is the normal way to say that a relationship
+// has no direction. Siblings and cousins come out the same way, and so does a
+// synthesized `~r.r - iden`.
+function holdsBothWays(pairs) {
+  const seen = new Set();
+  for (const [a, b] of pairs || []) seen.add(pairKey(a, b, false));
+  for (const [a, b] of pairs || []) {
+    if (a !== b && seen.has(pairKey(b, a, false))) return true;
+  }
+  return false;
+}
+
 export function explainGroup(group, data, opts = {}) {
   const symmetric = group.kind === 'align';
   const minCoverage = typeof opts.minCoverage === 'number' ? opts.minCoverage : MIN_COVERAGE;
@@ -291,6 +306,21 @@ export function explainGroup(group, data, opts = {}) {
     // A transposed selector under `align` is the same set as the untransposed
     // one, so scoring it would only produce a duplicate proposal.
     if (symmetric && cand.kind === 'transpose') continue;
+    // A SELECTOR THAT HOLDS BOTH WAYS ROUND CANNOT CARRY AN ORDER.
+    //
+    // `@orientation(selector=spouse, directions=[left])` over a two-way `spouse`
+    // asks for Catherine to be left of Edgar and Edgar to be left of Catherine
+    // at the same time. spytial-core reports it: `Constraint "a must be to the
+    // left of b" conflicts with existing constraints`. Alignment is the only
+    // constraint in this family that a two-way relation can carry, and that one
+    // is exact — `@align(selector=spouse, direction=horizontal)` solves.
+    //
+    // The precision score already refused these, but only by arithmetic: an
+    // order can match at most half of a two-way relation, so it scored 0.5
+    // against a bar of 0.6. Lowering MIN_COVERAGE to 0.5 for any other reason
+    // would have started offering constraints that cannot hold. This states the
+    // rule instead of relying on the gap.
+    if (!symmetric && holdsBothWays(cand.pairs)) continue;
     const s = scoreAgainst(group.pairs, cand.pairs, symmetric, already);
     if (s.covered === 0 || s.coverage < minCoverage) continue;
     const { selector, value } = normalize(cand.selector, group.kind, group.value);
