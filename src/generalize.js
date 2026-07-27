@@ -215,12 +215,30 @@ export function scoreAgainst(demoPairs, candidatePairs, symmetric, satisfiedPair
 
 // ── Annotation emission ─────────────────────────────────────────────────────
 
+// Anything that makes `~x` mean something other than "the transpose of the whole
+// of x": an operator, a paren, or whitespace after the leading `~`.
+const COMPOUND = /[\s().~^*+&-]/;
+
+// Only a transpose of a bare *name* can be rewritten away.
+//
 // `@orientation(selector=~R, directions=[above])` and
-// `@orientation(selector=R, directions=[below])` are the same claim. Normalizing
-// the transpose away keeps the proposal in the form a person would have typed,
-// and makes the two readings of one demonstration collapse to one suggestion.
+// `@orientation(selector=R, directions=[below])` are the same claim, so
+// normalizing keeps the proposal in the form a person would have typed and
+// collapses the two readings of one demonstration into one suggestion. That
+// rewrite is sound because `~` there applies to the entire selector.
+//
+// It is NOT sound for a compound expression, and synthesis returns those. The
+// sibling selector `~parentOf.parentOf` parses as `(~parentOf).parentOf` — the
+// `~` binds to the first name only. Stripping it yields `parentOf.parentOf`,
+// which is the *grandparent* relation, and for an orientation the direction gets
+// reversed on top of that. The annotation would then constrain a different set
+// of nodes in the opposite direction, while looking entirely reasonable.
+function isSimpleTranspose(selector) {
+  return selector.startsWith('~') && selector.length > 1 && !COMPOUND.test(selector.slice(1));
+}
+
 function normalize(selector, kind, value) {
-  if (!selector.startsWith('~')) return { selector, value };
+  if (!isSimpleTranspose(selector)) return { selector, value };
   const bare = selector.slice(1);
   if (kind === 'align') return { selector: bare, value };
   return { selector: bare, value: OPPOSITE[value] || value };
@@ -345,7 +363,20 @@ const DIRECTLY = {
 // only partly, in which case the plain form is the honest suggestion and the
 // merged one over-commits. Scoring them side by side and letting `dropEntailed`
 // remove whichever is genuinely redundant keeps that judgment in one place.
-function mergeDirectly(proposals) {
+//
+// THE MERGED SCORE IS MEASURED, NOT ESTIMATED. Both halves are claims about the
+// selector's whole denotation, so combining them is sound — but the conjunction
+// holds exactly where *both* halves hold, which `min(a, b)` only bounds from
+// above. Two halves at 0.7 whose failures fall on different pairs leave the
+// conjunction true of 0.4 of the denotation while `min` reports 0.7. Worse, an
+// ordering demonstrated on one set of pairs and an alignment demonstrated on a
+// disjoint set would merge into a `directly*` line that nothing demonstrated at
+// all. So intersect the sets and count.
+//
+// The orientation side supplies the denominator and the keys: `directlyBelow`
+// applies to each *ordered* pair of the selector. The alignment side is
+// symmetric, so its pairs are matched unordered.
+function mergeDirectly(proposals, minCoverage) {
   const aligns = proposals.filter((p) => p.kind === 'align');
   const merged = [];
 
@@ -355,14 +386,40 @@ function mergeDirectly(proposals) {
       (a) => a.selector === p.selector && DIRECTLY[`${p.value}|${a.value}`]
     );
     if (!partner) continue;
+
+    const alignHolds = new Set(
+      [...partner.coveredPairs, ...partner.consistentPairs].map(([a, b]) => pairKey(a, b, true))
+    );
+    const alignDemonstrated = new Set(partner.coveredPairs.map(([a, b]) => pairKey(a, b, true)));
+    const bothHold = ([a, b]) => alignHolds.has(pairKey(a, b, true));
+
+    // The selector's full denotation, as the orientation pass keyed it, and the
+    // part of it the ordering holds on — `predicts` is precisely the rest.
+    const orientationHolds = [...p.coveredPairs, ...p.consistentPairs];
+    const denotation = [...orientationHolds, ...p.predicts];
+    const holds = orientationHolds.filter(bothHold);
+    const demonstrated = p.coveredPairs.filter(([a, b]) => alignDemonstrated.has(pairKey(a, b, true)));
+
+    const coverage = denotation.length === 0 ? 0 : holds.length / denotation.length;
+    // Nothing demonstrated both facts about the same pair, or the conjunction is
+    // not well enough supported to be worth offering. Either way the two halves
+    // remain on their own — this only ever withholds the merged line.
+    if (demonstrated.length === 0 || coverage < minCoverage) continue;
+
+    const holdsKeys = new Set(holds.map(([a, b]) => pairKey(a, b, false)));
     const value = DIRECTLY[`${p.value}|${partner.value}`];
     merged.push({
       ...p,
       value,
       line: emitLine('orientation', p.selector, value),
-      // A conjunction is only as well-supported as its weaker half.
-      coverage: Math.min(p.coverage, partner.coverage),
-      covered: Math.min(p.covered, partner.covered),
+      coverage,
+      covered: demonstrated.length,
+      coveredPairs: demonstrated,
+      consistent: holds.length - demonstrated.length,
+      consistentPairs: holds.filter(([a, b]) => !alignDemonstrated.has(pairKey(a, b, true))),
+      // Accepting moves every pair of the denotation where the conjunction does
+      // not already hold.
+      predicts: denotation.filter(([a, b]) => !holdsKeys.has(pairKey(a, b, false))),
       mergedFrom: [p.line, partner.line],
     });
   }
@@ -438,7 +495,8 @@ export function generalize(groups, data, opts = {}) {
   }
 
   // One line is one suggestion, however many readings produced it.
+  const minCoverage = typeof opts.minCoverage === 'number' ? opts.minCoverage : MIN_COVERAGE;
   const byLine = new Map();
-  for (const p of mergeDirectly(all).sort(rank)) if (!byLine.has(p.line)) byLine.set(p.line, p);
+  for (const p of mergeDirectly(all, minCoverage).sort(rank)) if (!byLine.has(p.line)) byLine.set(p.line, p);
   return dropEntailed([...byLine.values()]).sort(rank);
 }

@@ -325,6 +325,81 @@ d -> a : next`);
     got && got.flat().includes('p'), got && JSON.stringify(got));
 }
 
+// ── a synthesized selector is not a transposed name ─────────────────────────
+//
+// `~R` and `R` denote transposed sets, so `@orientation(~R, [above])` can be
+// rewritten as `@orientation(R, [below])`. That rewrite is only valid when `~`
+// applies to the whole selector. Synthesis returns expressions where it does not.
+
+{
+  const data = dataFor(`p -> a : parentOf\np -> b : parentOf`);
+  const group = { kind: 'orientation', value: 'below', pairs: [['a', 'b']] };
+
+  // `~parentOf.parentOf` parses as `(~parentOf).parentOf` — siblings. Strip the
+  // `~` and it becomes `parentOf.parentOf`, which is grandparents, and the
+  // direction flips on top of that.
+  const compound = explainGroup(group, data, { synthesize: () => '~parentOf.parentOf' });
+  check('a compound synthesized selector is emitted unchanged',
+    compound[0] && compound[0].selector === '~parentOf.parentOf',
+    compound[0] && compound[0].line);
+  check('and its direction is not reversed',
+    compound[0] && compound[0].value === 'below', compound[0] && compound[0].line);
+
+  // A synthesized *bare* transpose is still worth normalizing: there the `~`
+  // really does apply to everything.
+  const simple = explainGroup(group, data, { synthesize: () => '~parentOf' });
+  check('a bare transpose is still normalized away',
+    simple[0] && simple[0].selector === 'parentOf', simple[0] && simple[0].line);
+  check('and that one does flip direction',
+    simple[0] && simple[0].value === 'above', simple[0] && simple[0].line);
+}
+
+// ── merging into `directly*` is scored, not assumed ─────────────────────────
+
+{
+  // One selector, three pairs. The ordering holds on two of them and the
+  // alignment holds on two — but not the same two, so the conjunction holds on
+  // exactly one. Scoring the merge as min(2/3, 2/3) would clear the bar; the
+  // truth is 1/3 and does not.
+  const data = dataFor(`a -> b : r\nc -> d : r\ne -> f : r`);
+  const groups = [
+    { kind: 'orientation', value: 'below', pairs: [['a', 'b']] },
+    { kind: 'align', value: 'vertical', pairs: [['a', 'b']] },
+  ];
+  const satisfied = [
+    { kind: 'orientation', value: 'below', a: 'c', b: 'd' },   // ordering also holds here
+    { kind: 'align', value: 'vertical', a: 'e', b: 'f' },      // alignment holds somewhere else
+  ];
+  const props = generalize(groups, data, { satisfied });
+  const lines = props.map((p) => p.line);
+
+  check('both halves are proposed on their own',
+    lines.includes('@orientation(selector=r, directions=[below])')
+      && lines.includes('@align(selector=r, direction=vertical)'), lines.join(' | '));
+  check('but they do not merge when the conjunction is unsupported',
+    !lines.some((l) => /directlyBelow/.test(l)), lines.join(' | '));
+}
+
+{
+  // The same shape, with the two halves holding on the same pairs. Now the
+  // conjunction really does hold, and the merged line is the better suggestion.
+  const data = dataFor(`a -> b : r\nc -> d : r`);
+  const groups = [
+    { kind: 'orientation', value: 'below', pairs: [['a', 'b']] },
+    { kind: 'align', value: 'vertical', pairs: [['a', 'b']] },
+  ];
+  const satisfied = [
+    { kind: 'orientation', value: 'below', a: 'c', b: 'd' },
+    { kind: 'align', value: 'vertical', a: 'c', b: 'd' },
+  ];
+  const props = generalize(groups, data, { satisfied });
+  const directly = props.find((p) => /directlyBelow/.test(p.line));
+  check('a supported conjunction still merges', !!directly, props.map((p) => p.line).join(' | '));
+  check('and it is scored on the pairs where both hold',
+    directly && directly.coverage === 1 && directly.covered === 1,
+    directly && `coverage ${directly.coverage} covered ${directly.covered}`);
+}
+
 {
   // Nothing to synthesize for, nothing spent.
   const data = dataFor(`x -> y : rel\nz -> w : rel`);

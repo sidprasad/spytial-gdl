@@ -90,9 +90,21 @@ const dataFor = (src) => {
   const obs = observeArrangement(el);
   el.drag('b', 100, 0);
 
+  check('a drag leaves a baseline to compare against', obs.summary().hasBaseline === true);
+
   obs.rebase();
   check('rebase drops the baseline', obs.baseline === null);
   check('rebase keeps the marks', obs.marks.has('b'));
+
+  // The window this opens is what `setMarkStatus` keys the Infer button on. A
+  // tally without a baseline means the solver has just redrawn and the user has
+  // not touched it since — so there is something to *report* but nothing to
+  // infer from, and reading the fresh layout as a demonstration would suggest
+  // whatever the solver happened to do.
+  check('rebase leaves a tally with nothing to infer from',
+    obs.summary().marked > 0 && obs.summary().hasBaseline === false);
+  check('and a fresh drag restores the baseline',
+    (el.drag('b', 0, 100), obs.summary().hasBaseline === true));
 
   obs.reset();
   check('reset drops the marks too', obs.marks.size === 0);

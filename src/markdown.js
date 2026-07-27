@@ -588,7 +588,14 @@ function buildDevice(doc, opts, height, editable) {
     }
     markStatus.style.display = '';
     markStatus.textContent = `${marked} moved · ${s.explained || 0} explained`;
-    if (inferBtn) inferBtn.style.display = '';
+    // Inference needs a baseline to subtract, and there is a window where the
+    // tally exists without one: `rebase()` drops the baseline after every
+    // re-render — the solver has produced a new arrangement, so the old
+    // counterfactual is meaningless — while keeping the record of what the user
+    // moved. Offering Infer in that window would read the *solver's* fresh
+    // layout as the demonstration and suggest whatever it happened to do. The
+    // next drag captures a baseline and the button comes back.
+    if (inferBtn) inferBtn.style.display = s.hasBaseline ? '' : 'none';
   };
 
   if (srcTextarea) {
