@@ -45,6 +45,7 @@ import { relationalize } from '../src/relationalize.js';
 import { extractAnnotations } from '../src/annotations.js';
 import { abduce } from '../src/abduce.js';
 import { generalize, explainGroup } from '../src/generalize.js';
+import { proposeCycles } from '../src/cycles.js';
 import { makeSynthesizer, synthesisAvailable } from '../src/synthesize.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -428,6 +429,99 @@ const instanceFor = (src) => {
   // would be re-read as something else entirely.
   check('the derived selector survives the YAML round trip',
     specYaml && specYaml.includes('iden'), specYaml);
+}
+
+// ── cyclic: the same round trip, for the directive no pair can express ──────
+//
+// This section earns its keep by settling one question that reading the source
+// cannot: whether core's "clockwise" and cycles.js's "clockwise" are the same
+// word. Core compiles `@cyclic` by placing member i of the fragment at
+// `(R cos θ, R sin θ)` with θ increasing, then reading those as screen
+// coordinates — so for a 4-ring it emits `left(b,a)` and `top(a,b)`, putting the
+// first member at 3 o'clock and the second at 6. cycles.js measures the turn
+// with `atan2(y-cy, x-cx)`, which increases in that same direction because y
+// runs downward. The two agree. If either side ever flips, the direction
+// assertions below fail rather than the feature silently proposing rings that
+// come back mirrored.
+
+const cyclicCases = [
+  {
+    name: 'a clockwise ring',
+    src: `a -> b : next
+b -> c : next
+c -> d : next
+d -> a : next
+
+@cyclic(selector=next, direction=clockwise)`,
+    expect: '@cyclic(selector=next, direction=clockwise)',
+  },
+  {
+    name: 'a counterclockwise ring',
+    src: `a -> b : next
+b -> c : next
+c -> d : next
+d -> a : next
+
+@cyclic(selector=next, direction=counterclockwise)`,
+    expect: '@cyclic(selector=next, direction=counterclockwise)',
+  },
+  {
+    name: 'a five-node ring',
+    src: `a -> b : next
+b -> c : next
+c -> d : next
+d -> e : next
+e -> a : next
+
+@cyclic(selector=next, direction=clockwise)`,
+    expect: '@cyclic(selector=next, direction=clockwise)',
+  },
+  {
+    name: 'an open path arranged as a ring',
+    src: `a -> b : step
+b -> c : step
+c -> d : step
+
+@cyclic(selector=step, direction=clockwise)`,
+    expect: '@cyclic(selector=step, direction=clockwise)',
+  },
+];
+
+for (const c of cyclicCases) {
+  const { data, layout, error } = compile(c.src);
+  if (!layout || error) { note(`${c.name} — spec did not solve (${error || 'no layout'})`); continue; }
+
+  const positions = realize(layout);
+  if (!positions) { note(`${c.name} — constraints could not be layered`); continue; }
+
+  const problems = verify(layout, positions);
+  if (problems.length) { note(`${c.name} — realization does not satisfy its own spec: ${problems.join('; ')}`); continue; }
+
+  const got = proposeCycles(positions, null, data, {}).map((p) => p.line);
+  check(`${c.name} — recovers ${c.expect}`, got.includes(c.expect),
+    `\n     got:\n     ${got.join('\n     ') || '(nothing)'}`);
+}
+
+{
+  // The false-positive guard, on real solver output rather than hand-placed
+  // points. A chain laid out left to right is four nodes and three edges, and
+  // four points are nearly always near *some* circle — so an arrangement that
+  // was never a ring must not read as one.
+  const { data, layout, error } = compile(`a -> b : next
+b -> c : next
+c -> d : next
+
+@orientation(selector=next, directions=[right])`);
+  if (!layout || error) { note(`a chain is not a ring — spec did not solve`); }
+  else {
+    const positions = realize(layout);
+    if (!positions) note('a chain is not a ring — constraints could not be layered');
+    else {
+      const got = proposeCycles(positions, null, data, {}).map((p) => p.line);
+      check('a chain laid out by the solver is not a ring', got.length === 0,
+        `\n     got:\n     ${got.join('\n     ')}`);
+    }
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped`);

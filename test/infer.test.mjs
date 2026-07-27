@@ -259,6 +259,83 @@ e2:::Earnshaw -> l2:::Linton : knows
 
 check('emitLine writes orientation', emitLine('orientation', 'parentOf', 'below') === '@orientation(selector=parentOf, directions=[below])');
 check('emitLine writes align', emitLine('align', 'spouse', 'horizontal') === '@align(selector=spouse, direction=horizontal)');
+check('emitLine writes cyclic', emitLine('cyclic', 'next', 'clockwise') === '@cyclic(selector=next, direction=clockwise)');
+
+// ── the synthesis budget ────────────────────────────────────────────────────
+//
+// A synthesis search costs the same whether it hits or misses, and a miss has to
+// exhaust the grammar — ~30s at depth 3, measured. The groups from one gesture
+// are readings of the same thing, so running the search per group multiplies
+// that for no new information. These use a fake synthesizer: what is under test
+// is how often `generalize` reaches for it and with what, not what core returns.
+
+{
+  // Four nodes dragged into a ring. No named relation explains any reading of
+  // it, so every group falls through to synthesis — which is exactly the case
+  // that froze the page for over two minutes.
+  const data = dataFor(`a -> b : next
+b -> c : next
+c -> d : next
+d -> a : next`);
+  const ring = [
+    { id: 'a', x: 231.5, y: 270 }, { id: 'b', x: 71.5, y: 430 },
+    { id: 'c', x: -88.5, y: 270 }, { id: 'd', x: 71.5, y: 110 },
+  ];
+  const column = [
+    { id: 'a', x: 93, y: 30 }, { id: 'b', x: 50, y: 190 },
+    { id: 'c', x: 50, y: 350 }, { id: 'd', x: 93, y: 510 },
+  ];
+  const ev = abduce(ring, { baseline: column, marks: new Set(['a', 'b', 'c', 'd']) });
+  check('a ring produces several unexplainable groups', ev.groups.length > 1, String(ev.groups.length));
+
+  const asked = [];
+  const fake = (pairs) => { asked.push(pairs); return null; };
+  generalize(ev.groups, data, { satisfied: ev.satisfied, synthesize: fake });
+  check('synthesis is attempted once per demonstration, not once per group',
+    asked.length === 1, `attempted ${asked.length} times for ${ev.groups.length} groups`);
+}
+
+{
+  // The one attempt goes to the smallest group: a short expression is likelier
+  // to denote three pairs exactly than nine, and the search costs the same
+  // either way.
+  const data = dataFor(`a -> b : r`);
+  const groups = [
+    { kind: 'orientation', value: 'left', pairs: [['a', 'b'], ['b', 'c'], ['c', 'd']] },
+    { kind: 'orientation', value: 'below', pairs: [['a', 'c']] },
+  ];
+  let got = null;
+  generalize(groups, data, { synthesize: (pairs) => { got = pairs; return null; } });
+  check('the smallest group gets the attempt',
+    got && got.length === 1, got && JSON.stringify(got));
+}
+
+{
+  // Tie on size: prefer the alignment. The derived relations worth synthesizing
+  // — siblings, cousins — are symmetric, and `explainGroup` expands a symmetric
+  // target to both directions, so the pair count doubles on the way through.
+  const data = dataFor(`a -> b : r`);
+  const groups = [
+    { kind: 'orientation', value: 'left', pairs: [['x', 'y']] },
+    { kind: 'align', value: 'horizontal', pairs: [['p', 'q']] },
+  ];
+  let got = null;
+  generalize(groups, data, { synthesize: (pairs) => { got = pairs; return null; } });
+  check('a tie goes to the alignment',
+    got && got.flat().includes('p'), got && JSON.stringify(got));
+}
+
+{
+  // Nothing to synthesize for, nothing spent.
+  const data = dataFor(`x -> y : rel\nz -> w : rel`);
+  let called = 0;
+  generalize(
+    [{ kind: 'orientation', value: 'below', pairs: [['x', 'y'], ['z', 'w']] }],
+    data,
+    { synthesize: () => { called++; return null; } }
+  );
+  check('a named relation still spends nothing', called === 0, `called ${called} times`);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

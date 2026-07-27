@@ -26,11 +26,13 @@ export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, ex
 
 // Constraint inference — the layout → spec direction. `abduce` reads a hand-made
 // arrangement as qualitative predicates, `generalize` names the relation that
-// explains them, and `observeArrangement` wires both to a live diagram. All three
-// are optional: nothing in the render path calls them, and they add no
-// constraints, move no nodes, and touch neither the spec nor spytial-core.
+// explains them, `cycles` reads the one thing no pair can express, and
+// `observeArrangement` wires them all to a live diagram. Every part is optional:
+// nothing in the render path calls them, and they add no constraints, move no
+// nodes, and touch neither the spec nor spytial-core.
 export { abduce, predicates, spatialScale, epsilonFor } from './abduce.js';
-export { generalize, explainGroup, emitLine } from './generalize.js';
+export { generalize, explainGroup, emitLine, rank } from './generalize.js';
+export { proposeCycles, detectCycles, ringOrder, windingOf } from './cycles.js';
 export { observeArrangement } from './observe.js';
 export { makeSynthesizer, synthesisAvailable } from './synthesize.js';
 

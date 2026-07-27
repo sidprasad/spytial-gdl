@@ -728,7 +728,17 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         const observer = observeArrangement(graphEl, {
           onChange: (obs) => ui.setMarkStatus(obs.summary()),
         });
-        const inferOpts = opts.infer && typeof opts.infer === 'object' ? opts.infer : {};
+        // Interactive defaults. `maxDepth: 2` is the important one: a synthesis
+        // search that finds nothing must exhaust the grammar, which is ~30s at
+        // depth 3 and under a second at depth 2, and nothing can interrupt it
+        // because it is a synchronous call into core. Depth 2 reaches joins and
+        // closures (`_links._links`, `^r`); it does not reach the symmetric
+        // derived relations like siblings (`~r.r - iden`), so an embedder who
+        // wants those — and can afford the wait — passes `infer: {maxDepth: 3}`.
+        const inferOpts = {
+          maxDepth: 2,
+          ...(opts.infer && typeof opts.infer === 'object' ? opts.infer : {}),
+        };
 
         ui.setInfer(() => {
           let value = null;
@@ -749,19 +759,21 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           // tail is the least consistent and least explanatory of the set.
           const shown = proposals.slice(0, inferOpts.maxSuggestions || 5);
 
+          // Say plainly when a suggestion reaches past what was shown and would
+          // actually move something: that generalization is the point, and also
+          // the one thing worth checking before accepting. Pairs the drawing
+          // already honours are not worth mentioning — accepting changes nothing
+          // about them. A ring is counted in nodes rather than pairs, because
+          // "covers 5" is not what a person sees when they look at one.
+          const note = (p) => {
+            if (p.kind === 'cyclic') return `${p.members.length}-node ring, ${p.value}`;
+            return p.predicts.length
+              ? `covers ${p.covered}, would also move ${p.predicts.length}`
+              : `covers ${p.covered}`;
+          };
+
           ui.setSuggestions(
-            shown.map((p) => ({
-              line: p.line,
-              proposal: p,
-              // Say plainly when a suggestion reaches past what was shown and
-              // would actually move something: that generalization is the point,
-              // and also the one thing worth checking before accepting. Pairs the
-              // drawing already honours are not worth mentioning — accepting
-              // changes nothing about them.
-              note: p.predicts.length
-                ? `covers ${p.covered}, would also move ${p.predicts.length}`
-                : `covers ${p.covered}`,
-            })),
+            shown.map((p) => ({ line: p.line, proposal: p, note: note(p) })),
             async (item) => {
               // Credit the marks this explains *before* applying: the re-render
               // rebases the baseline, and the tally should survive it.

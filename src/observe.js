@@ -26,7 +26,8 @@
 // the first thing to add when the renderer can report a node click.
 
 import { abduce } from './abduce.js';
-import { generalize } from './generalize.js';
+import { generalize, rank } from './generalize.js';
+import { proposeCycles } from './cycles.js';
 import { makeSynthesizer } from './synthesize.js';
 
 /** Events the renderer already dispatches; we only listen. */
@@ -182,14 +183,26 @@ export function observeArrangement(graphEl, opts = {}) {
           ? options.synthesize
           : makeSynthesizer(readInstance(graphEl), options);
 
-      const proposals = data
+      const pairwise = data
         ? generalize(evidence.groups, data, {
             ...options,
             satisfied: evidence.satisfied,
             synthesize,
           })
         : [];
-      record('propose', { groups: evidence.groups.length, proposals: proposals.length });
+
+      // `@cyclic` is abduced separately, because a ring is not a pairwise fact
+      // and so cannot come out of `evidence.groups` however the pairs are
+      // scoped. It reads the arrangement directly and diffs against the same
+      // baseline, then ranks into the same list. See cycles.js.
+      const rings = proposeCycles(positions, baseline, data, { ...options, marks });
+      const proposals = [...rings, ...pairwise].sort(rank);
+
+      record('propose', {
+        groups: evidence.groups.length,
+        rings: rings.length,
+        proposals: proposals.length,
+      });
       return { evidence, proposals };
     },
 

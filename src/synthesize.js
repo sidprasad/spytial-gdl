@@ -51,6 +51,25 @@ export function synthesisAvailable() {
 // worst combination to show someone — so it is dropped rather than ranked low.
 const MAX_EXPRESSION_LENGTH = 60;
 
+// WHAT A SEARCH COSTS, MEASURED. The BFS returns the moment it matches, so a
+// hit is cheap and a miss is not: a miss has to exhaust the whole grammar to
+// that depth. On a four-node graph —
+//
+//   depth 1   159ms (miss)
+//   depth 2   692ms (miss)     ·  2ms  hit (`_links._links`)
+//   depth 3   ~30s  (miss)     ·  1.6s hit (`(~(_links)._links - iden)`)
+//
+// and the ~30s barely moves with graph size, because it is the grammar's
+// combinatorics rather than the data. Nothing can interrupt it — it is a
+// synchronous call into core — so the only real lever is not starting it.
+//
+// Two things follow. `generalize` spends at most one attempt per demonstration
+// (see `synthesisTarget` there). And the interactive path in markdown.js caps
+// the depth at 2, where the worst case is under a second; a caller doing batch
+// work, or one that knows the target is a derived relation, raises it. The
+// default here stays 3 because the library default should be the capable one
+// and the *interactive* caller is the one with a latency budget.
+//
 // Build a `(pairs) => selectorText | null` for one data instance.
 //
 //   dataInstance — the LIVE IDataInstance (not a reified {atoms, relations});
@@ -75,8 +94,19 @@ export function makeSynthesizer(dataInstance, opts = {}) {
 
   const maxDepth = typeof opts.maxDepth === 'number' ? opts.maxDepth : 3;
 
+  // A miss is the expensive case and clicking Infer twice on the same
+  // arrangement asks for it twice. Remember both outcomes, keyed on the target.
+  const memo = new Map();
+
   return function synthesize(pairs) {
     if (!Array.isArray(pairs) || pairs.length === 0) return null;
+
+    // Two delimiters, both outside anything a node id can contain: `\0` inside a
+    // pair, `\x01` between pairs. Joining with '' instead would let {a\0bc, \0d}
+    // and {a\0b, c\0d} produce the same key and share a memo entry.
+    const key = pairs.map(([a, b]) => `${a}\0${b}`).sort().join('\x01');
+    if (memo.has(key)) return memo.get(key);
+    const remember = (v) => { memo.set(key, v); return v; };
 
     // The synthesizer wants atom objects, not ids. An id with no atom behind it
     // means the arrangement has drifted from the data (a node deleted mid-session),
@@ -85,7 +115,7 @@ export function makeSynthesizer(dataInstance, opts = {}) {
     for (const [a, b] of pairs) {
       const x = byId.get(a);
       const y = byId.get(b);
-      if (!x || !y) return null;
+      if (!x || !y) return remember(null);
       atomPairs.push([x, y]);
     }
 
@@ -93,11 +123,11 @@ export function makeSynthesizer(dataInstance, opts = {}) {
     try {
       expr = core.synthesizeBinarySelector([{ pairs: atomPairs, dataInstance }], maxDepth);
     } catch (_) {
-      return null;   // no expression in the grammar denotes exactly this set
+      return remember(null);   // no expression in the grammar denotes exactly this set
     }
 
     const text = typeof expr === 'string' ? expr.trim() : '';
-    if (!text || text.length > MAX_EXPRESSION_LENGTH) return null;
-    return text;
+    if (!text || text.length > MAX_EXPRESSION_LENGTH) return remember(null);
+    return remember(text);
   };
 }
