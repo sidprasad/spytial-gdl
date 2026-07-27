@@ -118,6 +118,9 @@
         }
         .preview-bar .hint { display: inline-flex; align-items: center; gap: 5px; }
         .preview-body { flex: 1; position: relative; min-height: 0; padding: 14px; }
+        /* The demonstration band sits under the diagram and never squeezes it. */
+        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; }
+        #demo-slot[hidden] { display: none; }
         .canvas-wrap {
             position: absolute; inset: 14px; border-radius: var(--radius);
             background: var(--canvas); border: 1px solid var(--border);
@@ -234,6 +237,8 @@
                     <div id="error-messages"></div>
                 </div>
             </div>
+            <!-- Show, don't tell: demonstrate.js renders the whole flow in here. -->
+            <div id="demo-slot"></div>
         </section>
     </main>
 
@@ -247,7 +252,7 @@
     <script src="https://cdn.jsdelivr.net/npm/spytial-core@4/dist/components/react-component-integration.global.js"></script>
 
     <script type="module">
-        import { renderSpytialGdl, renderSpytialGdlEditable } from '../src/index.js';
+        import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
 
         // ─── Examples (one combined source: graph + inline @annotations) ──────
         // Selectors below match what relationalize.js emits:
@@ -328,6 +333,13 @@ c -> a : r3
         let editUnsub = null;    // its onChange unsubscribe
         let valueOpen = false;
 
+        // Show, don't tell. Lives in View, where the diagram is the solver's own
+        // answer and rearranging it is a way of disagreeing with it. Edit mode is
+        // for changing the graph, not the layout, so the band is hidden there.
+        const demoSlot = document.getElementById('demo-slot');
+        let demo = null;
+        let lastData = null;     // { atoms, relations } from the last render
+
         function setStatus(msg, kind = 'info') {
             statusEl.className = `status ${kind}`;
             statusEl.innerHTML = `<span class="pulse"></span>${msg}`;
@@ -350,6 +362,31 @@ c -> a : r3
             sr.appendChild(style);
         }
 
+        // ─── Show, don't tell ───────────────────────────────────────────
+        // Append an accepted annotation to the notation and re-render, so it is
+        // indistinguishable from one you typed — the textarea stays the source of
+        // truth. Matches what the markdown blocks do.
+        async function appendAnnotation(line) {
+            const body = sourceEl.value.replace(/\s+$/, '');
+            sourceEl.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+            await apply();
+            toast('Added ' + line);
+        }
+
+        // (Re)mount the band. The palette is baked in at mount time, so a theme
+        // flip rebuilds it; that also means this has to survive being called with
+        // a demonstration in progress, which `detach` handles.
+        function mountDemo() {
+            if (demo) { try { demo.detach(); } catch (e) {} }
+            demoSlot.hidden = mode !== 'view';
+            demo = mountDemonstration(document, demoSlot, graphEl, {
+                dark: document.documentElement.getAttribute('data-theme') === 'dark',
+                infer: { maxDepth: 2 },
+                getData: () => lastData,
+                onApply: appendAnnotation,
+            });
+        }
+
         // ─── Theme ──────────────────────────────────────────────────────
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -358,6 +395,7 @@ c -> a : r3
             inputGraphEl.setAttribute('theme', t);
             document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
             try { localStorage.setItem('spytial-gdl-theme', theme); } catch (e) {}
+            if (demo) mountDemo();
         }
         document.getElementById('theme-btn').onclick = () => {
             const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -474,6 +512,16 @@ c -> a : r3
 
             if (result.applied) { fitView(); tidyCanvasChrome(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
 
+            // Feed the demonstration mode. `data` is what generalization names a
+            // relation from; `instance` is what selector synthesis evaluates
+            // against, and observe.js looks for it under `getDataInstance()` —
+            // the same method the editable element exposes natively, so giving
+            // the read-only one the same method is all this needs. A re-render
+            // replaces the arrangement, so any demonstration in flight is void.
+            lastData = result.data || null;
+            if (result.instance) graphEl.getDataInstance = () => result.instance;
+            if (demo) demo.cancel(); else mountDemo();
+
             if (result.reason) {
                 setStatus(result.reason, 'error');
             } else if (result.annotationErrors && result.annotationErrors.length) {
@@ -534,6 +582,8 @@ c -> a : r3
             mode = 'edit';
             setModeButtons();
             teardownEdit();
+            if (demo) demo.cancel();
+            demoSlot.hidden = true;
             window.clearAllErrors && window.clearAllErrors();
             document.getElementById('conflict-hint').style.display = 'none';
             graphEl.hidden = true; inputGraphEl.hidden = false;
@@ -570,6 +620,7 @@ c -> a : r3
             inputGraphEl.hidden = true; graphEl.hidden = false;
             sourceEl.readOnly = false; sourceEl.classList.remove('mirror');
             syncBtn.hidden = true; applyBtn.style.display = '';
+            demoSlot.hidden = false;
             apply();
         }
 
