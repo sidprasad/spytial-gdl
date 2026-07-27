@@ -60,6 +60,16 @@ C -> E
 
 Stacking directions combines them — `[below, right]` puts the target down-and-to-the-right.
 
+Each direction has a **`directly`** form — `directlyAbove`, `directlyBelow`,
+`directlyLeft`, `directlyRight` — which additionally pins the two nodes to a
+shared axis, so the target lands squarely on the source rather than merely on
+that side of it. `directions=[directlyBelow]` is `[below]` plus the vertical
+`align` you would otherwise write by hand:
+
+```text
+@orientation(selector=stands_for, directions=[directlyBelow])
+```
+
 ### cyclic
 
 Arrange the nodes of a cycle as a ring. `direction` is `clockwise` or
@@ -150,11 +160,58 @@ easiest thing to get wrong here:
   it's a selector-only relation, hidden from drawing, and `edgeStyle` never
   matches it.
 
-> **Note** — Directives map generically onto spytial-core's directive vocabulary:
-> an annotation `@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. The exact
-> keyword arguments for `size`, `icon`, `attribute`, and friends are Spytial
-> directive kwargs; the [spytial-core](https://github.com/sidprasad/spytial-core)
-> reference is authoritative for those. The four names above cover most diagrams.
+### Directive reference
+
+Directives map generically onto spytial-core's vocabulary: an annotation
+`@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. That genericity is why
+every directive works with no per-directive code here — and why **spytial-gdl
+validates the [style blocks](#style-blocks) but not the other kwargs**. Misspell
+`showLabel` and nothing reports it: the key rides through to core, which ignores
+what it doesn't recognise, and the diagram renders unstyled.
+
+So the argument names matter. These are the ones core accepts, keyed by
+directive (`?` = optional):
+
+| directive | arguments |
+|---|---|
+| `atomStyle` | `selector?` (absent = **every** node), `borderStyle(…)`, `fillStyle(…)`, `textStyle(…)` |
+| `edgeStyle` | `field`, `selector?`, `filter?`, `lineStyle(…)`, `textStyle(…)`, `showLabel?`, `hidden?` |
+| `size` | `selector`, `height`, `width` |
+| `icon` | `selector`, `path`, `showLabels?` |
+| `attribute` | `field`, `selector?`, `filter?`, `textStyle(…)` |
+| `tag` | `toTag`, `name`, `value`, `textStyle(…)` |
+| `hideField` | `field`, `selector?`, `filter?` |
+| `hideAtom` | `selector` |
+| `inferredEdge` | `selector`, `name`, `lineStyle(…)`, `textStyle(…)`, `draw?` |
+| `flag` | `name` — `hideDisconnected` or `hideDisconnectedBuiltIns` |
+| `projection` | `sig`, `orderBy?` |
+| `group` | `selector`, `name`, `addEdge(…)?`, `textStyle(…)` — or the field form `field`, `groupOn`, `addToGroup`, `selector?` |
+
+Three that catch people out:
+
+- **`showLabel` on an edge, `showLabels` on an icon.** Singular on `edgeStyle`
+  (one edge, one label); plural on `icon`. They are different directives and the
+  spellings do not cross over.
+- **`hidden` is not `hideField`.** `edgeStyle(field=f, hidden=true)` styles the
+  relation *as hidden*; `hideField(field=f)` removes it from drawing outright.
+  Reach for `hideField` unless you're already writing an `edgeStyle` rule.
+- **A selectorless `atomStyle` matches everything.** `edgeStyle` requires a
+  `field`, so it has no such mode; `atomStyle` reads an absent `selector` as
+  "every node", which is a fast way to trip the collision rule below.
+
+Turning an edge into an unlabeled dotted connector — the two behavior flags and
+a line block together:
+
+```spytial-gdl
+concept[blood pressure] -> measure[BP@6mo] : stands_for
+
+@edgeStyle(field=stands_for, lineStyle(pattern=dotted, color='#94a3b8'), showLabel=false)
+@orientation(selector=stands_for, directions=[below])
+```
+
+> The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
+> authoritative — this table tracks its directive interfaces (verified against
+> `spytial-core@3`) rather than restating them.
 
 ## Style blocks
 
