@@ -69,7 +69,7 @@ include them yourself.
 |---|---|
 | d3 **v4** | WebCola's rendering/data substrate |
 | `webcola@3.4.0` | the constraint-layout solver Spytial drives |
-| `spytial-core@^3.1` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
+| `spytial-core@^4.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
 spytial-core is a **peer dependency** — spytial-gdl does not `import` it, so its
 own modules load as bare browser ES modules. spytial-core auto-registers the custom
