@@ -31,6 +31,7 @@
 //     await renderSpytialGdls(myContainer);
 
 import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable } from './index.js';
+import { mountDemonstration } from './demonstrate.js';
 
 // Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
 // is the short alias. `spytial-graph` is the pre-rename name, still accepted so
@@ -319,6 +320,15 @@ function buildDevice(doc, opts, height, editable) {
   graphStage.appendChild(graphHost);
   frame.appendChild(graphStage);
 
+  // ── demonstration slot ──
+  // Sits directly under the diagram because it is about what you just did to it,
+  // and distinct from the two bands below, which report problems. demonstrate.js
+  // owns everything inside: the "Show, don't tell" control, the live tally while
+  // you arrange, and the annotations it offers afterwards. Left empty on
+  // read-only blocks, which have nothing to demonstrate with.
+  const demoSlot = doc.createElement('div');
+  device.appendChild(demoSlot);
+
   // ── diagnostics band (parse / annotation problems; non-fatal) ──
   // Distinct from the conflict region below: this reports source-level problems
   // (a malformed line, an unknown annotation, an ignored Mermaid construct). The
@@ -489,6 +499,18 @@ function buildDevice(doc, opts, height, editable) {
     }
   }
   if (runBtn) runBtn.addEventListener('click', doApply);
+
+  // Append an inferred annotation and apply it in one step. The textarea is the
+  // source of truth, so the line lands in the text the user can see and edit —
+  // an accepted suggestion is indistinguishable from one they typed.
+  async function appendAnnotation(line) {
+    if (!srcTextarea) return;
+    const body = srcTextarea.value.replace(/\s+$/, '');
+    srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+    dirty = true; styleRun();
+    await doApply();
+  }
+
   if (srcTextarea) {
     srcTextarea.addEventListener('input', () => { dirty = true; srcStatus.textContent = ''; styleRun(); });
     srcTextarea.addEventListener('keydown', (e) => {
@@ -520,13 +542,14 @@ function buildDevice(doc, opts, height, editable) {
   }
 
   return {
-    device, graphHost, conflict, diagnostics,
+    device, graphHost, conflict, diagnostics, demoSlot,
     setSourceProvider: (fn) => { getSource = fn; },
     setRefit: (fn) => { refit = fn; },
     setApply: (fn) => { applyFn = fn; },
     setSourceText,
     refreshSource,
     setDiagnostics,
+    appendAnnotation,
   };
 }
 
@@ -616,6 +639,25 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           }
         };
 
+        // Constraint inference, as a mode: you say you are about to show
+        // something, you arrange the diagram, and then you ask what that meant.
+        // Purely observational — nothing here moves a node, adds a constraint,
+        // or writes to the source until you accept a line. See demonstrate.js.
+        //
+        // Interactive defaults. `maxDepth: 2` is the important one: a synthesis
+        // search that finds nothing must exhaust the grammar, which is ~30s at
+        // depth 3 and under a second at depth 2, and nothing can interrupt it
+        // because it is a synchronous call into core. Depth 2 reaches joins and
+        // closures (`_links._links`, `^r`); it does not reach the symmetric
+        // derived relations like siblings (`~r.r - iden`), so an embedder who
+        // wants those — and can afford the wait — passes `infer: {maxDepth: 3}`.
+        const demo = mountDemonstration(doc, ui.demoSlot, graphEl, {
+          dark: opts.theme === 'dark',
+          infer: { maxDepth: 2, ...(opts.infer && typeof opts.infer === 'object' ? opts.infer : {}) },
+          getData: () => (handle && handle.getValue ? handle.getValue() : null),
+          onApply: (annotation) => ui.appendAnnotation(annotation),
+        });
+
         // text → diagram: explicit Run ▸ / ⌘⏎ re-renders onto the same element.
         ui.setApply(async (text) => {
           applying = true;
@@ -628,6 +670,11 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           wire(h);
           refit(graphEl);
           reflectConflict();
+          // A re-render replaces the arrangement, which is the one thing a
+          // demonstration cannot survive: the baseline described a drawing that
+          // no longer exists. Accepting a line already left the mode, so this
+          // only fires for an edit made mid-demonstration.
+          demo.cancel();
           return { ok: true };
         });
 

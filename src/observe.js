@@ -1,0 +1,292 @@
+// Observation — watch a diagram being rearranged by hand, and keep the evidence.
+//
+// This is the only part of constraint inference that touches the browser. It
+// listens to the drag events spytial-core already dispatches, remembers where
+// the solver had put things before the user intervened, and hands the result to
+// the pure abduce → generalize path. It changes nothing: no constraint is added
+// to a solve, no node is moved, nothing is written to the spec.
+//
+// THE BASELINE IS CAPTURED AT FIRST TOUCH. Evidence is the difference between
+// the user's arrangement and the one the current annotations already produce, so
+// we need the latter. The exact right moment to record it is the instant before
+// the first drag begins — `node-drag-start`, the first time it fires. Earlier is
+// wrong (WebCola is still settling); later is wrong (the user has already moved
+// something).
+//
+// MARKS, AND WHY DRAGGING SETS ONE. A mark is the user saying "the way this sits
+// matters" — it is addressed to the inference, never to the solver, so it has no
+// layout effect and can never conflict with a constraint. It exists because the
+// alternative reading of a drag ("I was making room") is just as common, and
+// nothing in the geometry distinguishes them.
+//
+// In this version dragging a node marks it, because spytial-core exposes no node
+// click event to hang a separate gesture on. That conflates "I moved this" with
+// "this matters", which is precisely the conflation marks are meant to undo — so
+// `unmark()` exists, the panel lists what is marked, and a real mark gesture is
+// the first thing to add when the renderer can report a node click.
+
+import { abduce } from './abduce.js';
+import { generalize, rank } from './generalize.js';
+import { proposeCycles } from './cycles.js';
+import { makeSynthesizer } from './synthesize.js';
+
+/** Events the renderer already dispatches; we only listen. */
+const DRAG_START = 'node-drag-start';
+const DRAG_END = 'node-drag-end';
+
+function readPositions(el) {
+  try {
+    if (el && typeof el.getNodePositions === 'function') {
+      return el.getNodePositions().filter((n) => n && n.id != null);
+    }
+  } catch (_) { /* a renderer mid-teardown has no positions to give */ }
+  return [];
+}
+
+// The live IDataInstance the editor is backed by. Synthesis evaluates candidate
+// expressions against it, so it has to be the real instance rather than the
+// reified {atoms, relations} snapshot — and it has to be re-read each time,
+// because clearing the editor swaps in a fresh one.
+function readInstance(el) {
+  try {
+    if (el && typeof el.getDataInstance === 'function') return el.getDataInstance();
+  } catch (_) { /* same */ }
+  return null;
+}
+
+// Watch a graph element and accumulate demonstration evidence.
+//
+//   graphEl — a <webcola-cnd-graph> or <structured-input-graph>
+//   opts    — { onChange?: (session) => void }
+//
+// Returns a handle; call `detach()` to unsubscribe.
+export function observeArrangement(graphEl, opts = {}) {
+  const marks = new Set();
+  const explained = new Set();
+  const ledger = [];
+  let baseline = null;
+  let seq = 0;
+
+  const record = (type, detail) => {
+    ledger.push({ seq: seq++, type, ...detail });
+  };
+
+  const notify = () => {
+    if (typeof opts.onChange === 'function') {
+      try { opts.onChange(handle); } catch (_) { /* a listener must not break observation */ }
+    }
+  };
+
+  // The solver's own arrangement, frozen the moment before the user's first
+  // drag. Without it every incidental alignment in the layout would read as
+  // something the user asserted.
+  const captureBaseline = (force) => {
+    if (baseline && !force) return baseline;
+    const positions = readPositions(graphEl);
+    if (positions.length === 0) return baseline;
+    baseline = positions;
+    record('baseline', { count: positions.length });
+    return baseline;
+  };
+
+  // Synthesis is the expensive path — a search that finds nothing has to exhaust
+  // the grammar — and `makeSynthesizer` memoizes exactly that, in the closure it
+  // returns. Building a fresh one per `propose()` threw the memo away with it, so
+  // clicking Infer twice on one arrangement paid the whole search twice. Keep the
+  // synthesizer instead, and rebuild only when the question changes: a different
+  // data instance (the editor was cleared or re-rendered) or a different search
+  // depth. `makeSynthesizer` reads nothing else from the options.
+  let synth = null;   // { instance, maxDepth, fn }
+
+  const synthesizerFor = (options) => {
+    const instance = readInstance(graphEl);
+    const maxDepth = options.maxDepth;
+    if (synth && synth.instance === instance && synth.maxDepth === maxDepth) return synth.fn;
+    synth = { instance, maxDepth, fn: makeSynthesizer(instance, options) };
+    return synth.fn;
+  };
+
+  const onDragStart = () => { captureBaseline(); };
+
+  const onDragEnd = (ev) => {
+    const d = (ev && ev.detail) || {};
+    if (d.id == null) return;
+    captureBaseline();
+    marks.add(d.id);
+    explained.delete(d.id);   // moving it again reopens the question
+    record('drag', { id: d.id, previous: d.previous, current: d.current });
+    notify();
+  };
+
+  if (graphEl && typeof graphEl.addEventListener === 'function') {
+    graphEl.addEventListener(DRAG_START, onDragStart);
+    graphEl.addEventListener(DRAG_END, onDragEnd);
+  }
+
+  const handle = {
+    element: graphEl,
+    ledger,
+
+    get marks() { return new Set(marks); },
+    get explained() { return new Set(explained); },
+    get baseline() { return baseline ? baseline.slice() : null; },
+
+    /** Positions as they stand right now. */
+    positions: () => readPositions(graphEl),
+
+    captureBaseline,
+
+    mark(id) { marks.add(id); record('mark', { id }); notify(); },
+    unmark(id) { marks.delete(id); explained.delete(id); record('unmark', { id }); notify(); },
+    toggleMark(id) { marks.has(id) ? handle.unmark(id) : handle.mark(id); },
+
+    /** Forget everything, including what the user has demonstrated. */
+    reset() {
+      marks.clear();
+      explained.clear();
+      baseline = null;
+      synth = null;
+      record('reset', {});
+      notify();
+    },
+
+    // Drop the baseline but keep the session. Used after a re-render: the solver
+    // has produced a new arrangement, so the old counterfactual is meaningless,
+    // but the record of what the user moved and what has been explained is still
+    // theirs. Ids that no longer exist simply stop matching any node, so a
+    // structural edit needs no special handling.
+    // The synthesizer goes too. A re-render is the one moment the data can have
+    // changed under it, and `makeSynthesizer` indexes the atoms once at build
+    // time — so an instance the renderer mutated in place, rather than replacing,
+    // would leave a stale index behind an unchanged identity check.
+    rebase() {
+      baseline = null;
+      synth = null;
+      record('rebase', {});
+      notify();
+    },
+
+    /** Has the user actually demonstrated anything yet? */
+    get hasEvidence() { return marks.size > 0 && !!baseline; },
+
+    // What was demonstrated, and what would explain it.
+    //
+    //   data — { atoms, relations } for the graph as it currently stands
+    //
+    // Returns { evidence, proposals } — or empty ones when the user has not
+    // rearranged anything, which is the honest answer rather than a guess.
+    propose(data, options = {}) {
+      const positions = readPositions(graphEl);
+      if (positions.length === 0) return { evidence: null, proposals: [] };
+
+      const read = (scope) => abduce(positions, {
+        baseline: baseline || undefined,
+        marks,
+        ...options,
+        scope,
+      });
+
+      // Prefer the tight reading — pairs where the user moved *both* endpoints,
+      // which keeps the candidate set small. But the commonest gesture of all is
+      // dragging one node to line it up with one that stays put, and that marks
+      // only the node that moved, so the tight reading has to be able to widen.
+      //
+      // WIDEN ON UNEXPLAINABLE, NOT ON EMPTY. "Both endpoints moved" is stronger
+      // evidence only when the pair is one a relation connects. Drag two nodes
+      // that share no edge and the tight reading is a pair nothing in the source
+      // explains — while the pair the user actually meant, with one endpoint
+      // left where it was, has been excluded. The tight reading is not empty, so
+      // the old rule kept it, no name fitted, and synthesis manufactured an
+      // exact expression for the incidental pair: dragging `Build` and `Release`
+      // in the playground proposed `_.ship` (which denotes exactly (Build,
+      // Release)) instead of naming `ship` for (Test, Release).
+      //
+      // So the test is whether a *name* fits the tight reading. The probe runs
+      // without synthesis — an expression search would defeat the point, since
+      // finding one is the failure being detected — and it is only the cheap
+      // candidate scoring, which this call is about to do again anyway.
+      const named = (ev) => {
+        if (ev.groups.length === 0) return false;
+        if (!data) return true;   // nothing to name it with; the reading is all there is
+        return generalize(ev.groups, data, {
+          ...options, satisfied: ev.satisfied, synthesize: undefined,
+        }).length > 0;
+      };
+
+      let evidence = read(options.scope || 'both');
+      if (!options.scope && !named(evidence)) {
+        const wider = read('any');
+        // Only take the wider reading if it is an improvement. When neither has
+        // a name, the tight one is still the more conservative demonstration.
+        if (named(wider)) evidence = wider;
+        else if (evidence.groups.length === 0) evidence = wider;
+      }
+      // `satisfied` lets generalization distinguish a pair the constraint would
+      // move from one the drawing already honours — see scoreAgainst.
+      //
+      // `synthesize` is the fallback for demonstrations no name in the source
+      // explains — siblings, ancestors, anything derived. Built from the live
+      // instance, and null when spytial-core's synthesis API is not on the page,
+      // in which case generalization simply proposes nothing for those groups.
+      const synthesize =
+        options.synthesize !== undefined ? options.synthesize : synthesizerFor(options);
+
+      const pairwise = data
+        ? generalize(evidence.groups, data, {
+            ...options,
+            satisfied: evidence.satisfied,
+            synthesize,
+          })
+        : [];
+
+      // `@cyclic` is abduced separately, because a ring is not a pairwise fact
+      // and so cannot come out of `evidence.groups` however the pairs are
+      // scoped. It reads the arrangement directly and diffs against the same
+      // baseline, then ranks into the same list. See cycles.js.
+      const rings = proposeCycles(positions, baseline, data, { ...options, marks });
+      const proposals = [...rings, ...pairwise].sort(rank);
+
+      record('propose', {
+        groups: evidence.groups.length,
+        rings: rings.length,
+        proposals: proposals.length,
+      });
+      return { evidence, proposals };
+    },
+
+    // Accept a proposal: the marks it accounts for are explained, and stop
+    // counting against the user. The proposal's own text is the caller's to
+    // apply — this module never writes to the source.
+    accept(proposal) {
+      for (const [a, b] of (proposal && proposal.coveredPairs) || []) {
+        explained.add(a); explained.add(b);
+      }
+      // `covered` is a count, not a list; when the caller has not supplied the
+      // pairs, fall back to marking everything the proposal's selector touched.
+      if (!proposal || !proposal.coveredPairs) {
+        for (const id of marks) explained.add(id);
+      }
+      record('accept', { line: proposal && proposal.line });
+      notify();
+      return handle.summary();
+    },
+
+    /** `n marked · m explained` — the progress the panel shows. */
+    summary() {
+      return {
+        marked: marks.size,
+        explained: [...explained].filter((id) => marks.has(id)).length,
+        hasBaseline: !!baseline,
+      };
+    },
+
+    detach() {
+      if (graphEl && typeof graphEl.removeEventListener === 'function') {
+        graphEl.removeEventListener(DRAG_START, onDragStart);
+        graphEl.removeEventListener(DRAG_END, onDragEnd);
+      }
+    },
+  };
+
+  return handle;
+}
