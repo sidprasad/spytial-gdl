@@ -203,6 +203,58 @@ i -> h : spouse
     obs.propose(data, { scope: 'both' }).proposals.length === 0);
 }
 
+// ── the synthesizer outlives one propose() ──────────────────────────────────
+//
+// Synthesis is the expensive path: a search that finds nothing has to exhaust
+// the grammar, and nothing can interrupt it because it is a synchronous call
+// into core. `makeSynthesizer` memoizes that — but the memo lives in the closure
+// it returns, so rebuilding the synthesizer on every `propose()` throws the memo
+// away with it and clicking Infer twice on one arrangement pays twice.
+//
+// A fake core stands in for the real synthesizer: what is under test is how
+// often the search is *started*, not what it comes back with.
+
+{
+  let builds = 0, searches = 0;
+  const atoms = ['a', 'b', 'c', 'd'].map((id) => ({ id }));
+  // `getAtoms` is called exactly once per synthesizer, when it indexes the
+  // instance — so counting it counts builds.
+  const instance = { getAtoms: () => { builds++; return atoms; } };
+  const prior = globalThis.spytialcore;
+  globalThis.spytialcore = { synthesizeBinarySelector: () => { searches++; return null; } };
+
+  const data = dataFor(`a -> b : r\nc -> d : r`);
+  const el = new FakeGraph([
+    { id: 'a', x: 100, y: 100 }, { id: 'b', x: 300, y: 100 },
+    { id: 'c', x: 150, y: 400 }, { id: 'd', x: 300, y: 400 },
+  ]);
+  el.getDataInstance = () => instance;
+  const obs = observeArrangement(el);
+  el.drag('c', 100, 400);        // line c up under a — no relation says that
+
+  obs.propose(data);
+  check('a demonstration no name explains reaches the synthesizer',
+    searches === 1, `searched ${searches} times`);
+  check('and the synthesizer is built once', builds === 1, `built ${builds} times`);
+
+  obs.propose(data);
+  check('a second propose on the same arrangement reuses it',
+    builds === 1, `built ${builds} times`);
+  check('so the same search is not run again', searches === 1, `searched ${searches} times`);
+
+  // A deeper search is a different question, not a cache miss to paper over.
+  obs.propose(data, { maxDepth: 3 });
+  check('a different search depth builds a new one', builds === 2, `built ${builds} times`);
+
+  // A re-render is the one moment the data can have changed underneath, and the
+  // atom index is taken once at build time.
+  obs.rebase();
+  obs.propose(data);
+  check('and a rebase drops it', builds === 3, `built ${builds} times`);
+
+  globalThis.spytialcore = prior;
+}
+
 // ── the ledger ──────────────────────────────────────────────────────────────
 
 {

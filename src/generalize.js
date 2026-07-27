@@ -318,31 +318,45 @@ export function explainGroup(group, data, opts = {}) {
   // when the approximate pass found nothing, which is exactly when the target
   // really is a derived relation rather than a sloppy demonstration of a named
   // one. See synthesize.js for why that ordering matters.
-  if (best.length === 0 && typeof opts.synthesize === 'function') {
-    try {
-      // An alignment is symmetric, but the group stores one direction per
-      // unordered pair. A derived symmetric relation denotes both — `~r.r - iden`
-      // holds (a,b) *and* (b,a) — so handing over the half set would ask for an
-      // expression that cannot exist and the search would come back empty.
-      const target = symmetric
-        ? group.pairs.flatMap(([a, b]) => [[a, b], [b, a]])
-        : group.pairs;
-      const expr = opts.synthesize(target);
-      if (expr && String(expr).trim()) {
-        const { selector, value } = normalize(String(expr).trim(), group.kind, group.value);
-        best.push({
-          kind: group.kind, selector, value, source: 'synthesized',
-          line: emitLine(group.kind, selector, value),
-          demonstrated: group.pairs.length,
-          covered: group.pairs.length, coveredPairs: group.pairs.slice(),
-          missed: 0, missedPairs: [], consistent: 0, consistentPairs: [],
-          predicts: [], coverage: 1,
-        });
-      }
-    } catch (_) { /* synthesis is best-effort; a failure just means no proposal */ }
+  if (best.length === 0) {
+    const derived = synthesizeFor(group, opts);
+    if (derived) best.push(derived);
   }
 
   return best;
+}
+
+// The synthesis half of `explainGroup`, on its own so `generalize` can spend its
+// one attempt on a group it has *already* found no name for — rather than
+// handing the budget to a group that turns out not to need it.
+//
+// Returns a proposal or null. Synthesis is best-effort throughout: an
+// unavailable synthesizer, an empty search, or a throw from inside the evaluator
+// all mean "no proposal", never a broken generalization pass.
+function synthesizeFor(group, opts = {}) {
+  if (typeof opts.synthesize !== 'function') return null;
+  try {
+    // An alignment is symmetric, but the group stores one direction per
+    // unordered pair. A derived symmetric relation denotes both — `~r.r - iden`
+    // holds (a,b) *and* (b,a) — so handing over the half set would ask for an
+    // expression that cannot exist and the search would come back empty.
+    const target = group.kind === 'align'
+      ? group.pairs.flatMap(([a, b]) => [[a, b], [b, a]])
+      : group.pairs;
+    const expr = opts.synthesize(target);
+    if (!expr || !String(expr).trim()) return null;
+    const { selector, value } = normalize(String(expr).trim(), group.kind, group.value);
+    return {
+      kind: group.kind, selector, value, source: 'synthesized',
+      line: emitLine(group.kind, selector, value),
+      demonstrated: group.pairs.length,
+      covered: group.pairs.length, coveredPairs: group.pairs.slice(),
+      missed: 0, missedPairs: [], consistent: 0, consistentPairs: [],
+      predicts: [], coverage: 1,
+    };
+  } catch (_) {
+    return null;
+  }
 }
 
 // `below` plus a vertical alignment over the same pairs is exactly what
@@ -448,13 +462,15 @@ function dropEntailed(proposals) {
   );
 }
 
-// Which group is worth spending the one synthesis attempt on.
+// Which group is worth spending the one synthesis attempt on. Callers pass only
+// the groups no name explained — a group with a named proposal would not reach
+// synthesis anyway, so giving it the budget would spend the attempt on nothing.
 //
-// The smallest. An exact expression over few pairs is both likelier to exist and
-// cheaper to find, while a large arbitrary set — "these nine pairs happen to run
-// left to right" — almost never has one, so the search exhausts and the cost is
-// paid for nothing. Ties go to an alignment: the derived relations actually
-// worth synthesizing (siblings, cousins) are symmetric.
+// Among those, the smallest. An exact expression over few pairs is both likelier
+// to exist and cheaper to find, while a large arbitrary set — "these nine pairs
+// happen to run left to right" — almost never has one, so the search exhausts
+// and the cost is paid for nothing. Ties go to an alignment: the derived
+// relations actually worth synthesizing (siblings, cousins) are symmetric.
 function synthesisTarget(groups) {
   let best = null;
   for (const g of groups || []) {
@@ -485,13 +501,25 @@ export function generalize(groups, data, opts = {}) {
   // running the search once per group asks the same question five ways and
   // multiplies the worst case by five. One drag of four nodes produced five
   // groups and froze the page for over two minutes before this.
-  const chosen = typeof opts.synthesize === 'function' ? synthesisTarget(groups) : null;
+  //
+  // So: name every group first, then spend the attempt on one of the groups
+  // that came back empty. Choosing the target up front by size alone could hand
+  // the budget to a group a relation already explains, which never reaches
+  // synthesis — and since the budget is spent, no other group would either.
   const withoutSynthesis = { ...opts, synthesize: undefined };
-
   const all = [];
+  const unexplained = [];
+
   for (const group of groups || []) {
-    const groupOpts = group === chosen ? opts : withoutSynthesis;
-    all.push(...explainGroup(group, data, groupOpts).slice(0, maxPerGroup));
+    const named = explainGroup(group, data, withoutSynthesis);
+    if (named.length === 0) unexplained.push(group);
+    all.push(...named.slice(0, maxPerGroup));
+  }
+
+  if (typeof opts.synthesize === 'function') {
+    const target = synthesisTarget(unexplained);
+    const derived = target ? synthesizeFor(target, opts) : null;
+    if (derived) all.push(derived);
   }
 
   // One line is one suggestion, however many readings produced it.

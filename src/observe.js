@@ -89,6 +89,23 @@ export function observeArrangement(graphEl, opts = {}) {
     return baseline;
   };
 
+  // Synthesis is the expensive path — a search that finds nothing has to exhaust
+  // the grammar — and `makeSynthesizer` memoizes exactly that, in the closure it
+  // returns. Building a fresh one per `propose()` threw the memo away with it, so
+  // clicking Infer twice on one arrangement paid the whole search twice. Keep the
+  // synthesizer instead, and rebuild only when the question changes: a different
+  // data instance (the editor was cleared or re-rendered) or a different search
+  // depth. `makeSynthesizer` reads nothing else from the options.
+  let synth = null;   // { instance, maxDepth, fn }
+
+  const synthesizerFor = (options) => {
+    const instance = readInstance(graphEl);
+    const maxDepth = options.maxDepth;
+    if (synth && synth.instance === instance && synth.maxDepth === maxDepth) return synth.fn;
+    synth = { instance, maxDepth, fn: makeSynthesizer(instance, options) };
+    return synth.fn;
+  };
+
   const onDragStart = () => { captureBaseline(); };
 
   const onDragEnd = (ev) => {
@@ -128,6 +145,7 @@ export function observeArrangement(graphEl, opts = {}) {
       marks.clear();
       explained.clear();
       baseline = null;
+      synth = null;
       record('reset', {});
       notify();
     },
@@ -137,8 +155,13 @@ export function observeArrangement(graphEl, opts = {}) {
     // but the record of what the user moved and what has been explained is still
     // theirs. Ids that no longer exist simply stop matching any node, so a
     // structural edit needs no special handling.
+    // The synthesizer goes too. A re-render is the one moment the data can have
+    // changed under it, and `makeSynthesizer` indexes the atoms once at build
+    // time — so an instance the renderer mutated in place, rather than replacing,
+    // would leave a stale index behind an unchanged identity check.
     rebase() {
       baseline = null;
+      synth = null;
       record('rebase', {});
       notify();
     },
@@ -179,9 +202,7 @@ export function observeArrangement(graphEl, opts = {}) {
       // instance, and null when spytial-core's synthesis API is not on the page,
       // in which case generalization simply proposes nothing for those groups.
       const synthesize =
-        options.synthesize !== undefined
-          ? options.synthesize
-          : makeSynthesizer(readInstance(graphEl), options);
+        options.synthesize !== undefined ? options.synthesize : synthesizerFor(options);
 
       const pairwise = data
         ? generalize(evidence.groups, data, {

@@ -325,6 +325,38 @@ d -> a : next`);
     got && got.flat().includes('p'), got && JSON.stringify(got));
 }
 
+{
+  // Size alone is the wrong way to pick the target. Here the smallest group is
+  // the one a relation already explains — and an explained group never reaches
+  // synthesis, so awarding it the budget spends the attempt on nothing and
+  // leaves the group that actually needed a derived selector without one.
+  const data = dataFor(`a -> b : r
+c -> d : s
+e -> f : s`);
+  const groups = [
+    // `r` denotes exactly this pair: named, and the smaller of the two.
+    { kind: 'orientation', value: 'below', pairs: [['a', 'b']] },
+    // Three pairs no relation contains, and too few for `univ->univ` to clear
+    // the precision bar. Nothing names this.
+    { kind: 'align', value: 'horizontal', pairs: [['a', 'c'], ['b', 'd'], ['e', 'a']] },
+  ];
+
+  let got = null, called = 0;
+  const props = generalize(groups, data, {
+    synthesize: (pairs) => { called++; got = pairs; return '~s.s'; },
+  });
+
+  check('the smallest group is explained without synthesis',
+    props.some((p) => p.line === '@orientation(selector=r, directions=[below])'),
+    props.map((p) => p.line).join(' | '));
+  check('the attempt goes to a group no name explained',
+    called === 1 && got && got.flat().includes('c'),
+    `called ${called} times with ${JSON.stringify(got)}`);
+  check('and the derived selector is proposed',
+    props.some((p) => p.line === '@align(selector=~s.s, direction=horizontal)'),
+    props.map((p) => p.line).join(' | '));
+}
+
 // ── a synthesized selector is not a transposed name ─────────────────────────
 //
 // `~R` and `R` denote transposed sets, so `@orientation(~R, [above])` can be

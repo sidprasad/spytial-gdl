@@ -732,8 +732,18 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         // Constraint inference: watch the arrangement, and offer the annotations
         // that would explain it. Purely observational — nothing here moves a
         // node, adds a constraint, or writes to the source on its own.
+        //
+        // A suggestion is an offer about one arrangement, and each row holds the
+        // proposal object that was computed from it. Move a node afterwards and
+        // those rows are about a drawing that no longer exists — Add would append
+        // an annotation inferred from the previous geometry, possibly the exact
+        // opposite of what is now on screen. So the band is withdrawn whenever
+        // the observation changes, and the user re-infers to get a fresh offer.
         const observer = observeArrangement(graphEl, {
-          onChange: (obs) => ui.setMarkStatus(obs.summary()),
+          onChange: (obs) => {
+            ui.setMarkStatus(obs.summary());
+            ui.setSuggestions([]);
+          },
         });
         // Interactive defaults. `maxDepth: 2` is the important one: a synthesis
         // search that finds nothing must exhaust the grammar, which is ~30s at
