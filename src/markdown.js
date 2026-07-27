@@ -31,6 +31,7 @@
 //     await renderSpytialGdls(myContainer);
 
 import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable } from './index.js';
+import { observeArrangement } from './observe.js';
 
 // Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
 // is the short alias. `spytial-graph` is the pre-rename name, still accepted so
@@ -261,8 +262,19 @@ function buildDevice(doc, opts, height, editable) {
   srcHeader.appendChild(srcTitle);
   srcHeader.appendChild(srcStatus);
   srcHeader.appendChild(srcSpacer);
+  // "n marked · m explained" — how much of what the user demonstrated by hand
+  // has been turned into an annotation. Editable blocks only; hidden until they
+  // actually drag something.
+  const markStatus = doc.createElement('span');
+  markStatus.style.cssText = `display: none; font: 10.5px/1 ${SANS}; color: ${C.soft}; white-space: nowrap;`;
+  srcHeader.appendChild(markStatus);
+
   let runBtn = null;
+  let inferBtn = null;
   if (editable) {
+    inferBtn = mkBtn('✦ Infer', 'Suggest annotations from how you arranged the diagram');
+    inferBtn.style.display = 'none';   // nothing to infer until something is dragged
+    srcHeader.appendChild(inferBtn);
     runBtn = mkBtn('Run ▸', 'Apply the notation to the diagram (⌘⏎)');
     srcHeader.appendChild(runBtn);
   }
@@ -318,6 +330,67 @@ function buildDevice(doc, opts, height, editable) {
   graphHost.style.cssText = 'position: absolute; inset: 0;';
   graphStage.appendChild(graphHost);
   frame.appendChild(graphStage);
+
+  // ── suggestions band (inferred annotations; opt-in, never applied silently) ──
+  // Sits directly under the diagram because it is about what you just did to it.
+  // Distinct from the two bands below, which report problems: this one is an
+  // offer. Each row is an `@annotation` line you could have typed, with what it
+  // covers and — when it generalizes past the demonstration — what else it would
+  // constrain, which is the question rather than a defect.
+  const GREEN = dark
+    ? { bg: '#16281e', ink: '#bfe6cf', border: '#24422f', accent: '#3fae74', slot: '#12201a' }
+    : { bg: '#f0f9f3', ink: '#1e5637', border: '#cbe8d8', accent: '#2d8659', slot: '#f7fcf9' };
+  const suggestions = doc.createElement('div');
+  suggestions.className = 'spytial-gdl-suggestions';
+  suggestions.dataset.spytialProcessed = '1';
+  suggestions.style.display = 'none';
+  device.appendChild(suggestions);
+
+  // items — [{ line, note }]; onAccept(item, index) adds it to the source.
+  const setSuggestions = (items, onAccept, note) => {
+    const list = (Array.isArray(items) ? items : []).filter(Boolean);
+    suggestions.textContent = '';
+    if (list.length === 0 && !note) { suggestions.style.display = 'none'; return; }
+    suggestions.style.cssText =
+      `display: block; border-top: 1px solid ${GREEN.border}; border-left: 3px solid ${GREEN.accent};` +
+      ` background: ${GREEN.bg}; color: ${GREEN.ink}; padding: 9px 12px;`;
+
+    const head = doc.createElement('div');
+    head.style.cssText = `font: 700 12.5px/1.3 ${SANS}; margin-bottom: ${list.length ? '6px' : '0'};`;
+    head.textContent = list.length
+      ? `✦ ${list.length} annotation${list.length > 1 ? 's' : ''} would explain how you arranged this`
+      : note;
+    suggestions.appendChild(head);
+
+    if (list.length && note) {
+      const sub = doc.createElement('div');
+      sub.style.cssText = `font: 11px/1.4 ${SANS}; opacity: .8; margin-bottom: 6px;`;
+      sub.textContent = note;
+      suggestions.appendChild(sub);
+    }
+
+    list.forEach((item, i) => {
+      const row = doc.createElement('div');
+      row.style.cssText =
+        `display: flex; align-items: center; gap: 8px; padding: 5px 7px; margin: 3px 0;` +
+        ` border: 1px solid ${GREEN.border}; border-radius: 6px; background: ${GREEN.slot};`;
+      const text = doc.createElement('code');
+      text.style.cssText = `flex: 1 1 auto; min-width: 0; overflow-x: auto; white-space: pre; font: 11.5px/1.5 ${MONO};`;
+      text.textContent = item.line;
+      row.appendChild(text);
+      if (item.note) {
+        const why = doc.createElement('span');
+        why.style.cssText = `flex: 0 0 auto; font: 10.5px/1.3 ${SANS}; opacity: .75; white-space: nowrap;`;
+        why.textContent = item.note;
+        row.appendChild(why);
+      }
+      const add = mkBtn('Add', 'Append this annotation to the source and re-run');
+      add.style.flex = '0 0 auto';
+      add.addEventListener('click', () => { if (onAccept) onAccept(item, i); });
+      row.appendChild(add);
+      suggestions.appendChild(row);
+    });
+  };
 
   // ── diagnostics band (parse / annotation problems; non-fatal) ──
   // Distinct from the conflict region below: this reports source-level problems
@@ -394,6 +467,7 @@ function buildDevice(doc, opts, height, editable) {
   let getSource = () => '';
   let refit = () => {};
   let applyFn = null;
+  let inferFn = null;
 
   const isNarrow = () => device.clientWidth > 0 && device.clientWidth < BREAK;
 
@@ -489,6 +563,34 @@ function buildDevice(doc, opts, height, editable) {
     }
   }
   if (runBtn) runBtn.addEventListener('click', doApply);
+  if (inferBtn) inferBtn.addEventListener('click', () => { if (inferFn) inferFn(); });
+
+  // Append an inferred annotation and apply it in one step. The textarea is the
+  // source of truth, so the line lands in the text the user can see and edit —
+  // an accepted suggestion is indistinguishable from one they typed.
+  async function appendAnnotation(line) {
+    if (!srcTextarea) return;
+    const body = srcTextarea.value.replace(/\s+$/, '');
+    srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+    dirty = true; styleRun();
+    await doApply();
+  }
+
+  // Show the mark tally once the user has actually rearranged something.
+  const setMarkStatus = (summary) => {
+    if (!editable) return;
+    const s = summary || {};
+    const marked = s.marked || 0;
+    if (marked === 0) {
+      markStatus.style.display = 'none';
+      if (inferBtn) inferBtn.style.display = 'none';
+      return;
+    }
+    markStatus.style.display = '';
+    markStatus.textContent = `${marked} moved · ${s.explained || 0} explained`;
+    if (inferBtn) inferBtn.style.display = '';
+  };
+
   if (srcTextarea) {
     srcTextarea.addEventListener('input', () => { dirty = true; srcStatus.textContent = ''; styleRun(); });
     srcTextarea.addEventListener('keydown', (e) => {
@@ -520,13 +622,17 @@ function buildDevice(doc, opts, height, editable) {
   }
 
   return {
-    device, graphHost, conflict, diagnostics,
+    device, graphHost, conflict, diagnostics, suggestions,
     setSourceProvider: (fn) => { getSource = fn; },
     setRefit: (fn) => { refit = fn; },
     setApply: (fn) => { applyFn = fn; },
+    setInfer: (fn) => { inferFn = fn; },
     setSourceText,
     refreshSource,
     setDiagnostics,
+    setSuggestions,
+    setMarkStatus,
+    appendAnnotation,
   };
 }
 
@@ -616,6 +722,56 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           }
         };
 
+        // Constraint inference: watch the arrangement, and offer the annotations
+        // that would explain it. Purely observational — nothing here moves a
+        // node, adds a constraint, or writes to the source on its own.
+        const observer = observeArrangement(graphEl, {
+          onChange: (obs) => ui.setMarkStatus(obs.summary()),
+        });
+        const inferOpts = opts.infer && typeof opts.infer === 'object' ? opts.infer : {};
+
+        ui.setInfer(() => {
+          let value = null;
+          try { value = handle && handle.getValue ? handle.getValue() : null; }
+          catch (_) { value = null; }
+          const { proposals } = observer.propose(value, inferOpts);
+
+          if (proposals.length === 0) {
+            ui.setSuggestions([], null,
+              observer.hasEvidence
+                ? 'Nothing here generalizes to a relation yet — try arranging more of the same kind of pair.'
+                : 'Drag some nodes into the arrangement you want, then infer.');
+            return;
+          }
+
+          // One arrangement can support a dozen true readings; a suggestion list
+          // that long is a chore rather than an offer. They arrive ranked, so the
+          // tail is the least consistent and least explanatory of the set.
+          const shown = proposals.slice(0, inferOpts.maxSuggestions || 5);
+
+          ui.setSuggestions(
+            shown.map((p) => ({
+              line: p.line,
+              proposal: p,
+              // Say plainly when a suggestion reaches past what was shown and
+              // would actually move something: that generalization is the point,
+              // and also the one thing worth checking before accepting. Pairs the
+              // drawing already honours are not worth mentioning — accepting
+              // changes nothing about them.
+              note: p.predicts.length
+                ? `covers ${p.covered}, would also move ${p.predicts.length}`
+                : `covers ${p.covered}`,
+            })),
+            async (item) => {
+              // Credit the marks this explains *before* applying: the re-render
+              // rebases the baseline, and the tally should survive it.
+              observer.accept(item.proposal);
+              ui.setSuggestions([]);
+              await ui.appendAnnotation(item.line);
+            }
+          );
+        });
+
         // text → diagram: explicit Run ▸ / ⌘⏎ re-renders onto the same element.
         ui.setApply(async (text) => {
           applying = true;
@@ -628,6 +784,11 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           wire(h);
           refit(graphEl);
           reflectConflict();
+          // A re-render is a new solver arrangement, so the old counterfactual is
+          // meaningless — but what the user demonstrated, and how much of it has
+          // been explained, is still theirs.
+          observer.rebase();
+          ui.setMarkStatus(observer.summary());
           return { ok: true };
         });
 
