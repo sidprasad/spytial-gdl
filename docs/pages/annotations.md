@@ -229,7 +229,7 @@ Note `showLabel` (singular) on `edgeStyle` against `showLabels` (plural) on
 
 > The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
 > authoritative — this table tracks its directive interfaces (verified against
-> `spytial-core@3`) rather than restating them.
+> `spytial-core@4`) rather than restating them.
 
 ## Style blocks
 
