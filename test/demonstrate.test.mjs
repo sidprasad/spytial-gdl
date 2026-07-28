@@ -8,7 +8,7 @@
 
 import { parseGraph } from '../src/parse.js';
 import { relationalize } from '../src/relationalize.js';
-import { createDemonstration, IDLE, DEMONSTRATING, OFFERING } from '../src/demonstrate.js';
+import { createDemonstration, relatedNodes, IDLE, DEMONSTRATING, OFFERING } from '../src/demonstrate.js';
 
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') {
@@ -236,6 +236,59 @@ const crooked = () => new FakeGraph([
   check('begin twice does not re-enter', demo.begin().state === DEMONSTRATING);
   check('and does not re-attach a second watcher', el.watchers === 2, `${el.watchers} listeners`);
   demo.detach();
+}
+
+// ── which nodes a suggestion is about ───────────────────────────────────────
+//
+// What the chrome hands the renderer when you hover a row. The chrome itself is
+// tested by eye; this is the part that decides what gets lit, and getting it
+// wrong means pointing at the wrong boxes rather than a visible break.
+
+{
+  const el = crooked();
+  const demo = createDemonstration(el);
+  demo.begin();
+  el.drag('i', 300, 300);
+  const p = demo.explain(SPOUSES).proposals.find((x) => x.line.includes('spouse'));
+
+  const { pairs, ids } = relatedNodes(p);
+  check('a suggestion knows the pairs it is about', pairs.length > 0, JSON.stringify(pairs));
+  check('and both spouse pairs are in it — the one shown and the one already right',
+    ['c', 'e', 'h', 'i'].every((id) => ids.includes(id)), ids.join(','));
+  demo.detach();
+}
+
+{
+  // `predicts` is the set with nowhere else to appear: the note says "would also
+  // move 2" and this is the only thing that can say *which* 2.
+  const p = {
+    kind: 'orientation',
+    coveredPairs: [['a', 'b']],
+    consistentPairs: [['c', 'd']],
+    predicts: [['e', 'f']],
+  };
+  const { pairs, ids } = relatedNodes(p);
+  check('pairs a suggestion would move are included',
+    ids.includes('e') && ids.includes('f'), ids.join(','));
+  check('and every pair survives as a pair, so direction can be shown',
+    pairs.length === 3 && pairs.every((pr) => pr.length === 2), JSON.stringify(pairs));
+}
+
+{
+  // A ring is about its members; the pairs are just how it was measured.
+  const { ids } = relatedNodes({
+    kind: 'cyclic', members: ['S0', 'S1', 'S2', 'S3'],
+    coveredPairs: [['S0', 'S1'], ['S1', 'S2'], ['S2', 'S3']],
+  });
+  check('a ring is about all of its members', ids.length === 4, ids.join(','));
+}
+
+{
+  const empty = relatedNodes(null);
+  check('nothing to highlight is not an error', empty.pairs.length === 0 && empty.ids.length === 0);
+  const junk = relatedNodes({ coveredPairs: [['a'], null, ['b', null], ['c', 'd']] });
+  check('and a malformed pair is dropped rather than half-highlighted',
+    junk.pairs.length === 1 && junk.ids.join(',') === 'c,d', JSON.stringify(junk));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
