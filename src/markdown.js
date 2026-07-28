@@ -32,6 +32,7 @@
 
 import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable } from './index.js';
 import { mountDemonstration } from './demonstrate.js';
+import { paintInto } from './highlight.js';
 
 // Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
 // is the short alias. `spytial-graph` is the pre-rename name, still accepted so
@@ -270,27 +271,51 @@ function buildDevice(doc, opts, height, editable) {
   const copyBtn = mkBtn('⧉ Copy', 'Copy the notation');
   srcHeader.appendChild(copyBtn);
 
-  // the source body: an editable <textarea> (editable) or a read-only <pre>
+  // the source body: an editable <textarea> (editable) or a read-only <pre>.
+  //
+  // Both are syntax-highlighted, which a textarea cannot be — so the editable
+  // one is a transparent textarea over a coloured copy of its own text. The two
+  // layers must agree on every metric that decides where a glyph lands, hence
+  // one shared string for the lot: change it and both move together.
+  const CODE_LAYER =
+    `position: absolute; inset: 0; margin: 0; box-sizing: border-box; border: none;` +
+    ` padding: 12px 14px; tab-size: 2; white-space: pre; font: 12.5px/1.6 ${MONO};`;
   const srcBody = doc.createElement('div');
   srcBody.style.cssText = `flex: 1 1 0; min-height: 0; overflow: auto; background: ${C.bg};`;
-  let srcPre = null, srcTextarea = null;
+  let srcPre = null, srcTextarea = null, srcGhost = null;
   if (editable) {
     srcBody.style.display = 'flex';
     srcBody.style.flexDirection = 'column';
+    const codeWrap = doc.createElement('div');
+    codeWrap.style.cssText = `position: relative; flex: 1 1 auto; min-height: 0; background: ${C.bg};`;
+    srcGhost = doc.createElement('pre');
+    srcGhost.setAttribute('aria-hidden', 'true');
+    srcGhost.style.cssText = CODE_LAYER + ` overflow: hidden; pointer-events: none; color: ${C.ink};`;
     srcTextarea = doc.createElement('textarea');
     srcTextarea.spellcheck = false;
     srcTextarea.setAttribute('aria-label', 'Diagram source — edit, then Run (⌘⏎)');
-    srcTextarea.style.cssText =
-      `flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; resize: none; border: none; outline: none;` +
-      ` padding: 12px 14px; margin: 0; tab-size: 2; white-space: pre; overflow: auto;` +
-      ` background: ${C.bg}; color: ${C.ink}; font: 12.5px/1.6 ${MONO};`;
-    srcBody.appendChild(srcTextarea);
+    srcTextarea.style.cssText = CODE_LAYER +
+      ` width: 100%; height: 100%; resize: none; outline: none; overflow: auto;` +
+      ` background: transparent; color: transparent; caret-color: ${C.ink};`;
+    codeWrap.appendChild(srcGhost);
+    codeWrap.appendChild(srcTextarea);
+    srcBody.appendChild(codeWrap);
   } else {
     srcPre = doc.createElement('pre');
     srcPre.style.cssText =
       `margin: 0; padding: 12px 14px; white-space: pre; tab-size: 2; color: ${C.ink}; font: 12.5px/1.6 ${MONO};`;
     srcBody.appendChild(srcPre);
   }
+
+  // Repaint the coloured copy. A textarea fires no event for a value set from
+  // script, so this is called from every place that writes one — a stale ghost
+  // shows text that is no longer under it.
+  const paintGhost = () => {
+    if (!srcGhost || !srcTextarea) return;
+    paintInto(doc, srcGhost, srcTextarea.value, dark);
+    srcGhost.scrollTop = srcTextarea.scrollTop;
+    srcGhost.scrollLeft = srcTextarea.scrollLeft;
+  };
   panelExpanded.appendChild(srcHeader);
   panelExpanded.appendChild(srcBody);
   sourceCol.appendChild(panelExpanded);
@@ -459,9 +484,10 @@ function buildDevice(doc, opts, height, editable) {
     if (srcTextarea) {
       if (!force && (dirty || doc.activeElement === srcTextarea)) return;
       srcTextarea.value = text == null ? '' : text;
+      paintGhost();
       dirty = false; srcStatus.textContent = ''; styleRun();
     } else if (srcPre) {
-      srcPre.textContent = text == null ? '' : text;
+      paintInto(doc, srcPre, text == null ? '' : text, dark);
     }
   };
   const refreshSource = (force) => setSourceText(getSource(), force);
@@ -507,12 +533,20 @@ function buildDevice(doc, opts, height, editable) {
     if (!srcTextarea) return;
     const body = srcTextarea.value.replace(/\s+$/, '');
     srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+    paintGhost();
     dirty = true; styleRun();
     await doApply();
   }
 
   if (srcTextarea) {
-    srcTextarea.addEventListener('input', () => { dirty = true; srcStatus.textContent = ''; styleRun(); });
+    srcTextarea.addEventListener('input', () => {
+      paintGhost();
+      dirty = true; srcStatus.textContent = ''; styleRun();
+    });
+    srcTextarea.addEventListener('scroll', () => {
+      srcGhost.scrollTop = srcTextarea.scrollTop;
+      srcGhost.scrollLeft = srcTextarea.scrollLeft;
+    });
     srcTextarea.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doApply(); }
     });

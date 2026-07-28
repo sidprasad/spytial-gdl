@@ -37,7 +37,7 @@
   ],
   "scripts": {
     "serve": "node scripts/preview-server.mjs",
-    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/annotations.test.mjs && node test/infer.test.mjs && node test/cycles.test.mjs && node test/observe.test.mjs && node test/demonstrate.test.mjs && node test/infer-roundtrip.test.mjs && node test/sgq-integration.test.mjs && node test/pins.test.mjs",
+    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/annotations.test.mjs && node test/highlight.test.mjs && node test/infer.test.mjs && node test/cycles.test.mjs && node test/observe.test.mjs && node test/demonstrate.test.mjs && node test/infer-roundtrip.test.mjs && node test/sgq-integration.test.mjs && node test/pins.test.mjs",
     "test:roundtrip": "node test/roundtrip.test.mjs",
     "test:parse": "node test/parse.test.mjs",
     "test:annotations": "node test/annotations.test.mjs",

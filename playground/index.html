@@ -48,7 +48,6 @@
         .brand { display: flex; align-items: baseline; gap: 10px; }
         .brand .mark { font-size: 18px; line-height: 1; color: var(--accent); }
         .brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
-        .brand .tag { font-size: 12.5px; color: var(--ink-faint); font-weight: 450; }
         .topbar .spacer { flex: 1; }
         .topbar select, .topbar button.ghost {
             font: inherit; font-size: 13px;
@@ -74,21 +73,27 @@
         .editor-stack { flex: 1; position: relative; min-height: 0; }
         .editor-panel { position: absolute; inset: 0; display: flex; flex-direction: column; }
 
-        textarea.code {
-            flex: 1; width: 100%;
+        /* The source is syntax-highlighted by painting a coloured copy of it
+           behind a textarea whose own text is transparent. Both layers must
+           agree on every metric that affects where a glyph lands — font, size,
+           line-height, padding, wrapping — or the caret drifts away from the
+           letters. `.code` is that shared contract; edit it for both at once. */
+        .code-wrap { flex: 1; position: relative; min-height: 0; background: var(--editor-bg); }
+        .code {
+            position: absolute; inset: 0; margin: 0;
             font-family: "SF Mono", "JetBrains Mono", "Fira Code", "Courier New", monospace;
             font-size: 13px; line-height: 1.6;
-            color: var(--ink); background: var(--editor-bg);
-            border: none; outline: none; resize: none;
-            padding: 16px 18px; tab-size: 2;
+            border: none; padding: 16px 18px; tab-size: 2;
+            white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;
+        }
+        pre.code-ghost { overflow: hidden; pointer-events: none; color: var(--ink); }
+        textarea.code {
+            width: 100%; height: 100%;
+            background: transparent; color: transparent; caret-color: var(--ink);
+            outline: none; resize: none; overflow: auto;
         }
         textarea.code::placeholder { color: var(--ink-faint); }
-
-        .rules-hint {
-            flex: 0 0 auto; font-size: 11.5px; color: var(--ink-faint);
-            padding: 7px 14px; border-bottom: 1px solid var(--border); background: var(--chrome-2);
-        }
-        .rules-hint code { font-size: 11px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+        textarea.code::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 
         .editor-foot {
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
@@ -139,8 +144,12 @@
         .preview-bar .ghost.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
         .preview-bar .ghost[hidden] { display: none; }
 
-        /* Editor in live-mirror (edit) mode — output, not input */
-        textarea.code.mirror { background: var(--chrome-2); color: var(--ink-soft); }
+        /* Editor in live-mirror (edit) mode — output, not input. The tint goes on
+           the wrapper and the fading on the ghost: the textarea's own glyphs stay
+           transparent in every mode, or they would double up with the coloured
+           copy behind them. */
+        .code-wrap.mirror { background: var(--chrome-2); }
+        .code-wrap.mirror .code-ghost { opacity: .72; }
 
         /* Reified-value inspector panel */
         .value-panel {
@@ -169,15 +178,14 @@
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        @media (max-width: 860px) { .pane.left { flex-basis: 50%; } .brand .tag { display: none; } }
+        @media (max-width: 860px) { .pane.left { flex-basis: 50%; } }
     </style>
 </head>
 <body>
     <header class="topbar">
         <div class="brand">
             <span class="mark">◆</span>
-            <h1>spytial&#8209;graph</h1>
-            <span class="tag">write a graph — get a live constraint space, not a static picture</span>
+            <h1>spytial&#8209;gdl</h1>
         </div>
         <div class="spacer"></div>
         <select id="example-select" title="Load an example" aria-label="Load an example">
@@ -195,17 +203,15 @@
     <main>
         <!-- LEFT: one combined-source editor (flowchart + inline @annotations) -->
         <section class="pane left">
-            <div class="rules-hint">
-                Write nodes and edges (<code>A -&gt; B</code>, <code>A -&gt; B : label</code>),
-                then add spatial operations inline as <code>@annotations</code> — e.g.
-                <code>@orientation(selector=_links, directions=[below])</code>. Selectors are
-                edge labels (<code>_</code> = unlabeled, <code>_links</code> = all), node
-                sorts (<code>A:::Person</code> → <code>Person</code>), and classes.
-            </div>
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
-                    <textarea id="source-input" class="code" spellcheck="false"
-                        placeholder="Start -> Build&#10;Build -> Test&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
+                    <div class="code-wrap">
+                        <!-- The coloured copy. Behind the textarea, never focusable,
+                             and hidden from assistive tech: the textarea is the text. -->
+                        <pre class="code code-ghost" id="source-ghost" aria-hidden="true"></pre>
+                        <textarea id="source-input" class="code" spellcheck="false"
+                            placeholder="Start -> Build&#10;Build -> Test&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
+                    </div>
                 </div>
             </div>
             <div class="editor-foot">
@@ -253,6 +259,7 @@
 
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
+        import { toHtml, toCss } from '../src/highlight.js';
 
         // ─── Examples (one combined source: graph + inline @annotations) ──────
         // Selectors below match what relationalize.js emits:
@@ -315,6 +322,8 @@ c -> a : r3
 
         // ─── Element refs / state ───────────────────────────────────────
         const sourceEl = document.getElementById('source-input');
+        const ghostEl = document.getElementById('source-ghost');
+        const codeWrapEl = ghostEl.parentElement;
         const graphEl = document.getElementById('graph');
         const inputGraphEl = document.getElementById('input-graph');
         const statusEl = document.getElementById('status');
@@ -339,6 +348,40 @@ c -> a : r3
         const demoSlot = document.getElementById('demo-slot');
         let demo = null;
         let lastData = null;     // { atoms, relations } from the last render
+
+        // ─── Syntax highlighting ────────────────────────────────────────
+        // The textarea's own text is transparent; what you read is `ghostEl`
+        // behind it. Repaint after *every* change to the value — an ordinary
+        // keystroke, but also loading an example, restoring a share link, and
+        // the Edit-mode mirror — because a textarea fires no event for a value
+        // set from script, and a stale ghost is a diagram of text that is no
+        // longer there. Hence `setSource`: the one way to write to the box.
+        function paintSource() {
+            ghostEl.innerHTML = toHtml(sourceEl.value) + '\n';
+            ghostEl.scrollTop = sourceEl.scrollTop;
+            ghostEl.scrollLeft = sourceEl.scrollLeft;
+        }
+        function setSource(text) {
+            sourceEl.value = text;
+            paintSource();
+        }
+        sourceEl.addEventListener('input', paintSource);
+        sourceEl.addEventListener('scroll', () => {
+            ghostEl.scrollTop = sourceEl.scrollTop;
+            ghostEl.scrollLeft = sourceEl.scrollLeft;
+        });
+
+        // The token colours are the module's, not the page's, so the editor and
+        // the suggestion rows agree on what a selector looks like.
+        function paintTokenColors(theme) {
+            let style = document.getElementById('tok-colors');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'tok-colors';
+                document.head.appendChild(style);
+            }
+            style.textContent = toCss(theme === 'dark');
+        }
 
         function setStatus(msg, kind = 'info') {
             statusEl.className = `status ${kind}`;
@@ -368,7 +411,7 @@ c -> a : r3
         // truth. Matches what the markdown blocks do.
         async function appendAnnotation(line) {
             const body = sourceEl.value.replace(/\s+$/, '');
-            sourceEl.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+            setSource(body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line);
             await apply();
             toast('Added ' + line);
         }
@@ -394,6 +437,7 @@ c -> a : r3
             graphEl.setAttribute('theme', t);
             inputGraphEl.setAttribute('theme', t);
             document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
+            paintTokenColors(t);
             try { localStorage.setItem('spytial-gdl-theme', theme); } catch (e) {}
             if (demo) mountDemo();
         }
@@ -482,7 +526,7 @@ c -> a : r3
         document.getElementById('example-select').addEventListener('change', (e) => {
             const src = EXAMPLES[e.target.value];
             if (!src) return;
-            sourceEl.value = src;
+            setSource(src);
             // Loading an example resets to View (its own source of truth).
             if (mode === 'edit') enterView(); else apply();
             e.target.selectedIndex = 0;
@@ -587,7 +631,7 @@ c -> a : r3
             window.clearAllErrors && window.clearAllErrors();
             document.getElementById('conflict-hint').style.display = 'none';
             graphEl.hidden = true; inputGraphEl.hidden = false;
-            sourceEl.readOnly = true; sourceEl.classList.add('mirror');
+            sourceEl.readOnly = true; codeWrapEl.classList.add('mirror');
             syncBtn.hidden = false; applyBtn.style.display = 'none';
 
             let handle;
@@ -600,7 +644,7 @@ c -> a : r3
             editHandle = handle;
             // Live notation mirror: every edit re-serializes back into the textarea.
             editUnsub = handle.onChange(({ source, value, error }) => {
-                sourceEl.value = source;
+                setSource(source);
                 writeHash();
                 updateValuePanel(value);
                 if (error) setStatus('Edited — these rules clash on the new graph.', 'error');
@@ -618,7 +662,7 @@ c -> a : r3
             setModeButtons();
             teardownEdit();
             inputGraphEl.hidden = true; graphEl.hidden = false;
-            sourceEl.readOnly = false; sourceEl.classList.remove('mirror');
+            sourceEl.readOnly = false; codeWrapEl.classList.remove('mirror');
             syncBtn.hidden = true; applyBtn.style.display = '';
             demoSlot.hidden = false;
             apply();
@@ -627,7 +671,7 @@ c -> a : r3
         modeViewBtn.onclick = () => { if (mode !== 'view') enterView(); };
         modeEditBtn.onclick = () => { enterEdit(); };
         syncBtn.onclick = () => {
-            if (editHandle) { sourceEl.value = editHandle.getSource(); writeHash(); toast('Notation synced to text'); }
+            if (editHandle) { setSource(editHandle.getSource()); writeHash(); toast('Notation synced to text'); }
         };
 
         function handleConflict(error) {
@@ -698,7 +742,7 @@ c -> a : r3
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
             const shared = await readHash();
-            sourceEl.value = shared && shared.m != null ? shared.m : EXAMPLES.flowchart;
+            setSource(shared && shared.m != null ? shared.m : EXAMPLES.flowchart);
 
             applyBtn.disabled = false;
             setStatus('Ready — edit and press Apply (⌘⏎).', 'info');
