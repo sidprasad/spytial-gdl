@@ -37,7 +37,7 @@ npm run serve   # zero-dep static server, port 8100
 # /examples/guide.html         the guide, rendered by spytial-gdl itself
 # /examples/binary-tree.html   programmatic API demo
 # /examples/editable.html      editable graph — edit visually, re-get the notation
-# /examples/diagrams-that-edit-back.html   "explorable" post built on the editor
+# /examples/two-way-editing.html   longer walkthrough of editing from either side
 # /examples/md-viewer.html?doc=your-diagram-doesnt-know.md  intro post, rendered live
 # /examples/md-viewer.html?doc=<file.md>   render any spytial-gdl .md live (incl. this README)
 ```

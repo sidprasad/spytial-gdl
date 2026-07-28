@@ -3,27 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>spytial-gdl — UNSAT core, below the graph</title>
+  <title>spytial-gdl · unsatisfiable constraints</title>
+  <link rel="stylesheet" href="../assets/site.css" />
   <style>
-    body {
-      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      max-width: 760px; margin: 40px auto; padding: 0 20px; color: #1a1a1a;
-    }
-    h1 { font-size: 22px; }
-    h2 { font-size: 15px; margin-top: 30px; color: #333; }
-    p { color: #444; }
-    code { background: #f0f0f3; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    body { max-width: 760px; margin: 0 auto; padding: 8vh 24px 12vh; }
+    h1 { font-size: clamp(32px, 6vw, 46px); margin: 0 0 14px; }
+    .lede { font-size: 18px; color: var(--ink-2); margin: 0 0 8px; padding-bottom: 26px;
+            border-bottom: var(--bar) solid var(--ink); }
+    h2 { font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .18em;
+         color: var(--ink); margin: 44px 0 10px; }
+    p { color: var(--ink-2); }
+    .spytial-gdl, .spytial-gdl-editable { margin: 12px 0; }
   </style>
 </head>
 <body>
-  <h1>UNSAT core, rendered below the graph</h1>
-  <p>
-    Every diagram is live. When the spatial rules can't all hold, spytial-core's
-    own IIS report appears <em>below</em> the diagram — it never overlaps it — and
-    for an editable diagram it updates as you edit. Resolve the clash and it clears.
+  <h1>Unsatisfiable constraints</h1>
+  <p class="lede">
+    When the spatial rules can't all hold at once, spytial-core's IIS report appears
+    below the diagram rather than over it. On an editable diagram it updates as you
+    edit, and clears when the clash is gone.
   </p>
 
-  <h2>1 — Satisfiable (read-only): no report</h2>
+  <h2>1 — Satisfiable: no report</h2>
   <div class="spytial-gdl" data-height="240">
 a -> b : prereq
 b -> c : prereq
@@ -31,7 +32,7 @@ b -> c : prereq
 @orientation(selector=prereq, directions=[right])
   </div>
 
-  <h2>2 — Clash (editable): delete <code>algo -&gt; intro</code> and the report clears</h2>
+  <h2>2 — A clash: delete <code>algo -&gt; intro</code> and the report clears</h2>
   <div class="spytial-gdl-editable" data-height="320">
 intro[CS 101]:::Course -> data[CS 201]:::Course : prereq
 data                   -> algo[CS 301]:::Course : prereq
