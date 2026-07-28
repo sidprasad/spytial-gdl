@@ -48,7 +48,7 @@ describe.
 
 > Mermaid has a model of a diagram. What I need is a diagram of a model.
 
-Here are the Earnshaws, the Lintons, and Heathcliff in Spytial Graph:
+Here are the Earnshaws, the Lintons, and Heathcliff in spytial-gdl:
 
 <div class="spytial-gdl" data-height="600">
 mr_e[Mr. Earnshaw]:::Earnshaw -> mrs_e[Mrs. Earnshaw]:::Earnshaw : spouse
@@ -173,7 +173,7 @@ and edit the picture; the source rewrites itself. The point is not that the
 diagram is interactive. The point is that the interaction still has a model
 under it.
 
-Mermaid made diagrams cheap enough to keep. Spytial Graph is an attempt to make
+Mermaid made diagrams cheap enough to keep. spytial-gdl is an attempt to make
 graph diagrams say enough to be worth trusting.
 
 ---
