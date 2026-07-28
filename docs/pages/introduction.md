@@ -54,6 +54,12 @@ rather than about this drawing, so it survives a change to the data. The essay
 tree](../examples/md-viewer.html?doc=your-diagram-doesnt-know.md) works through a
 longer version of the same argument.
 
+## Scope
+
+The notation covers graphs only: nodes, edges, labels, types, and classes. There is
+no syntax for sequence, state, Gantt, or pie diagrams. An edge label is a relation
+name rather than free text.
+
 ## Types and classes
 
 A node carries an id, an optional type, and any number of classes. All three can be
