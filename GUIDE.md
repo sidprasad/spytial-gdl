@@ -1,11 +1,11 @@
 # Embedding spytial-gdls in Markdown
 
 A **spytial-gdl** is a small text notation for a graph with its layout written
-inline. You write nodes, edges, and spatial operations as `@annotations`; Spytial
-solves the layout and draws a live, draggable diagram. It runs in the browser —
-no build step, no server beyond static hosting.
+inline. You write nodes, edges, and spatial operations as `@annotations`, then
+Spytial solves the layout and draws a live, draggable diagram. It runs in the
+browser, with no build step and no server beyond static hosting.
 
-## The 30-second version
+## The short version
 
 Add one line to any page that renders your Markdown:
 
@@ -24,9 +24,9 @@ B -> C
 ````
 
 Every `spytial-gdl` block on the page becomes a diagram. The script pulls in the
-renderer (d3, WebCola, spytial-core) for you if the page doesn't already load it.
+renderer (d3, WebCola, spytial-core) if the page doesn't already load it.
 
-Wiring it yourself instead of the drop-in tag:
+To wire it up yourself instead of using the drop-in tag:
 
 ```html
 <script type="module">
@@ -35,11 +35,11 @@ Wiring it yourself instead of the drop-in tag:
 </script>
 ```
 
-## In plain HTML (no Markdown renderer)
+## Without a Markdown renderer
 
 You don't need Markdown at all. In a hand-written HTML page, put the notation in a
-`<div class="spytial-gdl">` and add the same one tag — the way you'd drop a
-`<div class="mermaid">` into a page. The complete integration:
+`<div class="spytial-gdl">` and add the same tag, the way you'd drop in a
+`<div class="mermaid">`. That's the whole integration:
 
 ```html
 <div class="spytial-gdl">
@@ -54,26 +54,25 @@ You don't need Markdown at all. In a hand-written HTML page, put the notation in
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
-On load, every block becomes a live diagram — no init call, no config. The block
-also accepts `class="language-spytial-gdl"` and a `<pre class="spytial-gdl">`,
-so whatever markup you (or a renderer) emit is caught. Indentation inside the
-`<div>` is fine; each line is trimmed.
+Every block becomes a live diagram on load. You don't call an init function or pass
+any config. `class="language-spytial-gdl"` and `<pre class="spytial-gdl">` are
+picked up too, so whatever markup you or a renderer emit gets caught. Indentation
+inside the `<div>` is fine, since each line is trimmed.
 
-Give each block a height — the diagram fills its container:
+Give each block a height, because the diagram fills its container:
 
 ```css
 .spytial-gdl, .spytial-gdl-editable { height: 340px; }
 ```
 
-For an **editor** instead of a static view, use `class="spytial-gdl-editable"`
-(or add `data-editable` to the div). It opens with the **Source** panel beside the
-diagram as a live text editor — drag the graph or edit the text and **Run ▸** (⌘⏎)
-it in, both directions staying in sync — plus **⧉ Copy** to lift the notation out.
+For an editor instead of a static view, use `class="spytial-gdl-editable"`, or add
+`data-editable` to the div. It opens with the **Source** panel beside the diagram
+as a live text editor, so you can drag the graph or edit the text and **Run ▸**
+(⌘⏎) it in, with both directions staying in sync. **⧉ Copy** lifts the notation
+out.
 
-Two things to know: the page must be **served** (any static server) rather than
-opened as `file://`, because the tag is an ES module; and the `npm`-CDN URL above
-works once the package is published — until then point the tag at a local checkout
-(`src="../src/auto.js"`). A complete, runnable page is
+One thing to know: the page has to be served by a static server rather than opened
+as `file://`, because the tag is an ES module. A complete, runnable page is
 [`examples/drop-in.html`](examples/drop-in.html).
 
 ## The notation
@@ -84,22 +83,22 @@ A node is implicit from any edge, so the smallest graph is one line:
 A -> B
 ```
 
-Label an edge after a colon — the label is also a selector you can target:
+Label an edge after a colon. That label is also a selector you can target:
 
 ```spytial-gdl
-A -> B : yes
-A -> C : no
+A -> B : hit
+A -> C : miss
 ```
 
-A node's id is its name. A `[bracket]` gives it a display label, mermaid-style —
-without one the id is shown:
+A node's id is its name. A `[bracket]` gives it a display label, mermaid-style;
+without one, the id is shown:
 
 ```spytial-gdl
 u1[Alice] -> u2[Bob]
 ```
 
-A `:::Sort` tag gives the node a **type**, so `selector: Person` then matches
-every node of that type:
+A `:::Sort` tag gives the node a type, so `selector: Person` then matches every
+node of that type:
 
 ```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
@@ -108,38 +107,40 @@ bob[Bob]:::Person     -> acme
 @atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
 ```
 
-The id stays the identity that edges reference; the label is just what's drawn,
-and the sort is what selectors match. One sort per node for now — a chain
-`:::Person:::Employee` (a linear hierarchy) is reserved for later.
+Each part of a node does one job: the id is the identity edges reference, the label
+is what's drawn, and the sort is what selectors match. A node takes one sort for
+now. A chain like `:::Person:::Employee` (a linear hierarchy) is reserved for later.
 
 For a cross-cutting group, tag nodes with `class A,B tag`. There is no header and
-no `TD`/`LR` direction; layout comes from the annotations, not a keyword.
+no `TD`/`LR` direction, since layout comes from the annotations rather than a
+keyword.
 
 ## Spatial operations
 
-Annotations *are* the layout. Each is one line, `@name(arg=value, …)`:
+Annotations are the layout. Each is one line, `@name(arg=value, …)`:
 
 | annotation | effect |
 |---|---|
 | `@orientation(selector=_links, directions=[below])` | put each edge's target below its source |
-| `@align(selector=row, direction=top)` | line nodes up on an axis |
+| `@align(selector=row, direction=horizontal)` | line a relation's endpoints up on an axis |
 | `@cyclic(selector=_links, direction=clockwise)` | arrange a cycle as a ring |
 | `@group(selector=team, name='Team A')` | draw a labeled region around a set |
 | `@atomStyle(selector=root, borderStyle(color='#ffe7b3'))` | tint a node's outline |
 | `@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))` | style a relation's edges |
 
-Styling is written in **blocks** — `borderStyle`/`fillStyle`/`textStyle` on a node,
-`lineStyle`/`textStyle` on an edge — so each part of a node or edge is set
-independently. See [Annotations → style blocks](docs/pages/annotations.md#style-blocks).
+Styling is written in blocks: `borderStyle`, `fillStyle`, and `textStyle` on a
+node, `lineStyle` and `textStyle` on an edge. Each part of a node or edge is set
+independently. See
+[Annotations → style blocks](docs/pages/annotations.md#style-blocks).
 
 A `selector` names nodes or edges:
 
-- an **edge label** (`yes`) — the edges carrying it
-- **`_`** — the unlabeled edges; **`_links`** — every edge
-- a **type** (`Person`) or a **class** (`tag`) — the matching nodes
-- **`univ`** — every node, whatever its type (a plain node is untyped)
+- an edge label (`hit`) selects the edges carrying it
+- `_` selects the unlabeled edges, and `_links` selects every edge
+- a type (`Person`) or a class (`tag`) selects the matching nodes
+- `univ` selects every node, whatever its type, since a plain node is untyped
 
-Put together — a binary tree, children below, left-left and right-right:
+Put together, a binary tree with children below, left-left and right-right:
 
 ```spytial-gdl
 A -> B : left
@@ -155,20 +156,20 @@ C -> G : right
 ```
 
 If the constraints can't all hold, the diagram still draws the closest feasible
-layout and explains the conflict — nothing silently disappears.
+layout and explains the conflict. Nothing is dropped quietly.
 
 ## Where it works
 
-`autoRender` looks for the markup a Markdown renderer emits for a fenced block —
-`<pre><code class="language-spytial-gdl">`. That's what marked, markdown-it,
-Prism, highlight.js, MkDocs, and Docusaurus produce, so no plugin is needed. To
-render a fragment you injected yourself, call `renderSpytialGdls(element)`.
+`autoRender` looks for the markup a Markdown renderer emits for a fenced block,
+`<pre><code class="language-spytial-gdl">`. That's what marked, markdown-it, Prism,
+highlight.js, MkDocs, and Docusaurus produce, so no plugin is needed. To render a
+fragment you injected yourself, call `renderSpytialGdls(element)`.
 
 ## Editable blocks
 
-Tag a block `spytial-gdl-editable` instead, and it renders an **editor** rather
-than a static diagram — readers add and delete nodes, drag to connect edges, and
-rename relations, with the constraints re-solving live:
+Tag a block `spytial-gdl-editable` instead and it renders an editor rather than a
+static diagram. Readers add and delete nodes, drag to connect edges, and rename
+relations, with the constraints re-solving as they go:
 
 ````markdown
 ```spytial-gdl-editable
@@ -180,14 +181,14 @@ A -> C : right
 ````
 
 Each editable block sits beside a collapsible **Source** panel that re-derives
-spytial-gdl text from the edited graph on every edit — and is editable itself:
-type notation and **Run ▸** (⌘⏎) to push it into the diagram, the two staying in
-sync. **⧉ Copy** lifts the result back out, `@annotations` and all. (A hand-authored
-container with `data-editable`, or `autoRender({ editable: true })` to make every
-block editable, works too.)
+spytial-gdl text from the edited graph on every edit, and the panel is editable
+itself: type notation and **Run ▸** (⌘⏎) to push it into the diagram, with the two
+staying in sync. **⧉ Copy** lifts the result back out, `@annotations` and all. A
+hand-authored container with `data-editable` works too, as does
+`autoRender({ editable: true })` to make every block editable.
 
-Driving the editor yourself, outside Markdown — the handle re-gets the notation
-(`getSource()`) and the reified value (`getValue()`) on every edit:
+To drive the editor yourself, outside Markdown, the handle re-gets the notation
+with `getSource()` and the reified value with `getValue()` on every edit:
 
 ```js
 import { renderSpytialGdlEditable } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/index.js';
@@ -195,6 +196,6 @@ import { renderSpytialGdlEditable } from 'https://cdn.jsdelivr.net/npm/spytial-g
 const h = await renderSpytialGdlEditable(document.getElementById('out'), 'A -> B\nB -> C');
 h.onChange(({ source, value }) => {
   console.log(source); // spytial-gdl notation, re-derived from the edited graph
-  console.log(value);  // its reified value — { atoms, relations }
+  console.log(value);  // its reified value: { atoms, relations }
 });
 ```
