@@ -1,11 +1,11 @@
 # Annotations
 
-*Spatial operations, written inline. Annotations are the layout.*
+How to write the layout: the `@` operations and the arguments they take.
 
-There is no `TD`/`LR` keyword in spytial-gdl. Every layout and styling decision
-is an `@annotation` — a one-line operation that targets a [selector](notation.md#selectors)
-and applies a constraint or a directive. A single block of text fully describes
-both the graph and how it should be drawn.
+There is no `TD`/`LR` keyword in spytial-gdl. Every layout and styling decision is
+an `@annotation`, a one-line operation that targets a
+[selector](notation.md#selectors) and applies a constraint or a directive. One
+block of text describes both the graph and how it should be drawn.
 
 ## Anatomy
 
@@ -13,25 +13,24 @@ both the graph and how it should be drawn.
 @name(arg=value, arg2=[a, b], …)
 ```
 
-- **One annotation per statement,** anywhere in the block (convention: after the
-  graph). It usually fits on one line, but the arguments may **wrap across lines**
-  up to the closing `)` — handy for long lists:
+One annotation per statement, anywhere in the block, though the convention is to
+put them after the graph. An annotation usually fits on one line, but the arguments
+may wrap up to the closing `)`, which helps with long lists:
 
-  ```text
-  @orientation(
-    selector=left,
-    directions=[left],
-  )
-  ```
+```text
+@orientation(
+  selector=left,
+  directions=[left],
+)
+```
 
-  A trailing comma before the `)` is fine, as is a trailing `;` or `%%` comment.
-- **Arguments are `key=value`,** comma-separated.
-- **Values** are barewords (`below`), quoted strings (`'left subtree'`), numbers
-  (`3`, `3.5`), lists (`[below, left]`), or a quoted comprehension
-  (`'{x: Person | …}'`). Lists may nest.
+A trailing comma before the `)` is fine, as is a trailing `;` or `%%` comment.
+Arguments are `key=value`, comma-separated. Values are barewords (`below`), quoted
+strings (`'left subtree'`), numbers (`3`, `3.5`), lists (`[below, left]`), or a
+quoted comprehension (`'{x: Person | …}'`). Lists may nest.
 
-Two kinds: **constraints** shape layout; **directives** style. They differ only in
-which bucket they compile to — the value syntax is identical.
+There are two kinds. Constraints shape layout and directives style. They differ
+only in which bucket they compile to, and the value syntax is identical.
 
 ## Constraints (layout)
 
@@ -44,8 +43,9 @@ which bucket they compile to — the value syntax is identical.
 
 ### orientation
 
-The workhorse. `directions` is a list of one or more of `above`, `below`, `left`,
-`right`, applied to every edge in the selector (target relative to source):
+This is the one you'll use most. `directions` is a list of one or more of `above`,
+`below`, `left`, `right`, applied to every edge in the selector, with the target
+placed relative to the source:
 
 ```spytial-gdl
 A -> B : left
@@ -58,13 +58,14 @@ C -> E
 @orientation(selector=right, directions=[right])
 ```
 
-Stacking directions combines them — `[below, right]` puts the target down-and-to-the-right.
+Stacking directions combines them, so `[below, right]` puts the target
+down-and-to-the-right.
 
-Each direction has a **`directly`** form — `directlyAbove`, `directlyBelow`,
-`directlyLeft`, `directlyRight` — which additionally pins the two nodes to a
-shared axis, so the target lands squarely on the source rather than merely on
-that side of it. `directions=[directlyBelow]` is `[below]` plus the vertical
-`align` you would otherwise write by hand:
+Each direction has a `directly` form (`directlyAbove`, `directlyBelow`,
+`directlyLeft`, `directlyRight`) that also pins the two nodes to a shared axis, so
+the target lands squarely on the source rather than merely on that side of it.
+`directions=[directlyBelow]` is `[below]` plus the vertical `align` you would
+otherwise write by hand:
 
 ```text
 @orientation(selector=stands_for, directions=[directlyBelow])
@@ -104,8 +105,8 @@ class web frontend
 ### align
 
 Line the two endpoints of each edge in a relation up on a shared axis. `direction`
-is `horizontal` or `vertical`. Unlike `group`, `align` takes a **binary (edge)
-selector** — it aligns *pairs*, not a node set:
+is `horizontal` or `vertical`. Unlike `group`, `align` takes a binary (edge)
+selector, because it aligns pairs rather than a node set:
 
 ```spytial-gdl
 a -> b : sib
@@ -122,8 +123,8 @@ whole chain settles into a row.
 
 | directive | what it does |
 |---|---|
-| `atomStyle` | how matching nodes look — outline, fill, label ([style blocks](#style-blocks)) |
-| `edgeStyle` | how matching edges look — line, label ([style blocks](#style-blocks)) |
+| `atomStyle` | how matching nodes look: outline, fill, label ([style blocks](#style-blocks)) |
+| `edgeStyle` | how matching edges look: line, label ([style blocks](#style-blocks)) |
 | `size` | sizing of matching nodes |
 | `icon` | render matching nodes with an icon |
 | `attribute` | show a field as a node attribute instead of an edge |
@@ -134,7 +135,7 @@ whole chain settles into a row.
 | `flag` | a layout flag, e.g. `flag(name=hideDisconnected)` |
 | `projection` | project over a relation |
 
-The common ones — color:
+The common ones set color:
 
 ```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
@@ -142,29 +143,27 @@ bob[Bob]:::Person     -> acme
 
 @atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
 @atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
-@edgeStyle(field=_, lineStyle(color='#2d8659'))
+@edgeStyle(field=_, lineStyle(color='#1f4396'))
 @orientation(selector=_links, directions=[left])
 ```
 
-Note the asymmetry in how the two styling directives *match*, because it's the
-easiest thing to get wrong here:
+The two styling directives match differently, which is the easiest thing to get
+wrong here. `atomStyle` takes a node selector: a type, a class, or `univ`.
+`edgeStyle` takes a `field`, meaning the relation's name. Unlabeled edges are all
+named `_` (see [drawn once](notation.md#drawn-once)), so `field=_` means every
+plain edge, and a labeled edge is styled by its label, as in `field=works_at`. Its
+optional `selector=` doesn't choose the edges; it only narrows which source nodes'
+edges match.
 
-- `atomStyle` takes a **node selector** — a type, a class, `univ`.
-- `edgeStyle` takes a **`field`**: the relation's name. Unlabeled edges are all
-  named `_` (see [drawn once](notation.md#drawn-once)), so `field=_` is "every
-  plain edge"; a labeled edge is styled by its label, `field=works_at`. Its
-  optional `selector=` does *not* choose the edges — it only narrows which
-  **source nodes'** edges match.
-
-  `_links` is the wrong answer here even though it works for `@orientation`:
-  it's a selector-only relation, hidden from drawing, and `edgeStyle` never
-  matches it.
+`_links` is the wrong answer for `edgeStyle` even though it works for
+`@orientation`. It's a selector-only relation, hidden from drawing, so `edgeStyle`
+never matches it.
 
 ### Recipes
 
-Copy-paste, then swap the names. Throughout: **`rel`** is an edge label
-(`a -> b : rel`) and **`Person`** is a node sort (`a[Ann]:::Person`) — a class
-from `class a,b tag` works anywhere `Person` does.
+Copy-paste, then swap the names. Throughout, `rel` is an edge label
+(`a -> b : rel`) and `Person` is a node sort (`a[Ann]:::Person`). A class from
+`class a,b tag` works anywhere `Person` does.
 
 | to do this | write |
 |---|---|
@@ -174,7 +173,7 @@ from `class a,b tag` works anywhere `Person` does.
 | thicken `rel` | `@edgeStyle(field=rel, lineStyle(weight=3))` |
 | drop `rel`'s label | `@edgeStyle(field=rel, showLabel=false)` |
 | restyle `rel`'s label | `@edgeStyle(field=rel, textStyle(size=small, color=gray))` |
-| style the **unlabeled** edges | `@edgeStyle(field=_, lineStyle(color=gray))` |
+| style the unlabeled edges | `@edgeStyle(field=_, lineStyle(color=gray))` |
 | stop drawing `rel` entirely | `@hideField(field=rel)` |
 | tint a node's outline | `@atomStyle(selector=Person, borderStyle(color=steelblue, width=2))` |
 | fill a node's interior | `@atomStyle(selector=Person, fillStyle(color='#eef6ff'))` |
@@ -182,8 +181,8 @@ from `class a,b tag` works anywhere `Person` does.
 | resize nodes | `@size(selector=Person, width=140, height=60)` |
 | hide nodes | `@hideAtom(selector=Person)` |
 
-One rule carries as many blocks as you want, so combine freely — a dotted,
-grey, unlabeled connector is a single line:
+One rule carries as many blocks as you want, so a dotted, grey, unlabeled connector
+is a single line:
 
 ```spytial-gdl
 concept[blood pressure] -> measure[BP@6mo] : stands_for
@@ -192,26 +191,25 @@ concept[blood pressure] -> measure[BP@6mo] : stands_for
 @orientation(selector=stands_for, directions=[below])
 ```
 
-Two names to keep straight, because they are the ones you reach for first:
-`edgeStyle` matches on **`field`** (the relation) and `atomStyle` on
-**`selector`** (a sort or class) — see the asymmetry note above. An `atomStyle`
-with no `selector` at all styles *every* node.
+These two are the ones you reach for first, so it's worth keeping them straight:
+`edgeStyle` matches on `field`, the relation, and `atomStyle` on `selector`, a sort
+or class. An `atomStyle` with no `selector` at all styles every node.
 
 ### Directive reference
 
 Directives map generically onto spytial-core's vocabulary: an annotation
-`@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. That genericity is why
-every directive works with no per-directive code here — and why **spytial-gdl
-validates the [style blocks](#style-blocks) but not the other kwargs**. Misspell
-an argument and nothing reports it: the key rides through to core, which ignores
-what it doesn't recognise, and the diagram renders unstyled.
+`@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. Because of that
+genericity, every directive works without per-directive code here, and spytial-gdl
+validates the [style blocks](#style-blocks) but not the other kwargs. Misspell an
+argument and nothing reports it. The key rides through to core, core ignores what
+it doesn't recognise, and the diagram renders unstyled.
 
-So the argument names matter. These are the ones core accepts, keyed by
-directive (`?` = optional):
+So the argument names matter. These are the ones core accepts, keyed by directive
+(`?` means optional):
 
 | directive | arguments |
 |---|---|
-| `atomStyle` | `selector?` (absent = **every** node), `borderStyle(…)`, `fillStyle(…)`, `textStyle(…)` |
+| `atomStyle` | `selector?` (absent means every node), `borderStyle(…)`, `fillStyle(…)`, `textStyle(…)` |
 | `edgeStyle` | `field`, `selector?`, `filter?`, `lineStyle(…)`, `textStyle(…)`, `showLabel?`, `hidden?` |
 | `size` | `selector`, `height`, `width` |
 | `icon` | `selector`, `path`, `showLabels?` |
@@ -220,22 +218,22 @@ directive (`?` = optional):
 | `hideField` | `field`, `selector?`, `filter?` |
 | `hideAtom` | `selector` |
 | `inferredEdge` | `selector`, `name`, `lineStyle(…)`, `textStyle(…)`, `draw?` |
-| `flag` | `name` — `hideDisconnected` or `hideDisconnectedBuiltIns` |
+| `flag` | `name`: `hideDisconnected` or `hideDisconnectedBuiltIns` |
 | `projection` | `sig`, `orderBy?` |
-| `group` | `selector`, `name`, `addEdge(…)?`, `textStyle(…)` — or the field form `field`, `groupOn`, `addToGroup`, `selector?` |
+| `group` | `selector`, `name`, `addEdge(…)?`, `textStyle(…)`, or the field form `field`, `groupOn`, `addToGroup`, `selector?` |
 
-Note `showLabel` (singular) on `edgeStyle` against `showLabels` (plural) on
-`icon` — different directives, and the spellings don't cross over.
+Note `showLabel` (singular) on `edgeStyle` against `showLabels` (plural) on `icon`.
+They're different directives and the spellings don't cross over.
 
 > The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
-> authoritative — this table tracks its directive interfaces (verified against
-> `spytial-core@4`) rather than restating them.
+> authoritative. This table tracks its directive interfaces, verified against
+> `spytial-core@4`, rather than restating them.
 
 ## Style blocks
 
-`atomStyle` and `edgeStyle` don't take a single `color`. A node is a composite —
-an outline, an interior fill, a label — and so is an edge: a drawn line and a
-label. Each part is its own **block**, written as a nested call:
+`atomStyle` and `edgeStyle` don't take a single `color`. A node is a composite of
+an outline, an interior fill, and a label, and an edge is a drawn line plus a
+label. Each part is its own block, written as a nested call:
 
 ```spytial-gdl
 @edgeStyle(field=next,
@@ -259,7 +257,8 @@ wherever they appear:
 | `borderStyle` | `color`, `width` | a node's outline |
 | `fillStyle` | `color` | a node's interior |
 
-`inferredEdge`, `attribute`, `tag`, and a group's `addEdge` connector take them too:
+`inferredEdge`, `attribute`, `tag`, and a group's `addEdge` connector take them
+too:
 
 ```spytial-gdl
 @inferredEdge(name=parent, selector='~children', lineStyle(color=gray, pattern=dotted))
@@ -270,16 +269,16 @@ wherever they appear:
 ```
 
 Blocks wrap across lines and take the `%%` guard like any other annotation, and
-everything is optional — write only the parts you mean.
+everything is optional, so write only the parts you mean.
 
-> **Outline, not fill** — a node's `borderStyle(color=…)` is what tints it in the
-> default rendering; `fillStyle` paints the interior and is opt-in. If a diagram
-> looks unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
+> **Note.** A node's `borderStyle(color=…)` is what tints it in the default
+> rendering. `fillStyle` paints the interior and is opt-in. If a diagram looks
+> unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
 
 ### The older `atomColor` / `edgeColor`
 
-Both still compile — they're rewritten to the blocks above — so existing diagrams
-keep working unchanged:
+Both still compile, since they're rewritten to the blocks above, so existing
+diagrams keep working unchanged:
 
 | you wrote | it compiles to |
 |---|---|
@@ -287,51 +286,53 @@ keep working unchanged:
 | `@edgeColor(field=F, value=V, style=P)` | `@edgeStyle(field=F, lineStyle(color=V, pattern=P))` |
 | `@inferredEdge(…, color=V, style=P)` | `@inferredEdge(…, lineStyle(color=V, pattern=P))` |
 
-`atomColor`'s `value` becomes the **outline**, not the fill — that's what it has
-always drawn. Prefer the block forms in new diagrams.
+`atomColor`'s `value` becomes the outline rather than the fill, which is what it
+has always drawn. Prefer the block forms in new diagrams.
 
 > **Breaking in spytial-core 3.0: style collisions are an error.** Two rules that
-> set the *same* style leaf to *different* values now fail with a
-> `StyleCollisionError` instead of one silently winning. Rules that touch
-> different leaves still compose freely — `borderStyle(color=…)` from one rule and
+> set the same style leaf to different values now fail with a
+> `StyleCollisionError` instead of one silently winning. Rules that touch different
+> leaves still compose freely, so `borderStyle(color=…)` from one rule and
 > `textStyle(size=…)` from another is fine. This is checked when the diagram is
 > drawn, so it surfaces in the browser rather than as an annotation error.
 
 ## Mermaid-safe annotations
 
-A `%%@name(...)` form is also accepted — a Mermaid comment guard — so a block
-survives being pasted into a vanilla Mermaid renderer (which ignores `%%` lines)
+A `%%@name(...)` form is also accepted. It's a Mermaid comment guard, so a block
+survives being pasted into a vanilla Mermaid renderer, which ignores `%%` lines,
 while still compiling here:
 
 ```text
 %% @orientation(selector=_links, directions=[below])
 ```
 
-Both the bare `@…` and the guarded `%% @…` forms compile identically.
+The bare `@…` and the guarded `%% @…` forms compile identically.
 
 ## Errors and conflicts
 
-Every failure has a distinct home. Source problems are caught before layout runs;
-selectors that name nothing are reported apart from layouts that can't hold. The
-diagram renders best-effort at every stage, and an embed surfaces each kind in its
-own panel.
+Failures are reported separately by kind. Source problems are caught before layout
+runs, and selectors that name nothing are reported apart from layouts that can't
+hold. The diagram renders best-effort at every stage, and an embed surfaces each
+kind in its own panel.
 
 ### Parse and annotation errors
 
-Earliest of all: problems in the *source text*, before any layout runs. Two kinds,
-both caught up front and both reported with line numbers:
+These come first: problems in the source text, before any layout runs. There are
+two kinds, both caught up front and both reported with line numbers.
 
-- **Annotation errors** — an annotation that doesn't parse (unknown `@name`, a
-  missing comma, an unterminated `(`). Come back as `annotationErrors` —
-  `[{ line, text, message }]`; the offending annotation is dropped.
-- **Parse errors** — a graph line the parser flagged. `parseErrors` —
-  `[{ line, text, severity, message }]`. `severity: 'error'` is a line it couldn't
-  read (a broken edge, junk); `severity: 'warning'` is a tolerated-but-ignored
-  Mermaid construct (a `graph`/`flowchart` header, `classDef`).
+Annotation errors are annotations that don't parse, such as an unknown `@name`, a
+missing comma, or an unterminated `(`. They come back as `annotationErrors`, an
+array of `{ line, text, message }`, and the offending annotation is dropped.
 
-Both are **non-fatal**: the diagram still renders best-effort, and an embed shows a
-**⚠ … in this source** band beneath it listing each problem by line. So the four
-stages are distinct, easy to tell apart:
+Parse errors are graph lines the parser flagged. They come back as `parseErrors`,
+an array of `{ line, text, severity, message }`. A `severity` of `'error'` is a
+line it couldn't read, like a broken edge or junk; `'warning'` is a
+tolerated-but-ignored Mermaid construct, like a `graph`/`flowchart` header or
+`classDef`.
+
+Both are non-fatal. The diagram still renders best-effort, and an embed shows a
+**⚠ … in this source** band beneath it listing each problem by line. The four
+stages stay distinct, so you can tell them apart:
 
 | stage | failure | result field | embed panel |
 |---|---|---|---|
@@ -342,10 +343,10 @@ stages are distinct, easy to tell apart:
 
 ### Selector errors
 
-A different failure: a `selector=` that doesn't resolve to anything in the model
-(a typo'd label, a class you never assigned). That's **not** a layout conflict — the
-spec itself is malformed — so it's reported separately as `selectorErrors`, and the
-degenerate layout is *not* drawn:
+A different failure: a `selector=` that doesn't resolve to anything in the model,
+such as a typo'd label or a class you never assigned. That isn't a layout conflict,
+since the spec itself is malformed, so it's reported separately as `selectorErrors`
+and the degenerate layout is not drawn:
 
 ```js
 const r = await renderSpytialGdl(graph, source);
@@ -359,17 +360,18 @@ one of the [five forms](notation.md#the-built-in-selectors) and it resolves.
 
 ### When constraints conflict
 
-Because layout is a set of constraints, you can ask for the impossible: two edges
-that must both point right *and* form a cycle, a group that must enclose nodes
-pulled apart by an orientation, and so on. Spytial treats this as a first-class
-outcome, not a crash.
+Layout is a set of constraints, so you can ask for the impossible: two edges that
+must both point right and also form a cycle, a group that must enclose nodes pulled
+apart by an orientation, and so on. Spytial reports this as an outcome rather than
+crashing.
 
-When the constraints can't all hold, the solver returns the **closest feasible
-layout** — it still draws something useful — together with the **minimal conflict**:
-the smallest subset of rules that, taken together, are unsatisfiable. That subset
-is the *Irreducible Inconsistent Subsystem* (IIS), commonly called the UNSAT core.
+When the constraints can't all hold, the solver returns the closest feasible
+layout, so it still draws something useful, together with the minimal conflict: the
+smallest subset of rules that are unsatisfiable taken together. That subset is the
+*Irreducible Inconsistent Subsystem* (IIS), usually called the UNSAT core.
 
-This block asks two opposing edges of a 2-cycle to both go right — impossible:
+This block asks two opposing edges of a 2-cycle to both go right, which can't
+happen:
 
 ```spytial-gdl
 A -> B : x
@@ -380,49 +382,50 @@ B -> A : y
 ```
 
 The diagram still renders a best-effort layout, and the attached **⚠ These rules
-can't all hold** panel (expand it under the diagram) names exactly the constraints
-in tension — not the whole spec, just the irreducible core.
+can't all hold** panel, which you can expand under the diagram, names exactly the
+constraints in tension rather than the whole spec.
 
 ### Reading it in an embed
 
-Every embed reserves space for the conflict *inside the diagram's border*, so the
-report obviously belongs to that diagram and not the surrounding prose:
+Every embed reserves space for the conflict inside the diagram's border, so the
+report belongs to that diagram rather than to the surrounding prose. The panel only
+appears when there's a clash, and it's collapsible. In an
+[editable block](embedding.md#editable-diagrams) it's live: resolve the clash by
+deleting an offending edge or changing a direction, and the panel clears on the
+spot.
 
-- The panel only appears when there's a clash; it's collapsible.
-- In an [editable block](embedding.md#editable-diagrams), it's **live** — resolve the clash (delete an
-  offending edge, change a direction) and the panel clears on the spot.
-
-The report is rendered by spytial-core's own IIS component — the same one the
-[playground](../playground/) mounts — lazy-loaded the first time a clash appears, so
-conflict-free pages never pay for it.
+The report is rendered by spytial-core's own IIS component, the same one the
+[playground](../playground/) mounts. It's lazy-loaded the first time a clash
+appears, so conflict-free pages never load it.
 
 ### Reading it from the API
 
-[`renderSpytialGdl`](embedding.md#renderspytialgdl) surfaces the same information on
-its result object:
+[`renderSpytialGdl`](embedding.md#renderspytialgdl) surfaces the same information
+on its result object:
 
 ```js
 const r = await renderSpytialGdl(graph, source);
 if (r.error) {
-  // r.error — the constraint conflict (UNSAT core / positional / group-overlap)
+  // r.error is the constraint conflict (UNSAT core / positional / group-overlap)
   console.warn('layout conflict:', r.error.message);
 }
 // r.layout is still the best-feasible counterfactual; r.applied tells you if it drew.
 ```
 
-`error` carries a shape that depends on the kind of clash — positional conflicts
-carry `errorMessages`, group overlaps carry `overlappingNodes`/`source`, and so on.
-The Markdown layer maps these onto spytial-core's `show*Error` dispatch to render
-the panel; if you build your own UI, branch on those fields the same way.
+`error` carries a shape that depends on the kind of clash. Positional conflicts
+carry `errorMessages`, group overlaps carry `overlappingNodes` and `source`, and so
+on. The Markdown layer maps these onto spytial-core's `show*Error` dispatch to
+render the panel; if you build your own UI, branch on those fields the same way.
 
 ## Composing with raw rules
 
-Inline annotations are the primary authoring model, but they **compose** with two
-lower-level inputs that feed the same layout spec: `opts.rules` (raw CnD YAML) and
-the per-class `registerSpec` registry. All three are merged before solving. See
+Inline annotations are the primary authoring model, but they compose with two
+lower-level inputs that feed the same layout spec: `opts.rules`, which is raw CnD
+YAML, and the per-class `registerSpec` registry. All three are merged before
+solving. See
 [Programmatic API → composing rules](embedding.md#composing-rules-registry-and-yaml).
 
 ## Next
 
-- **[Embedding & API](embedding.md)** — put the diagram in a page, or drive it from JavaScript.
-- **[The notation](notation.md)** — where selectors come from.
+- [Embedding & API](embedding.md): putting the diagram in a page, or driving it from JavaScript.
+- [The notation](notation.md): where selectors come from.

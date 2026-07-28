@@ -9,65 +9,54 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <!-- Styles for the React error modal + the low-code Layout-rules editor. -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/spytial-core@4/dist/components/react-component-integration.css" />
+    <!-- Site tokens: palette, type, and the shared wordmark. -->
+    <link rel="stylesheet" href="../assets/site.css" />
 
     <style>
-        /* ─── Theme tokens ──────────────────────────────────────────────── */
+        /* Local aliases onto the site tokens, so the rules below read the way
+           an editor's rules should (chrome / canvas / editor) rather than in
+           poster vocabulary. */
         :root {
-            --bg: #f4f5f7; --chrome: #ffffff; --chrome-2: #f7f8fa;
-            --ink: #1d2230; --ink-soft: #5b6472; --ink-faint: #8c95a3;
-            --border: #e2e5ea; --border-strong: #cdd2db;
-            --accent: #2d8659; --accent-ink: #ffffff;
-            --canvas: #ffffff; --editor-bg: #ffffff;
-            --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 16px rgba(16, 24, 40, .06);
-            --radius: 10px;
+            --chrome: var(--paper); --chrome-2: var(--sunken);
+            --ink-soft: var(--ink-2); --ink-faint: var(--ink-3);
+            --border: var(--ink);
+            --canvas: var(--raised); --editor-bg: var(--raised);
         }
-        [data-theme="dark"] {
-            --bg: #0f1115; --chrome: #181b21; --chrome-2: #1f232b;
-            --ink: #e8eaee; --ink-soft: #a7b0bd; --ink-faint: #6b7382;
-            --border: #2a2f38; --border-strong: #3a414d;
-            --accent: #3fae74; --accent-ink: #06140c;
-            --canvas: #f7f8fa; --editor-bg: #14171c;
-            --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 28px rgba(0, 0, 0, .35);
-        }
+        [data-theme="dark"] { --canvas: #f7f8fa; }
 
-        * { box-sizing: border-box; }
         html, body { height: 100%; }
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg); color: var(--ink);
-            display: flex; flex-direction: column; overflow: hidden;
-        }
+        body { display: flex; flex-direction: column; overflow: hidden; }
 
         /* ─── Header ────────────────────────────────────────────────────── */
         header.topbar {
             flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
-            padding: 10px 18px; background: var(--chrome);
-            border-bottom: 1px solid var(--border); z-index: 20;
+            padding: 11px 18px; background: var(--paper);
+            border-bottom: var(--bar) solid var(--ink); z-index: 20;
         }
-        .brand { display: flex; align-items: baseline; gap: 10px; }
-        .brand .mark { font-size: 18px; line-height: 1; color: var(--accent); }
-        .brand h1 { font-size: 16px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+        .brand { display: flex; align-items: center; gap: 12px; color: var(--ink); }
+        .brand:hover { text-decoration: none; }
+        .brand .mark { font-size: 20px; }
+        .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 500; margin: 0; letter-spacing: -.01em; }
         .topbar .spacer { flex: 1; }
         .topbar select, .topbar button.ghost {
-            font: inherit; font-size: 13px;
-            background: var(--chrome-2); color: var(--ink);
-            border: 1px solid var(--border); border-radius: 8px;
-            padding: 6px 11px; cursor: pointer;
-            transition: border-color .12s, background .12s;
+            font: 500 12px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
+            background: var(--paper); color: var(--ink);
+            border: var(--bar) solid var(--ink); border-radius: 0;
+            padding: 8px 11px; cursor: pointer;
         }
-        .topbar select:hover, .topbar button.ghost:hover { border-color: var(--border-strong); }
-        .topbar button.icon { width: 34px; height: 34px; display: inline-grid; place-items: center; font-size: 15px; padding: 0; }
+        .topbar select { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 13px; }
+        .topbar button.ghost:hover { background: var(--ink); color: var(--paper); }
+        .topbar button.icon { width: 34px; height: 33px; display: inline-grid; place-items: center; font-size: 14px; padding: 0; }
 
         /* ─── Main split ────────────────────────────────────────────────── */
         main { flex: 1; display: flex; min-height: 0; }
         .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-        .pane.left { flex: 0 0 44%; border-right: 1px solid var(--border); background: var(--chrome); }
-        .pane.right { flex: 1; background: var(--bg); }
+        .pane.left { flex: 0 0 44%; background: var(--paper); }
+        .pane.right { flex: 1; background: var(--paper); }
 
         .splitter { flex: 0 0 6px; cursor: col-resize; background: transparent; position: relative; }
-        .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--border); border-radius: 3px; transition: background .12s; }
-        .splitter:hover::after { background: var(--accent); }
+        .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--ink); }
+        .splitter:hover::after { inset: 0; background: var(--red); }
 
         /* ─── Left: combined-source editor (flowchart + @annotations) ───── */
         .editor-stack { flex: 1; position: relative; min-height: 0; }
@@ -81,67 +70,77 @@
         .code-wrap { flex: 1; position: relative; min-height: 0; background: var(--editor-bg); }
         .code {
             position: absolute; inset: 0; margin: 0;
-            font-family: "SF Mono", "JetBrains Mono", "Fira Code", "Courier New", monospace;
+            font-family: var(--mono);
             font-size: 13px; line-height: 1.6;
             border: none; padding: 16px 18px; tab-size: 2;
             white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;
         }
-        pre.code-ghost { overflow: hidden; pointer-events: none; color: var(--ink); }
+        pre.code-ghost { overflow: hidden; pointer-events: none; color: var(--ink); background: none; }
         textarea.code {
             width: 100%; height: 100%;
-            background: transparent; color: transparent; caret-color: var(--ink);
+            background: transparent; color: transparent; caret-color: var(--red);
             outline: none; resize: none; overflow: auto;
         }
         textarea.code::placeholder { color: var(--ink-faint); }
-        textarea.code::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+        textarea.code::selection { background: var(--sel); }
 
         .editor-foot {
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
-            padding: 10px 14px; border-top: 1px solid var(--border); background: var(--chrome-2);
+            padding: 11px 14px; border-top: var(--bar) solid var(--ink); background: var(--chrome-2);
         }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
-        .status.success { color: var(--accent); }
-        .status.error { color: #d6453c; }
-        .status .pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: currentColor; }
+        .status.success { color: var(--blue); }
+        .status.error { color: var(--red); }
+        .status .pulse { display: inline-block; width: 8px; height: 8px; margin-right: 8px; vertical-align: middle; background: currentColor; }
         button.apply {
-            font: inherit; font-size: 13.5px; font-weight: 650;
-            background: var(--accent); color: var(--accent-ink);
-            border: none; border-radius: 8px; padding: 9px 18px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 1px 2px rgba(0,0,0,.12);
+            font: 500 13px/1 var(--display); text-transform: uppercase; letter-spacing: .12em;
+            background: var(--ink); color: var(--paper);
+            border: var(--bar) solid var(--ink); border-radius: 0; padding: 9px 16px; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 9px;
         }
-        button.apply:hover { filter: brightness(1.05); }
-        button.apply:active { transform: translateY(1px); }
-        button.apply:disabled { opacity: .5; cursor: default; }
-        button.apply kbd { font: inherit; font-size: 11px; opacity: .7; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
+        button.apply:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+        button.apply:active { transform: translate(1px, 1px); }
+        button.apply:disabled { opacity: .4; cursor: default; }
+        button.apply:disabled:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+        button.apply kbd { font: inherit; font-family: var(--mono); font-size: 11px; letter-spacing: 0; opacity: .75; }
 
         /* ─── Right: live diagram ───────────────────────────────────────── */
         .preview-bar {
             flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
-            padding: 9px 16px; font-size: 12px; color: var(--ink-faint);
-            border-bottom: 1px solid var(--border); background: var(--chrome);
+            padding: 10px 16px; font-size: 12px; color: var(--ink-faint);
+            border-bottom: var(--bar) solid var(--ink); border-left: var(--bar) solid var(--ink);
+            background: var(--paper);
         }
         .preview-bar .hint { display: inline-flex; align-items: center; gap: 5px; }
-        .preview-body { flex: 1; position: relative; min-height: 0; padding: 14px; }
+        .preview-body { flex: 1; position: relative; min-height: 0; padding: 16px; border-left: var(--bar) solid var(--ink); }
         /* The demonstration band sits under the diagram and never squeezes it. */
-        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; }
+        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; border-left: var(--bar) solid var(--ink); }
         #demo-slot[hidden] { display: none; }
         .canvas-wrap {
-            position: absolute; inset: 14px; border-radius: var(--radius);
-            background: var(--canvas); border: 1px solid var(--border);
-            box-shadow: var(--shadow); overflow: hidden;
+            position: absolute; inset: 16px;
+            background: var(--canvas); border: var(--bar) solid var(--ink);
+            overflow: hidden;
         }
         webcola-cnd-graph, structured-input-graph { display: block; width: 100%; height: 100%; }
         webcola-cnd-graph[hidden], structured-input-graph[hidden] { display: none; }
 
         /* View / Edit segmented toggle + preview-bar buttons */
-        .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-        .seg button { font: inherit; font-size: 12.5px; padding: 5px 13px; background: var(--chrome-2); color: var(--ink-soft); border: none; cursor: pointer; transition: background .12s, color .12s; }
-        .seg button + button { border-left: 1px solid var(--border); }
-        .seg button.active { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-        .preview-bar .ghost { font: inherit; font-size: 12.5px; background: var(--chrome-2); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; cursor: pointer; }
-        .preview-bar .ghost:hover { border-color: var(--border-strong); }
-        .preview-bar .ghost.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+        .seg { display: inline-flex; border: var(--bar) solid var(--ink); }
+        .seg button {
+            font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .12em;
+            padding: 7px 13px; background: var(--paper); color: var(--ink-soft); border: none; cursor: pointer;
+        }
+        .seg button + button { border-left: var(--bar) solid var(--ink); }
+        .seg button:hover { color: var(--ink); }
+        .seg button.active { background: var(--ink); color: var(--paper); }
+        .preview-bar .ghost {
+            font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
+            background: var(--paper); color: var(--ink); border: var(--bar) solid var(--ink);
+            border-radius: 0; padding: 7px 10px; cursor: pointer;
+        }
+        .preview-bar .ghost:hover { background: var(--ink); color: var(--paper); }
+        .preview-bar .ghost.active { background: var(--blue); color: #fff; border-color: var(--blue); }
         .preview-bar .ghost[hidden] { display: none; }
 
         /* Editor in live-mirror (edit) mode — output, not input. The tint goes on
@@ -153,27 +152,26 @@
 
         /* Reified-value inspector panel */
         .value-panel {
-            position: absolute; bottom: 22px; left: 26px; width: min(360px, 55%); max-height: 52%;
-            overflow: auto; z-index: 9; background: var(--chrome); color: var(--ink);
-            border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow);
-            font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace; font-size: 11.5px;
+            position: absolute; bottom: 20px; left: 20px; width: min(360px, 55%); max-height: 52%;
+            overflow: auto; z-index: 9; background: var(--paper); color: var(--ink);
+            border: var(--bar) solid var(--ink); border-radius: 0;
+            font-family: var(--mono); font-size: 11.5px;
             line-height: 1.5; white-space: pre; padding: 12px 14px; margin: 0;
         }
         .value-panel[hidden] { display: none; }
 
         #error-messages {
-            position: absolute; left: 26px; right: 26px; bottom: 22px;
+            position: absolute; left: 20px; right: 20px; bottom: 20px;
             max-height: 48%; overflow: auto; z-index: 8;
-            border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.22);
         }
         #error-messages:empty { display: none; }
 
         /* ─── Toast ─────────────────────────────────────────────────────── */
         #toast {
             position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
-            background: var(--ink); color: var(--bg);
-            font-size: 13px; font-weight: 550; padding: 9px 16px; border-radius: 8px;
-            box-shadow: 0 8px 28px rgba(0,0,0,.3); opacity: 0; pointer-events: none;
+            background: var(--ink); color: var(--paper);
+            font: 500 12px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
+            padding: 12px 18px; opacity: 0; pointer-events: none;
             transition: opacity .2s, transform .2s; z-index: 50;
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -183,10 +181,15 @@
 </head>
 <body>
     <header class="topbar">
-        <div class="brand">
-            <span class="mark">◆</span>
+        <a class="brand" href="../">
+            <svg class="mark" viewBox="0 0 62 24" aria-hidden="true">
+                <path class="axis" d="M4 12 H58" />
+                <circle class="n-circle" cx="10" cy="12" r="7" />
+                <rect class="n-square" x="24" y="5" width="14" height="14" />
+                <path class="n-tri" d="M51 4 L58.5 19 H43.5 Z" />
+            </svg>
             <h1>spytial&#8209;gdl</h1>
-        </div>
+        </a>
         <div class="spacer"></div>
         <select id="example-select" title="Load an example" aria-label="Load an example">
             <option value="" disabled selected>Examples…</option>
@@ -233,7 +236,7 @@
                 <button class="ghost" id="value-btn" type="button" title="Show the reified value (JSON)">{ } value</button>
                 <span class="hint" id="view-hint">✦ drag nodes — constraints hold</span>
                 <span class="hint" id="edit-hint" style="display:none;">✦ + Node / + Relation, drag to connect — notation updates live</span>
-                <span class="hint" id="conflict-hint" style="color:#d6453c; display:none;">⚠ rules clash — see explanation</span>
+                <span class="hint" id="conflict-hint" style="color:var(--red); display:none;">⚠ rules clash — see explanation</span>
             </div>
             <div class="preview-body">
                 <div class="canvas-wrap">
@@ -296,10 +299,10 @@ S3 -> S0
 
             tree: `A -> B : left
 A -> C : right
-B -> E : left
-B -> D : right
-C -> D : left
-C -> F : right
+B -> D : left
+B -> E : right
+C -> F : left
+C -> G : right
 
 %% Every edge points down; 'left' edges also point left,
 %% 'right' edges point right — a binary tree.
@@ -422,8 +425,15 @@ c -> a : r3
         function mountDemo() {
             if (demo) { try { demo.detach(); } catch (e) {} }
             demoSlot.hidden = mode !== 'view';
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
             demo = mountDemonstration(document, demoSlot, graphEl, {
-                dark: document.documentElement.getAttribute('data-theme') === 'dark',
+                dark,
+                // Match the page instead of the library's default green tint.
+                palette: dark
+                    ? { bg: '#1d1a17', ink: '#f2efe6', border: '#3a352d', accent: '#f2c545',
+                        accentInk: '#141210', slot: '#232019', soft: '#b3aca0', btnBg: '#141210' }
+                    : { bg: '#f2efe6', ink: '#16130f', border: '#16130f', accent: '#16130f',
+                        accentInk: '#f2efe6', slot: '#ffffff', soft: '#55504a', btnBg: '#ffffff' },
                 infer: { maxDepth: 2 },
                 getData: () => lastData,
                 onApply: appendAnnotation,

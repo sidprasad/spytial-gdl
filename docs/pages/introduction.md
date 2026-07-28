@@ -1,12 +1,13 @@
 # Introduction
 
-*Diagramming in your browser, with semantics.*
+What spytial-gdl is, and how to get a diagram onto a page.
 
-**spytial-gdl** is a small **graph description language (GDL)**: a text notation
-for a graph with its *layout written inline*. You write nodes, edges, and spatial operations as `@annotations`; Spytial
-solves the layout and draws a live, draggable diagram. Drop a fenced
-` ```spytial-gdl ` block into Markdown and it comes alive client-side, the way
-` ```mermaid ` does — no build step, no server beyond static hosting.
+**spytial-gdl** is a small graph description language: a text notation for a graph
+with its layout written inline. You write nodes, edges, and spatial operations as
+`@annotations`, then Spytial solves the layout and draws a live, draggable diagram.
+Drop a fenced ` ```spytial-gdl ` block into Markdown and it renders client-side the
+way a ` ```mermaid ` block does, with no build step and no server beyond static
+hosting.
 
 ```spytial-gdl
 A -> B : left
@@ -21,17 +22,19 @@ C -> G : right
 @orientation(selector=right, directions=[right])
 ```
 
-You get a faithful default layout for free; the `@annotations` refine it —
-orientation, alignment, grouping, cycles — without rebuilding anything. The block
-above is the whole input. Drag a node and the constraints re-settle around it.
+That block is the whole input. Spytial will lay out any graph without help; the
+`@annotations` are how you say what the arrangement should mean. Orientation,
+alignment, grouping, and cycles are all annotations, and none of them ask you to
+change the graph. Drag a node and the constraints re-settle around it.
 
 ## Why not just a flowchart?
 
-A flowchart language draws a *picture* of a graph. It does not know what the graph
-*means*: that these edges are "left child" and "right child", that the layout
-should reflect that, that a node is a `Person` and not a `Company`. Here is the
-same binary tree as a Mermaid flowchart — perfectly readable, but the directions
-are a hand-placed accident of `TD`, not a stated rule:
+A flowchart language draws a picture of a graph. It doesn't record what the graph
+means: that these edges are "left child" and "right child", that the layout should
+follow from that, that a node is a `Person` rather than a `Company`. Here is the
+same binary tree in Mermaid. It reads fine, but the left-right arrangement comes
+out of `TD` and the order the lines happen to be in, not out of anything the source
+says.
 
 ```mermaid
 flowchart TD
@@ -43,17 +46,19 @@ flowchart TD
   C --> G
 ```
 
-In spytial-gdl the edge label **is** a relation, and the relation is what the
-layout rule targets: `@orientation(selector=left, directions=[left])` says *every
-`left` edge points its child to the left* — a fact about the model, not about this
-drawing. Change the data and the meaning carries over. That difference is the whole
-idea; the essay [Your diagram doesn't know what it's
-drawing](../examples/md-viewer.html?doc=your-diagram-doesnt-know.md) walks through it.
+In spytial-gdl the edge label is the relation name, and the relation is what a
+layout rule targets. `@orientation(selector=left, directions=[left])` says that
+every `left` edge puts its child on the left, which is a claim about the model
+rather than about this drawing, so it survives a change to the data. The essay
+[Your diagram doesn't know it's a family
+tree](../examples/md-viewer.html?doc=your-diagram-doesnt-know.md) works through a
+longer version of the same argument.
 
-## What you can build
+## Types and classes
 
-A node's identity, type, and class are all addressable, so layout and styling are
-*queries over the model*, not per-node markup:
+A node carries an id, an optional type, and any number of classes. All three can be
+named by a selector, so a rule applies to whatever matches it instead of to nodes
+you picked out by hand:
 
 ```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
@@ -68,10 +73,10 @@ carol[Carol]:::Person -> acme
 
 ## When constraints conflict
 
-You can over-constrain a layout. When the rules can't all hold, nothing silently
-disappears: Spytial draws the closest feasible diagram **and** reports the minimal
-set of rules in conflict (the UNSAT core). Try it — this one asks two edges to go
-in opposite incompatible directions:
+You can over-constrain a layout. When the rules can't all hold, Spytial draws the
+closest feasible diagram and reports the smallest set of rules that are in conflict
+(the UNSAT core). Nothing is dropped quietly. The block below asks two edges of a
+2-cycle to both point right, which is impossible:
 
 ```spytial-gdl
 A -> B : x
@@ -81,12 +86,13 @@ B -> A : y
 @orientation(selector=y, directions=[right])
 ```
 
-See [Errors and conflicts](annotations.md#errors-and-conflicts) for how to read that panel.
+[Errors and conflicts](annotations.md#errors-and-conflicts) explains how to read
+that panel.
 
-## The 30-second drop-in
+## Adding it to a page
 
-Add one line to any page that renders your Markdown (or to a hand-written HTML
-page). Everything loads from CDN — there is no `npm install` and no build step:
+Add one line to whatever renders your Markdown, or to a hand-written HTML page.
+Everything loads from a CDN, so there is no `npm install` and no build step:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
@@ -102,9 +108,9 @@ B -> C
 ```
 ````
 
-Every `spytial-gdl` block on the page becomes a live diagram. The script pulls
-in the renderer (d3, WebCola, spytial-core) for you if the page doesn't already
-load it. The result:
+Every `spytial-gdl` block on the page becomes a live diagram. The script pulls in
+the renderer (d3, WebCola, spytial-core) if the page doesn't already load it. The
+result:
 
 ```spytial-gdl
 A -> B
@@ -112,11 +118,11 @@ B -> C
 @orientation(selector=_links, directions=[right])
 ```
 
-## In plain HTML (no Markdown renderer)
+## Without a Markdown renderer
 
 You don't need Markdown at all. In a hand-written page, put the notation in a
-`<div class="spytial-gdl">` and add the same one tag — the way you'd drop a
-`<div class="mermaid">` into a page. A complete, runnable page:
+`<div class="spytial-gdl">` and add the same tag, the way you'd drop in a
+`<div class="mermaid">`. A complete, runnable page:
 
 ```html
 <!DOCTYPE html>
@@ -135,23 +141,23 @@ You don't need Markdown at all. In a hand-written page, put the notation in a
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
-On load, every block becomes a live diagram — no init call, no config. The block
-also accepts `class="language-spytial-gdl"` and `<pre class="spytial-gdl">`,
-so whatever markup you (or a renderer) emit is caught. Indentation inside the
-`<div>` is fine; each line is trimmed.
+Every block becomes a live diagram on load. You don't call an init function or pass
+any config. `class="language-spytial-gdl"` and `<pre class="spytial-gdl">` are
+picked up too, so whatever markup you or a renderer emit gets caught. Indentation
+inside the `<div>` is fine, since each line is trimmed.
 
-> **Renaming note** — This project was previously called `spytial-graph`. The old
+> **Renaming note.** This project used to be called `spytial-graph`. The old
 > ` ```spytial-graph ` fence tag (and `spytial` for short) still renders, so pages
 > and embeds written before the rename keep working. New content should use
 > ` ```spytial-gdl `.
 
-> **Note** — The page must be **served** (any static server) rather than opened as
+> **Note.** The page has to be served by a static server rather than opened as
 > `file://`, because the tag is an ES module. See *Running locally* below.
 
-## Wiring it yourself
+## Calling autoRender yourself
 
-If you'd rather control timing, height, or theme, import `autoRender` instead of
-the drop-in tag:
+To control timing, height, or theme, import `autoRender` instead of using the
+drop-in tag:
 
 ```html
 <script type="module">
@@ -160,7 +166,7 @@ the drop-in tag:
 </script>
 ```
 
-Or render a specific subtree after you inject HTML yourself — see
+You can also render one subtree after injecting HTML yourself. See
 [Markdown & HTML embedding](embedding.md) for the full surface.
 
 ## Give each block a height
@@ -171,8 +177,8 @@ The diagram fills its container, so a block needs a height:
 .spytial-gdl, .spytial-gdl-editable { height: 340px; }
 ```
 
-A single block can override it with `data-height` (a number of pixels or any CSS
-length), or set a default for the page with `autoRender({ height })`.
+A single block overrides that with `data-height` (a number of pixels or any CSS
+length), and `autoRender({ height })` sets a default for the page.
 
 ## Running locally
 
@@ -190,22 +196,21 @@ Then open:
 | `/playground/` | live editor (View ⇄ Edit) |
 | `/examples/` | every embedding mode, runnable |
 
-Any static server works — one is needed only because the pages load ES modules.
+Any static server works. One is needed only because the pages load ES modules.
 
 ## Pinning versions for production
 
-The CDN URLs above always fetch the latest published `spytial-gdl` and, through
-it, a pinned `spytial-core`. For a reproducible deploy, vendor the three engine
-scripts locally (d3 v4, `webcola@3.4.0`, `spytial-core`) and point the tag at your
-own copy — see [Architecture](architecture.md#dependencies) for the exact set and
-load order.
+The CDN URLs above always fetch the latest published `spytial-gdl`, and through it
+a pinned `spytial-core`. For a reproducible deploy, vendor the three engine scripts
+locally (d3 v4, `webcola@3.4.0`, `spytial-core`) and point the tag at your own copy.
+[Architecture](architecture.md#dependencies) lists the exact set and load order.
 
 ## Next
 
-- **[The notation](notation.md)** — write the graph.
-- **[Annotations](annotations.md)** — write the layout.
-- **[Embedding & API](embedding.md)** — drop it into a page, or drive it from JavaScript.
+- [The notation](notation.md): nodes, edges, labels, types, classes.
+- [Annotations](annotations.md): the `@` operations that produce the layout.
+- [Embedding & API](embedding.md): putting a diagram in a page, or driving it from JavaScript.
 
-> **Note** — Every diagram on this site is live. The docs are themselves a
-> spytial-gdl instance: each example is the exact notation you'd write, rendered
-> by the same engine you'd embed. View source on any block via its **Source** panel.
+> **Note.** Every diagram on this site is live. Each example is the exact notation
+> you'd write, rendered by the engine you'd embed. Open a block's **Source** panel
+> to see it.

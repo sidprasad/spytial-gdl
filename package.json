@@ -29,6 +29,7 @@
   },
   "files": [
     "index.html",
+    "assets",
     "src",
     "playground",
     "examples",

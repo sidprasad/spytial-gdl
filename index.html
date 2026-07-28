@@ -4,52 +4,113 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>spytial-gdl</title>
+  <meta name="description" content="A small graph notation with inline spatial @annotations, rendered as live Spytial constraint diagrams." />
+  <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    :root { --ink: #1c1f26; --soft: #565d6a; --faint: #8b93a1; --line: #e7e9ee;
-            --accent: #1f6f54; --accent2: #2d8659; --bg: #fcfcfb; --card: #fff;
-            --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6;
-           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-           -webkit-font-smoothing: antialiased; }
-    main { max-width: 640px; margin: 0 auto; padding: 14vh 24px 120px; }
-    h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 6px; }
-    .lede { color: var(--soft); font-size: 18px; margin: 0 0 36px; }
-    .lede em { color: var(--ink); font-style: normal; font-weight: 600; }
-    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-    li a { display: block; background: var(--card); border: 1px solid var(--line);
-           border-radius: 12px; padding: 16px 18px; text-decoration: none; color: inherit;
-           transition: border-color .15s, box-shadow .15s, transform .15s; }
-    li a:hover { border-color: var(--accent2);
-                 box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 10px 28px rgba(16,24,40,.06);
-                 transform: translateY(-1px); }
-    .name { font-weight: 650; color: var(--accent); }
-    .desc { color: var(--soft); font-size: 15px; margin: 3px 0 0; }
-    .more { color: var(--soft); font-size: 14px; margin: 28px 0 0; }
-    .more a { color: var(--accent2); font-weight: 600; text-decoration: none; }
-    .more a:hover { text-decoration: underline; }
-    code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 13px; }
+    :root { --page-w: 880px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    main { width: 100%; max-width: var(--page-w); margin: 0 auto; padding: 0 28px 100px; flex: 1; }
+
+    /* Hero: a wide asymmetric split — type left, three shapes right. */
+    .hero { display: grid; grid-template-columns: 1fr 200px; gap: 40px; align-items: start; padding: 72px 0 64px; }
+    .hero h1 { margin: 0 0 24px; }
+    .lede { font-size: 20px; line-height: 1.45; color: var(--ink-2); max-width: 34ch; margin: 0; }
+    .lede b { color: var(--ink); font-weight: 400; font-family: var(--display); }
+    .lede code { font-size: 0.8em; background: var(--yellow); color: #16130f; padding: 2px 6px; }
+
+    /* The composition: the three primaries as the shapes they name. */
+    .composition { width: 200px; height: 200px; display: block; }
+
+    .tiles { margin-top: 8px; }
+
+    footer { border-top: 1px solid var(--hair); margin-top: 56px; padding-top: 18px;
+             display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; }
+    footer a { color: var(--ink-2); font-size: 14px; }
+    footer a:hover { color: var(--ink); }
+
+    @media (max-width: 720px) {
+      .hero { grid-template-columns: 1fr; gap: 32px; padding: 48px 0 44px; }
+      .composition { width: 150px; height: 150px; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>spytial-gdl</h1>
-    <p class="lede"><em>Diagramming in your browser, with semantics.</em> A small graph notation
-       with inline spatial <code>@annotations</code>, rendered as live Spytial constraint diagrams.</p>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="wordmark">
+        <svg class="mark" viewBox="0 0 62 24" aria-hidden="true">
+          <path class="axis" d="M4 12 H58" />
+          <circle class="n-circle" cx="10" cy="12" r="7" />
+          <rect class="n-square" x="24" y="5" width="14" height="14" />
+          <path class="n-tri" d="M51 4 L58.5 19 H43.5 Z" />
+        </svg>
+        spytial-gdl
+      </span>
+      <nav>
+        <a href="./docs/">Docs</a>
+        <a href="./playground/">Playground</a>
+        <a href="./examples/">Examples</a>
+        <a href="https://github.com/sidprasad/spytial-gdl">GitHub</a>
+      </nav>
+    </div>
+  </header>
 
-    <ul>
+  <main>
+    <section class="hero">
+      <div>
+        <h1>Diagrams<br />that carry<br />their layout.</h1>
+        <p class="lede">A small graph notation with inline spatial
+          <code>@annotations</code>. Spytial solves the layout and draws a live,
+          draggable diagram — in Markdown, or anywhere.</p>
+      </div>
+      <!-- The thing itself: a three-node graph, drawn in Kandinsky's assignment
+           of shape to colour (blue circle, red square, yellow triangle). -->
+      <svg class="composition" viewBox="0 0 200 200" aria-hidden="true">
+        <rect x="0" y="0" width="200" height="200" fill="var(--raised)" />
+        <g stroke="var(--ink)" stroke-width="3">
+          <path d="M100 62 L56 140" />
+          <path d="M100 62 L146 140" />
+        </g>
+        <circle cx="100" cy="56" r="34" fill="var(--blue)" />
+        <rect x="28" y="132" width="56" height="56" fill="var(--red)" />
+        <path d="M146 130 L180 188 H112 Z" fill="var(--yellow)" />
+        <rect x="2" y="2" width="196" height="196" fill="none" stroke="var(--ink)" stroke-width="4" />
+      </svg>
+    </section>
+
+    <ul class="tiles">
       <li><a href="./docs/">
-        <span class="name">Documentation</span>
-        <p class="desc">The developer docs — notation, annotations, the API, embedding. Every example renders live.</p></a></li>
+        <span class="tile-num">01</span>
+        <span>
+          <span class="tile-name">Documentation</span>
+          <p class="tile-desc">The notation, the annotations, the embedding API. Every example on the page is a live diagram.</p>
+        </span>
+        <span class="tile-arrow" aria-hidden="true">→</span>
+      </a></li>
       <li><a href="./playground/">
-        <span class="name">Playground</span>
-        <p class="desc">Write notation, see the diagram update live.</p></a></li>
+        <span class="tile-num">02</span>
+        <span>
+          <span class="tile-name">Playground</span>
+          <p class="tile-desc">Type notation on the left, watch the diagram settle on the right.</p>
+        </span>
+        <span class="tile-arrow" aria-hidden="true">→</span>
+      </a></li>
       <li><a href="./examples/">
-        <span class="name">Examples</span>
-        <p class="desc">Live HTML and Markdown demos of every embedding mode.</p></a></li>
+        <span class="tile-num">03</span>
+        <span>
+          <span class="tile-name">Examples</span>
+          <p class="tile-desc">Self-contained pages for each way of embedding a diagram — a script tag, a Markdown block, the JavaScript API.</p>
+        </span>
+        <span class="tile-arrow" aria-hidden="true">→</span>
+      </a></li>
     </ul>
 
-    <p class="more">Reference: <a href="./docs/">Docs</a> · <a href="./GUIDE.md">GUIDE.md</a> · <a href="./README.md">README</a></p>
+    <footer>
+      <span class="label">Also</span>
+      <a href="./GUIDE.md">GUIDE.md</a>
+      <a href="./README.md">README</a>
+      <a href="https://github.com/sidprasad/spytial-gdl">Source</a>
+    </footer>
   </main>
 </body>
 </html>

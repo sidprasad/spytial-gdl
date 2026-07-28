@@ -4,43 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Markdown viewer · spytial-gdl</title>
+  <link rel="stylesheet" href="../assets/site.css" />
   <style>
-    :root {
-      --ink: #1c1f26; --soft: #565d6a; --faint: #8b93a1; --line: #e7e9ee;
-      --accent: #1f6f54; --bg: #fcfcfb; --code-bg: #eef0f3;
-      --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
-      --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--serif); line-height: 1.65; -webkit-font-smoothing: antialiased; }
-    #doc { max-width: 680px; margin: 0 auto; padding: 64px 24px 120px; }
-    #doc h1 { font-size: 38px; line-height: 1.14; letter-spacing: -0.022em; margin: 0 0 14px; }
+    #doc { max-width: 680px; margin: 0 auto; padding: 40px 24px 120px; }
+    #doc h1 { font-size: clamp(36px, 6vw, 52px); margin: 0 0 16px; }
     /* The dek: marked renders the leading *italic* line as a normal <em> in a <p>;
        give the first paragraph a little more presence. */
-    #doc h1 + p { font-size: 19px; color: var(--soft); margin: 0 0 36px; }
-    #doc p { font-size: 18.5px; margin: 0 0 22px; }
-    #doc h2 { font-family: var(--mono); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.11em; color: var(--accent); margin: 50px 0 14px; }
-    #doc code { font-family: var(--mono); font-size: 0.83em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
-    #doc a { color: var(--accent); text-underline-offset: 2px; }
+    #doc h1 + p {
+      font-family: var(--display); font-size: 20px; line-height: 1.35; color: var(--ink-2);
+      margin: 0 0 12px; padding-bottom: 28px; border-bottom: var(--bar) solid var(--ink);
+    }
+    #doc p { font-size: 17.5px; margin: 0 0 20px; }
+    #doc h2 {
+      font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: 0.18em;
+      margin: 52px 0 16px; padding-top: 14px; border-top: var(--bar) solid var(--ink);
+    }
     #doc em { color: var(--ink); }
-    #doc hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+    #doc blockquote { margin: 0 0 20px; padding: 6px 18px; border-left: 5px solid var(--yellow);
+                      background: var(--sunken); color: var(--ink-2); }
     #doc table { border-collapse: collapse; font-size: 15px; margin: 8px 0 24px; }
-    #doc th, #doc td { border: 1px solid var(--line); padding: 7px 12px; text-align: left; }
+    #doc th, #doc td { border: 1px solid var(--hair); padding: 8px 12px; text-align: left; }
+    #doc th { background: var(--ink); color: var(--paper); border-color: var(--ink);
+              font: 500 11px/1.4 var(--display); text-transform: uppercase; letter-spacing: .12em; }
     /* Code blocks that AREN'T spytial-gdl render as plain code; the spytial
        ones get replaced by auto.js with a bordered live diagram. */
-    #doc pre { background: var(--code-bg); border-radius: 10px; padding: 14px 16px; overflow: auto; font-size: 13px; }
+    #doc pre { padding: 14px 16px; overflow: auto; font-size: 13px; }
     #doc .mermaid {
       margin: 28px 0 30px; min-height: 360px; display: flex; align-items: center; justify-content: center;
-      overflow: auto; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px;
-      box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 26px rgba(16,24,40,.05);
+      overflow: auto; padding: 14px; background: var(--raised); border: var(--bar) solid var(--ink);
     }
     #doc .mermaid svg { max-width: 100%; height: auto; }
     #doc .mermaid-error {
-      color: #b00020; background: #fff3f3; border-color: #f3c2c2; white-space: pre-wrap;
+      color: var(--red); background: var(--sunken); white-space: pre-wrap;
       align-items: flex-start; justify-content: flex-start; min-height: 0; font: 13px/1.5 var(--mono);
     }
-    #doc .spytial-gdl-rendered { box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 26px rgba(16,24,40,.05); }
-    #status { max-width: 680px; margin: 0 auto; padding: 16px 24px; font-family: var(--mono); font-size: 12px; color: var(--faint); }
+    #status { max-width: 680px; margin: 0 auto; padding: 20px 24px 0; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
   </style>
 </head>
 <body>

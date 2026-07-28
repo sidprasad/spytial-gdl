@@ -212,12 +212,16 @@ export function relatedNodes(proposal) {
 const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const MONO = '"SF Mono","JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace';
 
-function palette(dark) {
-  return dark
+// The band's own colours. `over` lets an embedder that has a house palette pass
+// some or all of them in (see mountDemonstration's opts.palette) rather than
+// living with a tint that doesn't match the page around it.
+function palette(dark, over) {
+  const base = dark
     ? { bg: '#16281e', ink: '#bfe6cf', border: '#24422f', accent: '#3fae74', accentInk: '#06140c',
         slot: '#12201a', soft: '#8fbfa4', btnBg: '#1b3226' }
     : { bg: '#f0f9f3', ink: '#1e5637', border: '#cbe8d8', accent: '#2d8659', accentInk: '#ffffff',
         slot: '#f7fcf9', soft: '#4a7a5f', btnBg: '#ffffff' };
+  return over ? { ...base, ...over } : base;
 }
 
 /** A selector the renderer could plausibly know as a drawn relation. */
@@ -301,10 +305,12 @@ function makeHighlighter(graphEl) {
 //   opts.getData  — () => { atoms, relations } as the graph currently stands
 //   opts.onApply  — (line) => Promise; append the accepted annotation
 //   opts.infer    — inference options (maxDepth, maxSuggestions, …)
+//   opts.palette  — partial colour override: bg, ink, border, accent, accentInk,
+//                   slot, soft, btnBg. Anything omitted keeps the default.
 //
 // Returns the machine, with `detach()` extended to clear the chrome.
 export function mountDemonstration(doc, host, graphEl, opts = {}) {
-  const C = palette(!!opts.dark);
+  const C = palette(!!opts.dark, opts.palette);
   // The suggestions are source, so they are coloured like source — the same
   // violet marks the selector here and in the editor the user will paste it into.
   const ink = TOKEN_COLORS[opts.dark ? 'dark' : 'light'];
