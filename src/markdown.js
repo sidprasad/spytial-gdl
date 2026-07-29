@@ -47,18 +47,36 @@ const LANGS = ['spytial-gdl', 'spytial', 'spytial-graph'];
 const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable', 'spytial-graph-editable'];
 const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS];
 
-// CSS selectors covering how common markdown renderers tag a fenced block:
-//   marked / markdown-it / Prism / highlight.js → <pre><code class="language-spytial-gdl">
-//   some pipelines emit the class on the <pre>   → <pre class="language-spytial-gdl">
-//   hand-authored containers                     → <div class="spytial-gdl">
-function blockSelector() {
+// CSS selectors covering how a fenced block comes out the other side of the
+// common documentation pipelines. Every shape below was read off a real
+// generator's output rather than guessed; docs/pages/platforms.md keeps the
+// per-platform table and the recipes.
+//
+//   marked / markdown-it / kramdown / Prism  → <pre><code class="language-X">
+//   Hugo (Chroma)                            → <code class="language-X" data-lang="X">
+//   pymdownx.highlight                       → <pre class="highlight"><code class="language-X">
+//   MkDocs custom fences, Pandoc / Quarto    → <pre class="X">, <code class="sourceCode X">
+//   Jekyll (Rouge), MkDocs Material,
+//     Docusaurus, VitePress                  → <div class="language-X …"> wrapper
+//   Sphinx / MyST                            → <div class="highlight-X notranslate">
+//   Astro / Starlight (Expressive Code)      → <pre data-language="X">
+//   hand-authored containers                 → <div class="X">
+//
+// Exported so test/platforms.test.mjs can assert each platform's marker is
+// still covered; there is nothing to call it for from outside.
+export function blockSelector() {
   const sels = [];
   for (const lang of ALL_LANGS) {
     sels.push(`pre > code.language-${lang}`);
     sels.push(`code.language-${lang}`);
     sels.push(`pre.language-${lang}`);
     sels.push(`pre.${lang}`);
+    sels.push(`code.${lang}`);
     sels.push(`div.${lang}`);
+    sels.push(`div.language-${lang}`);
+    sels.push(`div.highlight-${lang}`);
+    sels.push(`[data-language="${lang}"]`);
+    sels.push(`[data-lang="${lang}"]`);
   }
   return sels.join(', ');
 }
@@ -91,14 +109,81 @@ function hostFor(el) {
   return el;
 }
 
+// Highlighters wrap the block in a themed container that carries no language
+// marker of its own (Hugo's <div class="highlight">, Quarto's
+// <div class="sourceCode">). Swapping only the inner <pre> leaves that container
+// behind as an empty bordered box, so absorb it — but only when it holds nothing
+// except this block, which keeps us from swallowing a layout element.
+function absorbWrapper(host) {
+  for (let i = 0; i < 2; i++) {
+    const p = host.parentElement;
+    if (!p || (p.tagName !== 'DIV' && p.tagName !== 'FIGURE')) break;
+    if (!p.className || p.childElementCount !== 1) break;
+    if ((p.textContent || '').trim() !== (host.textContent || '').trim()) break;
+    host = p;
+  }
+  return host;
+}
+
+// Chrome a theme tucks inside the block that is not part of the source.
+const SRC_SKIP_TAGS = new Set(['BUTTON', 'SCRIPT', 'STYLE', 'LINK', 'FIGCAPTION', 'TEXTAREA']);
+// Elements that stand for a line of code in one pipeline or another.
+const SRC_LINE_TAGS = new Set(['DIV', 'LI', 'TR']);
+
+// Read a block's source. Deliberately not `textContent`: several pipelines
+// rebuild the block one element per line — Docusaurus emits
+// <div class="token-line">…<br>, Expressive Code emits <div class="ec-line">,
+// and any decoder that runs paragraph logic over the block (Pollen, WordPress)
+// inserts <p>/<br> — and textContent flattens all of those into a single line.
+// That is the worst failure we have: one line still parses, as one enormous edge
+// label, so the page shows a confidently wrong diagram instead of an error. So
+// walk the tree and put the breaks back.
+export function sourceFromBlock(el) {
+  // The source text lives in the innermost <code> (or <pre>); a wrapper <div>
+  // also holds the theme's copy button and language label, which are not it.
+  const inner = el.querySelector && (el.querySelector('code') || el.querySelector('pre'));
+  let out = '';
+  const endLine = () => { if (out && !out.endsWith('\n')) out += '\n'; };
+  // A <p> boundary is where a blank line used to be, so it ends a line *and*
+  // leaves one behind — the paragraph decoders are the only thing that produces
+  // these, and they only produce them where the author left a blank line.
+  const endParagraph = () => { endLine(); if (out && !out.endsWith('\n\n')) out += '\n'; };
+  (function walk(node) {
+    for (const child of node.childNodes || []) {
+      if (child.nodeType === 3) { out += child.nodeValue || ''; continue; }   // text
+      if (child.nodeType !== 1) continue;                                     // comment, etc.
+      if (SRC_SKIP_TAGS.has(child.tagName)) continue;
+      if (child.tagName === 'BR') { out += '\n'; continue; }
+      walk(child);
+      if (child.tagName === 'P') endParagraph();
+      else if (SRC_LINE_TAGS.has(child.tagName)) endLine();
+    }
+  })(inner || el);
+  return out;
+}
+
 function collectBlocks(root, opts = {}) {
   const found = new Map(); // host element → { source, editable } (dedup by host)
   for (const el of root.querySelectorAll(blockSelector())) {
-    const host = hostFor(el);
+    // A pipeline often tags several nested elements of one block at once
+    // (Docusaurus marks the wrapper <div> and the <pre>; Quarto marks the <pre>
+    // and the <code>). querySelectorAll is in document order, so anything inside
+    // a host we already took is that same block seen again.
+    let inside = false;
+    for (const h of found.keys()) {
+      if (h !== el && h.contains && h.contains(el)) { inside = true; break; }
+    }
+    if (inside) continue;
+
+    const host = absorbWrapper(hostFor(el));
     if (host.dataset && host.dataset.spytialProcessed) continue;
     if (found.has(host)) continue;
-    // textContent is entity-decoded, so `-->` and `>` come through verbatim.
-    found.set(host, { source: el.textContent, editable: isEditableBlock(el, host, opts) });
+    // Entity-decoded by the DOM, so `-->` and `>` come through verbatim.
+    found.set(host, { source: sourceFromBlock(el), editable: isEditableBlock(el, host, opts) });
+    // Claim the host now, not when it is finally swapped out. Rendering awaits
+    // between blocks, and the mutation observer fires on our own insertions, so
+    // a second pass can start while this one still has hosts in the document.
+    if (host.dataset) host.dataset.spytialProcessed = '1';
   }
   return found;
 }
@@ -844,14 +929,42 @@ function clearCoreConflict(conflict) {
   }
 }
 
+// Watch for blocks that appear after the first pass. Docusaurus, VitePress,
+// Astro and the other SPA-routed doc sites swap the page body on navigation
+// without a reload, so a one-shot render only ever covers the landing page.
+// Cheap by construction: the observer only looks at added nodes, and only pays
+// for a render pass when an unrendered block is actually on the page.
+export function observeBlocks(opts = {}) {
+  if (typeof MutationObserver === 'undefined' || !document.body) return () => {};
+  let queued = false;
+  let broken = false;   // an engine that failed to load will fail every time
+  const obs = new MutationObserver((records) => {
+    if (queued || broken) return;
+    if (!records.some((r) => r.addedNodes && r.addedNodes.length)) return;
+    queued = true;
+    setTimeout(() => {
+      queued = false;
+      if (!document.querySelector(blockSelector())) return;
+      renderSpytialGdls(document, opts).catch((err) => {
+        broken = true;
+        console.error('[spytial-gdl] re-render failed:', err);
+      });
+    }, 100);
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+  return () => obs.disconnect();
+}
+
 // Render every spytial-gdl block once the DOM is ready, injecting the engine
-// if needed. The one-liner a page adds to turn on rendering.
+// if needed, and keep watching for blocks added later. The one-liner a page adds
+// to turn on rendering. Pass { observe: false } for a strictly one-shot pass.
 export function autoRender(opts = {}) {
   const run = () => {
     renderSpytialGdls(document, opts).catch((err) => {
       // Surface load failures on the console rather than failing silently.
       console.error('[spytial-gdl] auto-render failed:', err);
     });
+    if (opts.observe !== false) observeBlocks(opts);
   };
   if (typeof document !== 'undefined' && document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', run, { once: true });

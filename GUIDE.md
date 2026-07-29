@@ -160,10 +160,14 @@ layout and explains the conflict. Nothing is dropped quietly.
 
 ## Where it works
 
-`autoRender` looks for the markup a Markdown renderer emits for a fenced block,
-`<pre><code class="language-spytial-gdl">`. That's what marked, markdown-it, Prism,
-highlight.js, MkDocs, and Docusaurus produce, so no plugin is needed. To render a
-fragment you injected yourself, call `renderSpytialGdls(element)`.
+`autoRender` looks for the markup a Markdown renderer emits for a fenced block —
+usually `<pre><code class="language-spytial-gdl">`, though generators disagree
+about which element carries the language, so the wrapping `<div>` and a
+`data-language` attribute are checked too. Jekyll, MkDocs, Hugo, Docusaurus,
+VitePress, Sphinx, Starlight, Quarto, Pollen and Eleventy all work with no
+plugin; [docs/pages/platforms.md](docs/pages/platforms.md) has each one's
+script-tag syntax and known issues. To render a fragment you injected yourself,
+call `renderSpytialGdls(element)`.
 
 ## Editable blocks
 

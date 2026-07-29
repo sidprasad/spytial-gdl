@@ -1,0 +1,179 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>platform fixtures</title>
+<!--
+  End-to-end companion to test/platforms.test.mjs.
+
+  Each section below is the markup a documentation pipeline really emits for a
+  ```spytial-gdl fence — captured from that generator's own published docs, or
+  generated locally for the Python/Ruby toolchains — with the content swapped
+  for one small graph. The node test pins the text extraction; this page pins
+  the half only a browser can answer: whether blockSelector() actually matches
+  the element, and whether the block survives all the way to a drawn diagram.
+
+  Run:  npm run serve   →   http://localhost:8100/test/platform-fixtures.html
+  Every row must read PASS.
+-->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 1000px; }
+  section { margin: 28px 0; }
+  h2 { font-size: 14px; margin: 0 0 6px; }
+  h2 code { font-weight: 400; color: #666; }
+  #report { border-collapse: collapse; margin: 16px 0 28px; font-size: 13px; width: 100%; }
+  #report th, #report td { border: 1px solid #ddd; padding: 5px 9px; text-align: left; }
+  #report .PASS { color: #0a7; font-weight: 600; }
+  #report .FAIL { color: #d22; font-weight: 600; }
+</style>
+<body>
+
+<h1>Platform fixtures</h1>
+<table id="report"><thead><tr><th>Platform</th><th>Result</th><th>What came back</th></tr></thead><tbody></tbody></table>
+
+<!-- 1. marked / markdown-it / kramdown (highlighter off) / Python-Markdown fenced_code / Eleventy -->
+<section data-platform="markdown-it / marked / kramdown / Python-Markdown">
+<h2>1. plain fenced output <code>&lt;pre&gt;&lt;code class="language-X"&gt;</code></h2>
+<pre><code class="language-spytial-gdl">A -&gt; B : left
+A -&gt; C : right
+
+@orientation(selector=_links, directions=[below])
+</code></pre>
+</section>
+
+<!-- 2. Jekyll + Rouge (the GitHub Pages default) -->
+<section data-platform="Jekyll (Rouge)">
+<h2>2. Jekyll <code>div.language-X.highlighter-rouge &gt; div.highlight &gt; pre.highlight &gt; code</code></h2>
+<div class="language-spytial-gdl highlighter-rouge"><div class="highlight"><pre class="highlight"><code>A -&gt; B : left
+A -&gt; C : right
+
+@orientation(selector=_links, directions=[below])
+</code></pre></div></div>
+</section>
+
+<!-- 3. MkDocs Material — Pygments with anchored line numbers -->
+<section data-platform="MkDocs Material (Pygments)">
+<h2>3. MkDocs Material <code>div.language-X.highlight</code>, per-line spans</h2>
+<div class="language-spytial-gdl highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">A</span> <span class="o">-&gt;</span> <span class="n">B</span> <span class="err">:</span> <span class="nf">left</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">A</span> <span class="o">-&gt;</span> <span class="n">C</span> <span class="err">:</span> <span class="nf">right</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nv">@orientation</span><span class="p">(</span><span class="n">selector</span><span class="o">=</span><span class="n">_links</span><span class="p">,</span> <span class="n">directions</span><span class="o">=[</span><span class="n">below</span><span class="o">]</span><span class="p">)</span>
+</span></code></pre></div>
+</section>
+
+<!-- 4. MkDocs superfences custom_fences (the Mermaid recipe) -->
+<section data-platform="MkDocs custom_fences">
+<h2>4. MkDocs custom fence <code>pre.spytial-gdl &gt; code</code></h2>
+<pre class="spytial-gdl"><code>A -&gt; B : left
+A -&gt; C : right
+
+@orientation(selector=_links, directions=[below])</code></pre>
+</section>
+
+<!-- 5. Hugo (Chroma) -->
+<section data-platform="Hugo (Chroma)">
+<h2>5. Hugo <code>div.highlight &gt; pre.chroma &gt; code.language-X[data-lang]</code></h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-spytial-gdl" data-lang="spytial-gdl"><span class="line"><span class="cl">A -&gt; B : left
+</span></span><span class="line"><span class="cl">A -&gt; C : right
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">@orientation(selector=_links, directions=[below])</span></span></code></pre></div>
+</section>
+
+<!-- 6. Docusaurus (Prism) — one div per line, each ending in <br> -->
+<section data-platform="Docusaurus (Prism)">
+<h2>6. Docusaurus <code>div.language-X.codeBlockContainer</code>, <code>div.token-line</code> + <code>&lt;br&gt;</code></h2>
+<div class="language-spytial-gdl codeBlockContainer_jDV4 theme-code-block"><div class="codeBlockContent_cKMj"><pre tabindex="0" class="prism-code language-spytial-gdl codeBlock_Gebt thin-scrollbar"><code class="codeBlockLines_FJaf"><div class="token-line"><span class="token plain">A -&gt; B : left</span><br></div><div class="token-line"><span class="token plain">A -&gt; C : right</span><br></div><div class="token-line"><span class="token plain"></span><br></div><div class="token-line"><span class="token plain">@orientation(selector=_links, directions=[below])</span><br></div></code></pre></div></div>
+</section>
+
+<!-- 7. VitePress (Shiki) — copy button and language label live inside the wrapper -->
+<section data-platform="VitePress (Shiki)">
+<h2>7. VitePress <code>div.language-X</code> with a copy button and lang label</h2>
+<div class="language-spytial-gdl"><button title="Copy code" data-copied="Copied" class="copy"></button><span class="lang">spytial-gdl</span><pre class="shiki shiki-themes github-light github-dark" tabindex="0" dir="ltr"><code><span class="line"><span>A -&gt; B : left</span></span>
+<span class="line"><span>A -&gt; C : right</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@orientation(selector=_links, directions=[below])</span></span></code></pre></div>
+</section>
+
+<!-- 8. Sphinx / MyST — no <code> element at all -->
+<section data-platform="Sphinx / MyST">
+<h2>8. Sphinx <code>div.highlight-X.notranslate &gt; div.highlight &gt; pre</code></h2>
+<div class="highlight-spytial-gdl notranslate"><div class="highlight"><pre><span></span>A -&gt; B : left
+A -&gt; C : right
+
+@orientation(selector=_links, directions=[below])
+</pre></div></div>
+</section>
+
+<!-- 9. Astro / Starlight (Expressive Code) — per-line divs, no newlines at all -->
+<section data-platform="Starlight (Expressive Code)">
+<h2>9. Starlight <code>pre[data-language] &gt; code &gt; div.ec-line &gt; div.code</code></h2>
+<div class="expressive-code"><figure class="frame has-title not-content"><figcaption class="header"><span class="title">diagram.spytial-gdl</span></figcaption><pre data-language="spytial-gdl"><code><div class="ec-line"><div class="code"><span>A -&gt; B : left</span></div></div><div class="ec-line"><div class="code"><span>A -&gt; C : right</span></div></div><div class="ec-line"><div class="code">
+</div></div><div class="ec-line"><div class="code"><span>@orientation(selector=_links, directions=[below])</span></div></div></code></pre><div class="copy"><button title="Copy to clipboard" data-code="A -&gt; B : left"></button></div></figure></div>
+</section>
+
+<!-- 10. Quarto / Pandoc -->
+<section data-platform="Quarto / Pandoc">
+<h2>10. Quarto <code>div.sourceCode &gt; pre.sourceCode.X &gt; code.sourceCode.X</code></h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode spytial-gdl code-with-copy"><code class="sourceCode spytial-gdl"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>A -&gt; B : left</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>A -&gt; C : right</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>@orientation(selector=_links, directions=[below])</span></code></pre></div>
+</section>
+
+<!-- 11. A decoder that ran paragraph logic over the block (Pollen, WordPress) -->
+<section data-platform="paragraph-decoded (Pollen, WordPress)">
+<h2>11. paragraph-decoded block: <code>&lt;p&gt;</code> and <code>&lt;br&gt;</code> instead of newlines</h2>
+<pre class="spytial-gdl"><code><p>A -&gt; B : left<br>A -&gt; C : right</p><p>@orientation(selector=_links, directions=[below])</p></code></pre>
+</section>
+
+<!-- 12. hand-authored container -->
+<section data-platform="hand-authored div">
+<h2>12. hand-authored <code>div.spytial-gdl</code></h2>
+<div class="spytial-gdl">A -&gt; B : left
+A -&gt; C : right
+
+@orientation(selector=_links, directions=[below])
+</div>
+</section>
+
+<script type="module">
+import { renderSpytialGdls } from '/src/markdown.js';
+
+// Every fixture holds the same graph, so every fixture must come back as the
+// same drawing. A collapsed block still renders — as one node with the rest of
+// the file as an edge label — so the label check is the one that matters.
+const WANT = ['A', 'B', 'C', 'left', 'right'];
+
+await renderSpytialGdls(document);
+await new Promise((r) => setTimeout(r, 1200));
+
+const tbody = document.querySelector('#report tbody');
+let failures = 0;
+
+for (const section of document.querySelectorAll('section[data-platform]')) {
+  const name = section.dataset.platform;
+  const graph = section.querySelector('webcola-cnd-graph');
+  const root = graph && (graph.shadowRoot || graph);
+  const labels = root ? [...root.querySelectorAll('svg text')].map((t) => t.textContent.trim()).filter(Boolean) : [];
+
+  let why = '';
+  if (!graph) why = section.querySelector('.spytial-gdl-error') ? 'render error' : 'block not detected';
+  else if (!labels.length) why = 'nothing drawn';
+  else {
+    const missing = WANT.filter((w) => !labels.includes(w));
+    const longest = labels.reduce((a, b) => (a.length > b.length ? a : b), '');
+    if (missing.length) why = `missing ${missing.join(', ')} — got ${JSON.stringify(labels)}`;
+    else if (longest.length > 25) why = `a label swallowed the block: ${JSON.stringify(longest.slice(0, 60))}`;
+  }
+
+  const ok = !why;
+  if (!ok) failures++;
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td>${name}</td><td class="${ok ? 'PASS' : 'FAIL'}">${ok ? 'PASS' : 'FAIL'}</td>` +
+    `<td>${ok ? labels.join(' · ') : why}</td>`;
+  tbody.appendChild(tr);
+}
+
+document.title = failures ? `${failures} FAILED — platform fixtures` : 'all PASS — platform fixtures';
+window.__platformReport = { failures, total: tbody.children.length };
+</script>
+</body>

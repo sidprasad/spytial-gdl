@@ -48,6 +48,7 @@ await renderSpytialGdl(graph, 'A -> B\n@orientation(selector=_links, directions=
 | [The notation](docs/pages/notation.md) | edges, ids, sorts, classes, selectors |
 | [Annotations](docs/pages/annotations.md) | constraints, directives, style blocks, conflicts |
 | [Embedding & API](docs/pages/embedding.md) | `autoRender`, options, editable mode, full API |
+| [Platforms](docs/pages/platforms.md) | MkDocs, Jekyll, Hugo, Docusaurus, Pollen, and the rest |
 | [Architecture](docs/pages/architecture.md) | the render pipeline and dependencies |
 
 The [playground](playground/) and [examples](examples/) are runnable.

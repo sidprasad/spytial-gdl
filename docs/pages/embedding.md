@@ -8,21 +8,32 @@ renderer produces and swaps each one for a live diagram. It's the same path the
 
 ## What gets detected
 
-A block is recognized from any of the markup that common renderers, and
-hand-authored pages, emit:
+A block is recognized from any of the markup that the common renderers, and
+hand-authored pages, emit. Generators disagree about which element carries the
+language, so all four places are checked:
 
 | markup | source |
 |---|---|
-| `<pre><code class="language-spytial-gdl">` | marked · markdown-it · Prism · highlight.js |
-| `<pre class="language-spytial-gdl">` | some pipelines |
+| `<pre><code class="language-spytial-gdl">` | marked · markdown-it · kramdown · Prism · highlight.js |
+| `<pre class="language-spytial-gdl">`, `<pre class="spytial-gdl">` | pymdownx · Pandoc · MkDocs custom fences |
+| `<code class="language-spytial-gdl">`, `<code class="spytial-gdl">` | Hugo (Chroma) · Quarto |
+| `<div class="language-spytial-gdl">`, `<div class="highlight-spytial-gdl">` | Jekyll · MkDocs Material · Docusaurus · VitePress · Sphinx |
+| `data-language` / `data-lang` attribute | Astro · Starlight · Hugo |
 | `<div class="spytial-gdl">` | hand-authored HTML |
 
 `spytial` is accepted as an alias for `spytial-gdl`. Editable blocks use the
 dedicated languages `spytial-gdl-editable` and `spytial-editable`, or a
 `data-editable` attribute on the host. See [Editable diagrams](#editable-diagrams).
 
-MkDocs, Docusaurus, marked, markdown-it, and GitHub-style pipelines need no plugin,
-because they already emit the markup above.
+The source is read back with the line structure restored, because several
+pipelines rebuild a block one element per line (a `<div>` or a `<br>` where a
+newline used to be) and the theme's copy button often sits inside the block.
+When the block is wrapped in a container that holds nothing else, the container
+is replaced along with it, so no empty themed box is left behind.
+
+No platform needs a plugin. [Platforms](platforms.md) has the per-generator
+recipes, where the script tag goes, and the handful of things that can still go
+wrong.
 
 ## The functions
 
@@ -40,6 +51,7 @@ import {
 | `renderSpytialGdls(root = document, opts)` | render blocks under `root`; returns a per-block results array. Use it after you inject HTML yourself. |
 | `ensureEngineLoaded(opts)` | inject d3 + WebCola + spytial-core if they aren't already on the page. |
 | `whenEngineReady(ms)` | resolve once the engine global is available (polls, with a timeout). |
+| `observeBlocks(opts)` | watch for blocks added later and render them; returns a stop function. `autoRender` calls it for you. |
 
 `src/auto.js` is `autoRender()` wrapped in a module, so the drop-in tag
 `<script type="module" src=".../src/auto.js">` needs no code of your own.
@@ -53,6 +65,7 @@ import {
 | `height` | `360` | diagram height: a number of pixels, or any CSS length. A block overrides it with `data-height`. |
 | `theme` | `'light'` | `'light'` or `'dark'`; themes the device chrome and the graph. |
 | `editable` | `false` | render every block as the editor (see [Editable diagrams](#editable-diagrams)). |
+| `observe` | `true` | (`autoRender` only) keep watching for blocks added after the first pass, so client-side navigation renders too. |
 | `injectEngine` | `true` | inject the CDN engine scripts if absent. Set it to `false` if you load spytial-core yourself. |
 | `deps` | built-in | override the three engine script URLs, to self-host or pin. |
 | `timeoutMs` | `10000` | how long `whenEngineReady` polls before giving up. |
@@ -108,16 +121,10 @@ Or load spytial-core on the page yourself and call
 
 ## Framework notes
 
-**MkDocs (Material)** works out of the box. To stop the highlighter from mangling
-the block, register it as a custom fence (`pymdownx.superfences`) that renders
-verbatim, then load `auto.js` via `extra_javascript`.
-
-**Docusaurus**: author the block in MDX and load `auto.js` from a client module or
-a `<script type="module">` in the page. If you use client-side navigation, re-run
-`renderSpytialGdls` on route change.
-
-**Static site generators** (Eleventy, Hugo, Jekyll) all emit the
-`language-spytial-gdl` markup, so add the drop-in tag to your base template.
+Jekyll, MkDocs, Hugo, Docusaurus, VitePress, Sphinx, Starlight, Quarto, Pollen
+and Eleventy all work with the drop-in tag in their base template and nothing
+else. [Platforms](platforms.md) gives each one's script-tag syntax, the two
+places a highlighter can still get in the way, and what to do about it.
 
 ## Editable diagrams
 

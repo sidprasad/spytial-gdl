@@ -3,5 +3,6 @@
   { "title": "The notation", "slug": "notation" },
   { "title": "Annotations", "slug": "annotations" },
   { "title": "Embedding & API", "slug": "embedding" },
+  { "title": "Platforms", "slug": "platforms" },
   { "title": "Architecture", "slug": "architecture" }
 ]

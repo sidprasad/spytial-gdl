@@ -131,6 +131,21 @@ function splitLabel(rightRaw) {
   return { node: rightRaw.trim(), label: null };
 }
 
+// A typographic filter upstream of the renderer — Pollen's `smart-dashes` /
+// `smart-quotes` decoder, a CMS "smart punctuation" pass — rewrites `-->` to
+// `–>` and `'x'` to `’x’`. The arrow stops being an arrow, and the parse error
+// that follows points at the symptom. Only consulted for a line that already
+// failed, so naming the real cause costs nothing when it doesn't apply.
+const SMART_DASH = /[–—]/;
+const SMART_QUOTE = /[‘’“”]/;
+function typographyHint(line) {
+  const what = SMART_DASH.test(line) ? 'dashes' : SMART_QUOTE.test(line) ? 'quotes' : null;
+  return what
+    ? ` — this line contains typographic ${what}, so a smart-punctuation filter has` +
+      ' rewritten the block; exclude it from that processing upstream'
+    : '';
+}
+
 function parseEdgeLine(line) {
   // mermaid-style pipe label first: `A -->|label| B`.
   const piped = line.match(new RegExp(`^(.+?)\\s*(${ARROW_ALT})\\s*\\|([^|]+)\\|\\s*(.+)$`));
@@ -219,11 +234,11 @@ export function parseGraph(source) {
         edges.push({ source: left.id, target: right.id, kind: edge.kind, label: edge.label });
         for (const [side, n] of [['source', left], ['target', right]]) {
           if (n.trailing) errors.push({ line: at, text: line, severity: 'error',
-            message: `unexpected text after ${side} node "${n.id}": ${n.trailing}` });
+            message: `unexpected text after ${side} node "${n.id}": ${n.trailing}${typographyHint(line)}` });
         }
       } else {
         errors.push({ line: at, text: line, severity: 'error',
-          message: 'malformed edge — could not read a node id on one side of the arrow' });
+          message: `malformed edge — could not read a node id on one side of the arrow${typographyHint(line)}` });
       }
       return;
     }
@@ -234,12 +249,13 @@ export function parseGraph(source) {
     if (node) {
       addNode(node);
       if (node.trailing) errors.push({ line: at, text: line, severity: 'error',
-        message: `unexpected text after node "${node.id}": ${node.trailing}` });
+        message: `unexpected text after node "${node.id}": ${node.trailing}${typographyHint(line)}` });
       return;
     }
 
     // Nothing recognized this line.
-    errors.push({ line: at, text: line, severity: 'error', message: 'unrecognized line' });
+    errors.push({ line: at, text: line, severity: 'error',
+      message: `unrecognized line${typographyHint(line)}` });
   });
 
   return { nodes, edges, classesPerNode, errors };
