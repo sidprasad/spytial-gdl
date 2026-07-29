@@ -5,9 +5,10 @@
  * is round, soft-shadowed, or gradient — if something needs emphasis it gets
  * a rule, a colour block, or more space.
  *
- * Kandinsky's shape/colour correspondence (yellow triangle, red square, blue
- * circle) is the brand mark, which is a lucky fit: this is a tool about which
- * shape goes where.
+ * The brand mark is three nodes on an axis, in the three primaries. They are
+ * rectangles because that is what this renderer draws: the mark should not
+ * promise a vocabulary of shapes the diagrams don't have. What varies between
+ * nodes here is what varies in a real diagram — colour, width, and position.
  *
  * Themes: pages with a toggle set [data-theme] on <html> or <body>. Pages
  * without one follow the OS.
@@ -108,12 +109,14 @@ hr { border: none; border-top: var(--bar) solid var(--ink); margin: 40px 0; }
 /* A heavy rule used as a section break or a masthead underline. */
 .rule { border: 0; border-top: var(--bar) solid var(--ink); margin: 0; }
 
-/* The mark: three nodes on an axis — blue circle, red square, yellow triangle. */
+/* The mark: three nodes on an axis. Every node the renderer draws is a
+   rectangle, so the mark is three rectangles — the primaries and the widths do
+   the distinguishing, the way a real diagram's labels do. */
 .mark { display: block; height: 1em; width: auto; overflow: visible; color: var(--ink); }
 .mark .axis  { stroke: currentColor; stroke-width: 2; }
-.mark .n-circle { fill: var(--blue); }
-.mark .n-square { fill: var(--red); }
-.mark .n-tri    { fill: var(--yellow); }
+.mark .n-blue   { fill: var(--blue); }
+.mark .n-red    { fill: var(--red); }
+.mark .n-yellow { fill: var(--yellow); }
 
 /* Wordmark: the mark plus the name, used in every masthead. */
 .wordmark {

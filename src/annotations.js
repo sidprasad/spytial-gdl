@@ -143,6 +143,9 @@ const ANNOTATION_OPEN = /^\s*(?:%%\s*)?@([A-Za-z_]\w*)\s*\(/;
 // A per-line `%%` guard, stripped from each line before the args are parsed so a
 // fully guarded block parses the same as a bare one.
 const GUARD = /^\s*%%\s?/;
+// Typographic quotes, which only ever reach an annotation by way of a
+// smart-punctuation filter that rewrote the block on the way in.
+const SMART_QUOTE = /[‘’“”]/;
 
 // Index of the `)` matching the `(` at index `open` in `s`, tracking quotes and
 // nested () [] {} so a paren inside a string or list can't close it early.
@@ -580,6 +583,15 @@ export function extractAnnotations(rawSource) {
     } catch (err) {
       errors.push({ line: at, text: verbatim.trim(), message: err.message });
       continue;
+    }
+
+    // A smart-quotes filter upstream (Pollen's decoder, a CMS typography pass)
+    // turns name='Team A' into name=’Team A’. That still parses — the curly
+    // quotes just end up inside the value — so nothing else would ever say so.
+    if (SMART_QUOTE.test(verbatim)) {
+      errors.push({ line: at, text: verbatim.trim(),
+        message: 'curly quotes in the arguments: a smart-punctuation filter has rewritten ' +
+          "this block, and they are now part of the value rather than quoting it" });
     }
 
     (isConstraint ? constraints : directives).push(entry);

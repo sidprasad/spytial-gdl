@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>spytial-gdl</title>
-  <meta name="description" content="A small graph notation with inline spatial @annotations, rendered as live Spytial constraint diagrams." />
+  <meta name="description" content="A graph description language with inline spatial requirements, rendered as live, interactive Spytial diagrams in the browser." />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
     :root { --page-w: 880px; }
@@ -14,6 +14,8 @@
     /* Hero: a wide asymmetric split — type left, three shapes right. */
     .hero { display: grid; grid-template-columns: 1fr 200px; gap: 40px; align-items: start; padding: 72px 0 64px; }
     .hero h1 { margin: 0 0 24px; }
+    /* The paper's parenthetical, kept as an aside rather than a fourth shout. */
+    .hero h1 .aside { color: var(--ink-3); }
     .lede { font-size: 20px; line-height: 1.45; color: var(--ink-2); max-width: 34ch; margin: 0; }
     .lede b { color: var(--ink); font-weight: 400; font-family: var(--display); }
     .lede code { font-size: 0.8em; background: var(--yellow); color: #16130f; padding: 2px 6px; }
@@ -40,9 +42,9 @@
       <span class="wordmark">
         <svg class="mark" viewBox="0 0 62 24" aria-hidden="true">
           <path class="axis" d="M4 12 H58" />
-          <circle class="n-circle" cx="10" cy="12" r="7" />
-          <rect class="n-square" x="24" y="5" width="14" height="14" />
-          <path class="n-tri" d="M51 4 L58.5 19 H43.5 Z" />
+          <rect class="n-blue"   x="2"  y="6" width="14" height="12" />
+          <rect class="n-red"    x="22" y="6" width="18" height="12" />
+          <rect class="n-yellow" x="46" y="6" width="14" height="12" />
         </svg>
         spytial-gdl
       </span>
@@ -58,22 +60,23 @@
   <main>
     <section class="hero">
       <div>
-        <h1>Diagrams<br />that carry<br />their layout.</h1>
-        <p class="lede">A small graph notation with inline spatial
-          <code>@annotations</code>. Spytial solves the layout and draws a live,
-          draggable diagram — in Markdown, or anywhere.</p>
+        <h1>Lightweight<br />interactive diagrams<br />in the browser<br /><span class="aside">(with semantics!)</span></h1>
+        <p class="lede">A graph description language whose
+          <code>@annotations</code> state spatial <b>requirements</b> — the
+          relationships every valid layout has to preserve, including the ones
+          you drag it into. Embeds directly in Markdown and HTML.</p>
       </div>
-      <!-- The thing itself: a three-node graph, drawn in Kandinsky's assignment
-           of shape to colour (blue circle, red square, yellow triangle). -->
+      <!-- The thing itself: the three-node graph this notation draws, in the
+           three primaries. Rectangles, because that is what a node is here. -->
       <svg class="composition" viewBox="0 0 200 200" aria-hidden="true">
         <rect x="0" y="0" width="200" height="200" fill="var(--raised)" />
         <g stroke="var(--ink)" stroke-width="3">
-          <path d="M100 62 L56 140" />
-          <path d="M100 62 L146 140" />
+          <path d="M100 76 L54 128" />
+          <path d="M100 76 L146 128" />
         </g>
-        <circle cx="100" cy="56" r="34" fill="var(--blue)" />
-        <rect x="28" y="132" width="56" height="56" fill="var(--red)" />
-        <path d="M146 130 L180 188 H112 Z" fill="var(--yellow)" />
+        <rect x="62" y="34" width="76" height="42" fill="var(--blue)" />
+        <rect x="18" y="128" width="72" height="42" fill="var(--red)" />
+        <rect x="110" y="128" width="72" height="42" fill="var(--yellow)" />
         <rect x="2" y="2" width="196" height="196" fill="none" stroke="var(--ink)" stroke-width="4" />
       </svg>
     </section>

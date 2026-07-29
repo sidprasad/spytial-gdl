@@ -195,11 +195,20 @@ function enhanceHeadings(slug) {
 }
 
 // Rewrite in-content links: *.md → hash routes; bare slugs → hash routes.
-// Leaves external links, in-page #ids, and existing #/ routes alone.
+// Leaves external links and existing #/ routes alone.
 function rewriteLinks() {
   els.doc.querySelectorAll('a[href]').forEach((a) => {
     const href = a.getAttribute('href');
-    if (!href || /^(https?:|mailto:|#)/.test(href)) return;
+    if (!href || /^(https?:|mailto:)/.test(href)) return;
+    // A page's own `[…](#anchor)` link, which is how the Markdown reads on
+    // GitHub. The router only understands #/slug/heading, so a bare #id would
+    // parse as no route at all and bounce the reader to the first page.
+    const anchor = href.match(/^#(?!\/)(.+)$/);
+    if (anchor) {
+      a.setAttribute('href', `#/${currentSlug}/${anchor[1]}`);
+      return;
+    }
+    if (href.startsWith('#')) return;
     const mdMatch = href.match(/^(?:\.\/)?([\w-]+)\.md(#.*)?$/);
     if (mdMatch) {
       a.setAttribute('href', `#/${mdMatch[1]}${mdMatch[2] ? `/${mdMatch[2].slice(1)}` : ''}`);
