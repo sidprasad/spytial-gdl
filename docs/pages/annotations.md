@@ -40,6 +40,13 @@ only in which bucket they compile to, and the value syntax is identical.
 | `align` | line the endpoints of a relation up on an axis (horizontal/vertical) |
 | `cyclic` | arrange a cycle as a ring |
 | `group` | draw a labeled region around a set of nodes |
+| `size` | fix the width and height of matching nodes |
+| `hideAtom` | hide matching nodes |
+
+`size` and `hideAtom` read like styling but are constraints: both change what the
+layout has to solve for, rather than decorating a solved one. Core accepts them
+among the directives too, behind a deprecation warning, which is why they are
+sometimes written there.
 
 ### orientation
 
@@ -123,17 +130,13 @@ whole chain settles into a row.
 
 | directive | what it does |
 |---|---|
-| `atomStyle` | how matching nodes look: outline, fill, label ([style blocks](#style-blocks)) |
+| `atomStyle` | how matching nodes look: outline, fill, icon, label ([style blocks](#style-blocks)) |
 | `edgeStyle` | how matching edges look: line, label ([style blocks](#style-blocks)) |
-| `size` | sizing of matching nodes |
-| `icon` | render matching nodes with an icon |
 | `attribute` | show a field as a node attribute instead of an edge |
 | `hideField` | hide a relation from drawing (still selectable) |
-| `hideAtom` | hide matching nodes |
 | `inferredEdge` | draw a derived/virtual edge |
 | `tag` | annotate nodes with a tag |
 | `flag` | a layout flag, e.g. `flag(name=hideDisconnected)` |
-| `projection` | project over a relation |
 
 The common ones set color:
 
@@ -195,39 +198,51 @@ These two are the ones you reach for first, so it's worth keeping them straight:
 `edgeStyle` matches on `field`, the relation, and `atomStyle` on `selector`, a sort
 or class. An `atomStyle` with no `selector` at all styles every node.
 
-### Directive reference
+### Argument reference
 
-Directives map generically onto spytial-core's vocabulary: an annotation
-`@name(a=1, b=2)` compiles to `{ name: { a: 1, b: 2 } }`. Because of that
-genericity, every directive works without per-directive code here, and spytial-gdl
-validates the [style blocks](#style-blocks) but not the other kwargs. Misspell an
-argument and nothing reports it. The key rides through to core, core ignores what
-it doesn't recognise, and the diagram renders unstyled.
+An annotation maps onto spytial-core's vocabulary directly: `@name(a=1, b=2)`
+compiles to `{ name: { a: 1, b: 2 } }`. So the argument names matter, and a
+misspelled one is not harmless — core keeps what it doesn't recognise and then
+does nothing with it, so the rule silently stops applying.
 
-So the argument names matter. These are the ones core accepts, keyed by directive
-(`?` means optional):
+spytial-gdl checks each annotation against the arguments core actually reads, so
+a typo, a missing required argument, or a value outside a closed vocabulary is
+reported with a line number instead. The table it checks against is generated
+from the schema spytial-core publishes, which is why it can be trusted to match
+the engine rather than to have been right when someone last typed it out.
 
-| directive | arguments |
-|---|---|
-| `atomStyle` | `selector?` (absent means every node), `borderStyle(…)`, `fillStyle(…)`, `textStyle(…)` |
-| `edgeStyle` | `field`, `selector?`, `filter?`, `lineStyle(…)`, `textStyle(…)`, `showLabel?`, `hidden?` |
-| `size` | `selector`, `height`, `width` |
-| `icon` | `selector`, `path`, `showLabels?` |
-| `attribute` | `field`, `selector?`, `filter?`, `textStyle(…)` |
-| `tag` | `toTag`, `name`, `value`, `textStyle(…)` |
-| `hideField` | `field`, `selector?`, `filter?` |
-| `hideAtom` | `selector` |
-| `inferredEdge` | `selector`, `name`, `lineStyle(…)`, `textStyle(…)`, `draw?` |
-| `flag` | `name`: `hideDisconnected` or `hideDisconnectedBuiltIns` |
-| `projection` | `sig`, `orderBy?` |
-| `group` | `selector`, `name`, `addEdge(…)?`, `textStyle(…)`, or the field form `field`, `groupOn`, `addToGroup`, `selector?` |
+`?` means optional; `(…)` marks a [style block](#style-blocks).
 
-Note `showLabel` (singular) on `edgeStyle` against `showLabels` (plural) on `icon`.
-They're different directives and the spellings don't cross over.
+| annotation | kind | arguments |
+|---|---|---|
+| `orientation` | constraint | `selector`, `directions`, `hold?` |
+| `align` | constraint | `selector`, `direction`, `hold?` |
+| `cyclic` | constraint | `selector`, `direction?`, `hold?` |
+| `group` | constraint | `selector`, `name?`, `addEdge?`, `textStyle(…)?`, `hold?` |
+| `size` | constraint | `width`, `height`, `selector?` |
+| `hideAtom` | constraint | `selector` |
+| `atomStyle` | directive | `selector?` (absent means every node), `fillStyle(…)?`, `borderStyle(…)?`, `iconStyle(…)?`, `textStyle(…)?`, `showLabel?` |
+| `edgeStyle` | directive | `field`, `selector?`, `filter?`, `lineStyle(…)?`, `textStyle(…)?`, `showLabel?`, `hidden?` |
+| `attribute` | directive | `field`, `selector?`, `filter?`, `textStyle(…)?` |
+| `tag` | directive | `toTag`, `name`, `value`, `textStyle(…)?` |
+| `hideField` | directive | `field`, `selector?`, `filter?` |
+| `inferredEdge` | directive | `name`, `selector`, `draw?`, `lineStyle(…)?`, `textStyle(…)?` |
+| `flag` | directive | `name`: `hideDisconnected` or `hideDisconnectedBuiltIns` |
+
+`hold=never` negates a constraint — it asserts the relationship must *not* hold.
+Only the constraints listed with it take it; `size` and `hideAtom` accept the key
+syntactically and ignore it, so writing it there would quietly mean the opposite
+of what it says, and spytial-gdl rejects it rather than emitting a no-op.
+
+Two forms are deprecated but still compile, since core still reads them:
+`@icon(selector, path, showLabels?)`, which `atomStyle`'s `iconStyle(…)` block
+replaces, and `@group(field, groupOn, addToGroup, selector?)`, which the binary
+selector form replaces. Both warn.
 
 > The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
-> authoritative. This table tracks its directive interfaces, verified against
-> `spytial-core@4`, rather than restating them.
+> authoritative. `test/spec-tables.test.mjs` holds the table above to the same
+> generated vocabulary the compiler uses, so it cannot fall behind the engine
+> without a test saying so.
 
 ## Style blocks
 

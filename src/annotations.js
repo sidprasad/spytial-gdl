@@ -26,31 +26,60 @@
 //   %%@name(args)      — mermaid-comment-guarded, so the block still degrades
 //   %% @name(args)       gracefully if pasted into a vanilla Mermaid renderer.
 
-// Vocabulary, mirroring Python's CONSTRAINT_TYPES / DIRECTIVE_TYPES. Only the
-// name→category split matters here: compilation is generic (every annotation
-// becomes `{ <name>: { ...kwargs } }`), so all of them are supported with no
-// per-annotation code.
-export const CONSTRAINT_NAMES = new Set([
-  'orientation', 'cyclic', 'align', 'group',
-]);
-
-export const DIRECTIVE_NAMES = new Set([
-  'atomStyle', 'edgeStyle', 'size', 'icon', 'attribute',
-  'hideField', 'hideAtom', 'inferredEdge', 'tag', 'flag', 'projection',
-  // Legacy (core 2.x). Still accepted, but desugared onto atomStyle / edgeStyle
-  // before compilation — see desugarLegacy.
-  'atomColor', 'edgeColor',
-]);
-
-// ── Style blocks (spytial-core 3.x) ─────────────────────────────────────────
-// core 3.0 replaced the flat `edgeColor {value, style, weight}` / `atomColor
-// {value}` directives with `edgeStyle` / `atomStyle` carrying *nested blocks*
-// from one shared vocabulary: a drawn line, a label, a border, a fill. The same
-// blocks reappear on inferredEdge, on a group's addEdge connector, and on
-// attribute / tag lines.
+// ── Vocabulary ──────────────────────────────────────────────────────────────
+// Everything about *what* core accepts — which annotations exist, which section
+// each compiles into, which arguments it takes, and which values are legal — is
+// generated from the JSON Schema spytial-core publishes. See
+// `scripts/generate-spec-tables.mjs`. Nothing in this file restates it, because
+// transcribing it by hand had already gone wrong four ways: `size` and
+// `hideAtom` were compiled under `directives`, a placement core warns about;
+// `projection` was accepted although no released core has ever parsed it; `icon`
+// was treated as current after core deprecated it; and `iconStyle`, the block
+// that replaced `icon`, was rejected as unknown. Core reports none of that, so
+// none of it was visible from here.
 //
-// They're authored as nested calls — a `name(...)` argument — mirroring the Rust
-// derive attributes:
+// What stays hand-written below is everything the schema has no opinion about:
+// the scanner, the legacy desugar, and the YAML emitter.
+import {
+  CONSTRAINT_NAMES,
+  DIRECTIVE_NAMES,
+  DEPRECATED_ITEMS,
+  ITEMS,
+  LINE_PATTERNS,
+  STYLE_BLOCKS,
+} from './_spec-tables.js';
+
+export { CONSTRAINT_NAMES, DIRECTIVE_NAMES };
+
+// Annotations spytial-gdl used to accept that core has never had a parser for.
+// Kept as tombstones so authoring one says why rather than reporting an unknown
+// name, which would be a worse message for anyone upgrading. Remove an entry
+// once the spelling has had time to disappear.
+const NOT_IN_CORE = {
+  projection: 'projection is a pre-layout transform driven by the viewer\'s projection ' +
+    'controls, not something a spec declares; no released spytial-core reads it',
+};
+
+// The deprecated forms desugarLegacy rewrites onto their replacement, so the
+// compiled spec is current even when the source is not. The rest are emitted as
+// written, behind a warning. `test/spec-tables.test.mjs` holds this to the
+// generated tables, so a form whose policy changes upstream cannot end up
+// warning about a rewrite that never happens.
+export const DESUGARED_ITEMS = new Set(['atomColor', 'edgeColor']);
+
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+// ── Validation ──────────────────────────────────────────────────────────────
+// core validates almost none of this. An unknown key, a missing required
+// argument, and a value outside a closed vocabulary are all kept by the parser
+// and then quietly do the wrong thing: the constraint matches nothing, or the
+// edge renders unstyled, with no diagnostic anywhere. Authoring time is the only
+// place they can surface, so each becomes an `errors` entry with a line number.
+//
+// Style blocks are authored as nested calls — a `name(...)` argument — mirroring
+// the Rust derive attributes:
 //
 //   @edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed), textStyle(size=small))
 //     → edgeStyle: { field: next, lineStyle: { color: crimson, pattern: dashed },
@@ -59,33 +88,116 @@ export const DIRECTIVE_NAMES = new Set([
 // `lineStyle={color: crimson}` was not an option: a bare comprehension selector
 // (`{x: Person | x}`) already parses as a bareword value, so a brace map would be
 // ambiguous with sources that work today.
-const LINE_PATTERNS = ['solid', 'dashed', 'dotted'];
-const TEXT_SIZES = ['small', 'normal', 'large'];
-const GROUP_EDGE_POINTS = ['none', 'togroup', 'fromgroup'];
 
-// The block vocabulary, keyed by *block name* rather than by directive: core 3.x
-// shares these blocks across directives, so one table covers all of them and
-// compilation stays generic. Which directive accepts which block remains core's
-// business — as it already is for every other directive kwarg.
-//
-// We validate the leaves because core's parsers do not: an invalid pattern /
-// size / weight is dropped silently there, so a typo renders as an unstyled edge
-// with no diagnostic at all. Here it becomes an `errors` entry with a line number.
-const STYLE_BLOCKS = {
-  lineStyle: { color: 'string', pattern: LINE_PATTERNS, weight: 'number+', highlight: 'string' },
-  textStyle: { size: TEXT_SIZES, color: 'string' },
-  borderStyle: { color: 'string', width: 'number+' },
-  fillStyle: { color: 'string' },
-  addEdge: { points: GROUP_EDGE_POINTS, lineStyle: 'block', textStyle: 'block' },
-};
+// A bareword `true` / `false` parses as a string (parseValue has no way to tell
+// it from a selector name), and emits as bare YAML, so core sees a boolean
+// either way. Both spellings are therefore legal.
+function isBooleanish(v) {
+  return typeof v === 'boolean' || v === 'true' || v === 'false';
+}
 
-function isPlainObject(v) {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
+// Check one value against a generated rule. `where` names it for the message.
+function checkValue(rule, value, where) {
+  switch (rule.type) {
+    case 'enum':
+      if (!rule.values.includes(value)) {
+        throw new Error(`invalid ${where} "${value}"; expected one of ${rule.values.join(', ')}`);
+      }
+      return;
+
+    case 'enum-list': {
+      if (!Array.isArray(value)) {
+        throw new Error(`${where} must be a list, e.g. [${rule.values[0]}]`);
+      }
+      if (rule.minItems && value.length < rule.minItems) {
+        throw new Error(`${where} needs at least ${rule.minItems} value(s)`);
+      }
+      for (const item of value) {
+        if (!rule.values.includes(item)) {
+          throw new Error(`invalid ${where} "${item}"; expected one of ${rule.values.join(', ')}`);
+        }
+      }
+      // Cross-value rules: opposite directions cancel, and a `directly*` variant
+      // restricts what may accompany it. core reports neither — the constraint
+      // just comes out wrong.
+      for (const listRule of rule.listRules ?? []) {
+        if (listRule.kind === 'exclusive' && listRule.values.every((v) => value.includes(v))) {
+          throw new Error(`${where}: at most one of ${listRule.values.join(', ')}`);
+        }
+        if (listRule.kind === 'requires' && value.includes(listRule.when)) {
+          const stray = value.find((v) => !listRule.allowed.includes(v));
+          if (stray !== undefined) {
+            throw new Error(
+              `${where}: with ${listRule.when}, the only other value allowed is ` +
+              `${listRule.allowed.filter((v) => v !== listRule.when).join(', ')} (got "${stray}")`
+            );
+          }
+        }
+      }
+      return;
+    }
+
+    case 'block':
+      if (!isPlainObject(value)) {
+        throw new Error(`${where} must be a block, e.g. ${rule.block}(color=gray)`);
+      }
+      validateBlock(rule.block, value);
+      return;
+
+    case 'enum-or-block':
+      if (isPlainObject(value)) {
+        validateBlock(rule.block, value);
+        return;
+      }
+      // A legacy literal spelling core still reads (`addEdge: true`).
+      if (rule.legacyValues && String(value) in rule.legacyValues) return;
+      if (!rule.values.includes(value)) {
+        throw new Error(
+          `invalid ${where} "${value}"; expected one of ${rule.values.join(', ')}, ` +
+          `or a ${rule.block}(...) block`
+        );
+      }
+      return;
+
+    case 'number':
+    case 'integer': {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new Error(`invalid ${where} "${value}"; expected a number`);
+      }
+      if (rule.type === 'integer' && !Number.isInteger(value)) {
+        throw new Error(`invalid ${where} "${value}"; expected a whole number`);
+      }
+      if (rule.exclusiveMinimum !== undefined && value <= rule.exclusiveMinimum) {
+        throw new Error(`invalid ${where} "${value}"; expected a number greater than ${rule.exclusiveMinimum}`);
+      }
+      if (rule.minimum !== undefined && value < rule.minimum) {
+        throw new Error(`invalid ${where} "${value}"; expected at least ${rule.minimum}`);
+      }
+      if (rule.maximum !== undefined && value > rule.maximum) {
+        throw new Error(`invalid ${where} "${value}"; expected at most ${rule.maximum}`);
+      }
+      return;
+    }
+
+    case 'boolean':
+      if (!isBooleanish(value)) {
+        throw new Error(`invalid ${where} "${value}"; expected true or false`);
+      }
+      return;
+
+    default:
+      if (typeof value !== 'string') {
+        throw new Error(`invalid ${where} "${value}"; expected a string`);
+      }
+      if (rule.minLength && value.length < rule.minLength) {
+        throw new Error(`${where} cannot be empty`);
+      }
+  }
 }
 
 // Check one parsed block against STYLE_BLOCKS. Throws (→ an `errors` entry, and
 // the annotation is dropped) on an unknown block, an unknown key within a known
-// block, a value outside a closed vocabulary, or a non-positive weight/width.
+// block, or a leaf outside its vocabulary or bounds.
 function validateBlock(name, block) {
   const schema = STYLE_BLOCKS[name];
   if (!schema) {
@@ -94,27 +206,72 @@ function validateBlock(name, block) {
     );
   }
   for (const [key, value] of Object.entries(block)) {
-    const rule = schema[key];
+    const rule = schema.fields[key];
     if (!rule) {
       throw new Error(
-        `unknown "${key}" in ${name}(...); expected one of ${Object.keys(schema).join(', ')}`
+        `unknown "${key}" in ${name}(...); expected one of ${Object.keys(schema.fields).join(', ')}`
       );
     }
-    if (Array.isArray(rule)) {
-      if (!rule.includes(value)) {
-        throw new Error(`invalid ${name}.${key} "${value}"; expected one of ${rule.join(', ')}`);
-      }
-    } else if (rule === 'number+') {
-      if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-        throw new Error(`invalid ${name}.${key} "${value}"; expected a positive number`);
-      }
-    } else if (rule === 'block') {
-      if (!isPlainObject(value)) {
-        throw new Error(`${name}.${key} must be a block, e.g. ${key}(color=gray)`);
-      }
-    } else if (typeof value !== 'string') {
-      throw new Error(`invalid ${name}.${key} "${value}"; expected a string`);
+    checkValue(rule, value, `${name}.${key}`);
+  }
+}
+
+// Pick the field set an annotation is written against. Two forms may share one
+// name — the current `group` and its deprecated by-field spelling — and which
+// one applies is decided by the fields present, exactly as core decides it.
+function selectForm(item, kwargs) {
+  const match = item.alternatives.find((alt) => alt.required.every((f) => kwargs[f] !== undefined));
+  return match ?? item.alternatives[0];
+}
+
+// Check an annotation's arguments against the generated table for its name.
+// Runs on the annotation as *written*, before any legacy rewrite, so a message
+// names the argument the author typed.
+function validateItem(name, kwargs) {
+  const item = ITEMS[name];
+  if (!item) return;                       // unreachable: the caller checked the name
+
+  // A deprecated form is checked for unknown keys only. Its values go through
+  // desugarLegacy, which is lenient on purpose — core was lenient about them too,
+  // so a 2.x-era diagram has to keep rendering rather than start erroring.
+  const legacy = Boolean(DEPRECATED_ITEMS[name]);
+  const form = selectForm(item, kwargs);
+
+  for (const key of Object.keys(kwargs)) {
+    const rule = form.fields[key];
+    if (!rule) {
+      const known = item.alternatives.flatMap((alt) => Object.keys(alt.fields));
+      throw new Error(
+        `unknown "${key}" in @${name}(...); expected one of ${[...new Set(known)].join(', ')}`
+      );
     }
+    // A field core has deprecated is lenient for the same reason a deprecated
+    // item is: desugarLegacy folds it into its replacement and drops a bad value
+    // with a warning rather than failing the annotation.
+    if (legacy || form.deprecatedFields?.[key]) continue;
+    checkValue(rule, kwargs[key], `${name}.${key}`);
+  }
+
+  if (legacy) return;
+  const missing = form.required.filter((f) => kwargs[f] === undefined);
+  if (missing.length > 0) {
+    throw new Error(`@${name}(...) requires ${missing.join(', ')}`);
+  }
+}
+
+// Warn about a form core still reads but has deprecated. The replacement comes
+// from the generated tables, so a newly deprecated form starts warning on the
+// next spytial-core bump instead of going unnoticed.
+function warnIfDeprecated(name, kwargs) {
+  if (!ITEMS[name]) return;                // unreachable: the caller checked the name
+  const item = DEPRECATED_ITEMS[name];
+  if (item && !DESUGARED_ITEMS.has(name)) {
+    warn(`@${name} is deprecated; use @${item.replacedBy} instead`);
+    return;
+  }
+  const form = selectForm(ITEMS[name], kwargs);
+  if (form.deprecated) {
+    warn(`this form of @${name} is deprecated; use @${form.deprecated.replacedBy} instead`);
   }
 }
 
@@ -562,7 +719,9 @@ export function extractAnnotations(rawSource) {
     const isConstraint = CONSTRAINT_NAMES.has(name);
     const isDirective = DIRECTIVE_NAMES.has(name);
     if (!isConstraint && !isDirective) {
-      errors.push({ line: at, text: verbatim.trim(), message: `unknown annotation "@${name}"` });
+      const tombstone = NOT_IN_CORE[name];
+      errors.push({ line: at, text: verbatim.trim(),
+        message: tombstone ? `@${name} does nothing: ${tombstone}` : `unknown annotation "@${name}"` });
       continue;
     }
 
@@ -576,8 +735,12 @@ export function extractAnnotations(rawSource) {
 
     let entry;
     try {
-      // Legacy forms are rewritten onto their 3.x equivalents before emission,
-      // so the compiled spec is pure 3.x even when the source isn't.
+      // Checked as written, so a message names the argument the author typed
+      // rather than whatever the legacy rewrite turned it into.
+      validateItem(name, kwargs);
+      warnIfDeprecated(name, kwargs);
+      // Legacy forms are rewritten onto their current equivalents before
+      // emission, so the compiled spec stays current even when the source isn't.
       const modern = desugarLegacy(name, kwargs);
       entry = emitEntry(modern.name, modern.kwargs);
     } catch (err) {

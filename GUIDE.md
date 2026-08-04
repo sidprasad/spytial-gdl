@@ -128,9 +128,9 @@ Annotations are the layout. Each is one line, `@name(arg=value, …)`:
 | `@atomStyle(selector=root, borderStyle(color='#ffe7b3'))` | tint a node's outline |
 | `@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))` | style a relation's edges |
 
-Styling is written in blocks: `borderStyle`, `fillStyle`, and `textStyle` on a
-node, `lineStyle` and `textStyle` on an edge. Each part of a node or edge is set
-independently. See
+Styling is written in blocks: `borderStyle`, `fillStyle`, `iconStyle`, and
+`textStyle` on a node, `lineStyle` and `textStyle` on an edge. Each part of a
+node or edge is set independently. See
 [Annotations → style blocks](docs/pages/annotations.md#style-blocks).
 
 A `selector` names nodes or edges:

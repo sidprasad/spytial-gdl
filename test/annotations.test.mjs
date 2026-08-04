@@ -98,9 +98,9 @@ const j = (v) => JSON.stringify(v);
     r.errors.length === 0 && r.specYaml.includes("color: 'rgb(1, 2, 3)'"), j(r.specYaml));
 }
 {
-  const r = extractAnnotations("@size(selector=Person, value='rgb(1, 2, 3)')");
+  const r = extractAnnotations("@group(selector=Person, name='rgb(1, 2, 3)')");
   check('a parenthesised value is a scalar, not a block',
-    r.errors.length === 0 && r.specYaml === "directives:\n  - size: { selector: Person, value: 'rgb(1, 2, 3)' }\n", j(r));
+    r.errors.length === 0 && r.specYaml === "constraints:\n  - group: { selector: Person, name: 'rgb(1, 2, 3)' }\n", j(r));
 }
 
 // ── a backslash-escaped quote inside a string doesn't break the scanner ───────
@@ -223,10 +223,13 @@ const j = (v) => JSON.stringify(v);
     r.specYaml === '' && !r.specYaml.includes('[left}'), j(r.specYaml));
 }
 {
-  // Regression: correctly matched (and quoted) brackets still parse cleanly.
+  // Regression: correctly matched (and quoted) brackets still parse cleanly —
+  // the annotation gets as far as being judged on what its arguments mean. A
+  // group's name is a string, so the nested list is a type error rather than the
+  // "malformed annotation" a bracket-matching failure would give.
   const r = extractAnnotations("@group(selector='{p: Person | some p.x}', name=[a, [b, c]])");
-  check('type-matched + quoted brackets still parse',
-    r.errors.length === 0 && /group/.test(r.specYaml), j(r));
+  check('type-matched + quoted brackets are not a scanner error',
+    r.errors.length === 1 && /group\.name .*expected a string/.test(r.errors[0].message), j(r));
 }
 
 // ── style blocks (spytial-core 3.x) ──────────────────────────────────────────
@@ -259,8 +262,8 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     body('@attribute(field=weight, textStyle(size=small))') ===
     'attribute: { field: weight, textStyle: { size: small } }');
   check('tag takes the shared textStyle block',
-    body('@tag(toTag=Node, name=id, textStyle(size=small, color=gray))') ===
-    'tag: { toTag: Node, name: id, textStyle: { size: small, color: gray } }');
+    body('@tag(toTag=Node, name=id, value=v, textStyle(size=small, color=gray))') ===
+    'tag: { toTag: Node, name: id, value: v, textStyle: { size: small, color: gray } }');
 }
 {
   // Depth 2: addEdge is a block that itself contains blocks.
