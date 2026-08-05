@@ -72,6 +72,21 @@ cp "$PACKED" "$VENDOR_SCHEMA"
 NEW_LANG="$(read_json "$VENDOR_SCHEMA" "['x-spytial-language-version']")"
 node "$GENERATOR"
 
+# Re-resolve the installed copy too. The conformance suite asks the *installed*
+# engine what our specs entail, and an existing lockfile pins whatever was
+# resolved last — so without this the tables say one version while the suite
+# quietly keeps checking against another. Removed rather than updated in place
+# because the lockfile is gitignored on purpose: this package floats on the peer
+# major, and CI resolves fresh every run.
+if [[ -d "$REPO_ROOT/node_modules" || -f "$REPO_ROOT/package-lock.json" ]]; then
+    echo
+    echo "Re-resolving node_modules so the conformance suite runs against $LATEST..."
+    rm -f "$REPO_ROOT/package-lock.json"
+    ( cd "$REPO_ROOT" && npm install --silent )
+    INSTALLED="$(read_json "$REPO_ROOT/node_modules/spytial-core/package.json" ".version")"
+    echo "installed:       spytial-core $INSTALLED"
+fi
+
 echo
 if [[ "$NEW_LANG" == "$CURRENT_LANG" ]]; then
     echo "Language unchanged ($NEW_LANG) — nothing in src/_spec-tables.js needed revisiting."
@@ -82,11 +97,9 @@ fi
 echo
 echo "Next:"
 echo "  1. git diff src/_spec-tables.js"
-echo "  2. npm install, so the conformance suite asks *this* core what our specs"
-echo "     entail rather than whichever one happens to be in node_modules."
-echo "  3. npm test. test/spec-tables.test.mjs names whatever hand-written surface"
+echo "  2. npm test. test/spec-tables.test.mjs names whatever hand-written surface"
 echo "     is now behind — a rewrite that no longer lands on a live form, a"
 echo "     deprecation policy that changed, a block that moved."
-echo "  4. If a form was newly deprecated, decide in generate-spec-tables.mjs"
+echo "  3. If a form was newly deprecated, decide in generate-spec-tables.mjs"
 echo "     whether spytial-gdl rewrites it (desugars: true, and teach"
 echo "     desugarLegacy the mapping) or just warns."

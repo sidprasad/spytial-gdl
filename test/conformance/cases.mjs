@@ -191,6 +191,115 @@ export const CASES = [
   },
 
   {
+    name: 'cyclic puts every atom of the fragment in the cycle, and orders none of them',
+    gdl: `
+      a:::Node -> b:::Node : ring
+      b -> c:::Node : ring
+      c -> a : ring
+      @cyclic(selector=ring)
+    `,
+    assertions: [
+      { query: 'cyclic(a)', equals: ['a', 'b', 'c'], because: 'the whole fragment is in the cycle, a included' },
+      {
+        query: 'must.rightOf(a)', empty: true,
+        because: 'a cycle fixes membership, not rotation — no pair is ordered',
+      },
+      { query: 'must.below(a)', empty: true, because: 'the same on the vertical axis' },
+    ],
+  },
+
+  {
+    name: 'a two-atom cycle still counts as one',
+    // A judgement core settled deliberately while building this query: cyclic()
+    // is grounded in the selected fragment, so a two-atom ring counts even
+    // though drawing it needs no extra constraint. Nothing forces that reading —
+    // "a cycle needs three" is just as defensible — so it is pinned here.
+    gdl: `
+      a:::Node -> b:::Node : ring
+      b -> a : ring
+      @cyclic(selector=ring)
+    `,
+    assertions: [
+      { query: 'cyclic(a)', equals: ['a', 'b'], because: 'two atoms are a cycle, however little it takes to draw' },
+    ],
+  },
+
+  {
+    name: 'hideAtom removes an atom, and says so',
+    gdl: `
+      a:::Node -> b:::Node
+      c:::Node -> a
+      @hideAtom(selector=c)
+    `,
+    assertions: [
+      { query: 'hidden()', equals: ['c'], because: 'hidden() reports exactly what a hideAtom selector removed' },
+      { query: 'nodes()', equals: ['a', 'b'], because: 'and the atom is gone from the layout' },
+    ],
+  },
+
+  {
+    name: 'hideDisconnected drops an atom without it being hidden()',
+    // The distinction core's docs call out: an atom can be missing from nodes()
+    // for reasons other than hideAtom, and hidden() reports only the latter. If
+    // these two ever start agreeing, one of them changed meaning.
+    gdl: `
+      a:::Node -> b:::Node
+      lonely:::Node
+      @flag(name=hideDisconnected)
+    `,
+    assertions: [
+      { query: 'nodes()', equals: ['a', 'b'], because: 'the disconnected atom is not drawn' },
+      {
+        query: 'hidden()', empty: true,
+        because: 'no hideAtom selector removed it, so hidden() does not claim it',
+      },
+    ],
+  },
+
+  {
+    name: 'size applies to what its selector names and nothing else',
+    // Deliberately not 100x60: core auto-sizes short-label nodes to exactly
+    // that, so querying those numbers would match atoms no size constraint
+    // touched and the case would pass without meaning anything.
+    gdl: `
+      a:::Node -> b:::Node
+      @size(selector=a, width=222, height=144)
+    `,
+    assertions: [
+      { query: 'sized(222, 144)', equals: ['a'], because: 'only the selected atom was asked for that box' },
+      { query: 'nodes()', count: 2, because: 'sizing draws no extra atoms and removes none' },
+    ],
+  },
+
+  {
+    name: 'hideField stops an edge being drawn, and keeps both endpoints',
+    gdl: `
+      a:::Node -> b:::Node : next
+      @hideField(field=next)
+    `,
+    assertions: [
+      { query: 'edges(a, b)', empty: true, because: 'the relation is hidden from drawing' },
+      { query: 'nodes()', equals: ['a', 'b'], because: 'hiding the edge does not hide what it joined' },
+    ],
+  },
+
+  {
+    name: 'inferredEdge draws a link the data does not contain',
+    gdl: `
+      a:::Node -> b:::Node : next
+      b -> c:::Node : next
+      @inferredEdge(name=skips, selector='{x, y : Node | y in x.next.next}')
+    `,
+    assertions: [
+      {
+        query: 'edges(a, c)', nonEmpty: true,
+        because: 'a and c are two hops apart and joined by no tuple, so this edge is the directive\'s doing',
+      },
+      { query: 'nodes()', count: 3, because: 'inferring an edge invents no atoms' },
+    ],
+  },
+
+  {
     name: 'a directive constrains nothing',
     // Style belongs to `directives`, and the section split is generated rather
     // than transcribed (src/_spec-tables.js). This is the entailment side of

@@ -19,8 +19,10 @@
 // They go through compileSpytialGdl, the same call both render paths make, so
 // what passes here is what a diagram on a page would be given.
 
+import { readFileSync } from 'node:fs';
 import { CASES } from './conformance/cases.mjs';
 import { compileSpytialGdl } from '../src/index.js';
+import { LANGUAGE_VERSION, CORE_VERSION } from '../src/_spec-tables.js';
 
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') {
@@ -44,6 +46,24 @@ try {
   process.exit(1);
 }
 const { runCases, checkDatum, CONFORMANCE_FORMAT_VERSION } = conformance;
+
+// Always say what this ran against. The queries below are answered by whichever
+// core is installed, not by the vendored schema, so the version is part of
+// reading the result.
+const require_ = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+const installed = require_('../node_modules/spytial-core/package.json').version;
+const installedLanguage = require_('../node_modules/spytial-core/docs/spytial-spec.schema.json')['x-spytial-language-version'];
+console.log(`spytial-core ${installed} installed (language ${installedLanguage});`);
+console.log(`vendor/ holds ${CORE_VERSION} (language ${LANGUAGE_VERSION})\n`);
+
+// Core versions differing is ordinary — the range floats, and a patch can land
+// between the last `npm run update-core` and this run. The *language* differing
+// is not: it means the generated tables describe a spec language the installed
+// engine no longer speaks, so every entailment below is being checked against
+// something other than what we compile for.
+check('the installed engine speaks the language the tables were generated from',
+  installedLanguage === LANGUAGE_VERSION,
+  `installed ${installedLanguage} vs tables ${LANGUAGE_VERSION} — run \`npm run update-core\``);
 
 // The harness stamps its result with a format version and tells you to refuse
 // one you do not recognize rather than reading fields that may have moved.
@@ -118,6 +138,22 @@ for (const c of run.cases) {
 
 check('every case reached its assertions',
   run.cases.length === built.length && run.cases.every((c) => c.errors.length === 0));
+
+// `hidden()`, `sized()` and `cyclic()` arrived in spytial-core 4.4.2, later than
+// the 4.1.0 floor spytial-gdl needs to *render*. Both ranges are carets so a
+// fresh install is well past that, but a stale node_modules is not — and it
+// fails as a dozen "Unrecognized spatial query" lines that say nothing about the
+// cause. Diagnose it once, here, rather than leaving that to be worked out.
+{
+  const unrecognized = run.cases.flatMap((c) =>
+    c.assertions.filter((a) => !a.ok && /Unrecognized spatial query/.test(a.message ?? ''))
+      .map((a) => a.query));
+  if (unrecognized.length > 0) {
+    check(`spytial-core ${installed} answers every query this suite asks`, false,
+      `it does not recognize ${[...new Set(unrecognized)].join(', ')} — these need a newer ` +
+      '4.x than what is installed. Delete node_modules and package-lock.json, then npm install.');
+  }
+}
 
 // ── a known disagreement about untyped atoms ─────────────────────────────────
 // A plain `A` relationalizes to the empty type, deliberately: nothing but `univ`

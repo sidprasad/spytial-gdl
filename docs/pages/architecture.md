@@ -124,6 +124,20 @@ The negative assertions are the ones that earn their keep. `must.above(a)` being
 empty is what pins down that the spec says nothing about the vertical axis; a
 rendered picture would have put the nodes *somewhere* and told you nothing.
 
+Every constraint has a case: `orientation` and `align` through the directional
+and alignment queries, `group` through `groups()` / `grouped()`, `hideAtom`
+through `hidden()`, `size` through `sized(w, h)`, and `cyclic` through
+`cyclic(a)` — which reports membership, not rotation, since which way round a
+ring is drawn is not something the spec entails. Directives are covered where
+they change what a layout contains: `hideField` removes an edge, `inferredEdge`
+adds one the data never held, and `flag(hideDisconnected)` drops an atom
+*without* it turning up in `hidden()`, which reports only what `hideAtom` took.
+
+Those last three queries arrived in spytial-core 4.4.2, later than the 4.1.0
+floor spytial-gdl needs to render. Both dependency ranges are carets, so a fresh
+install is well past it; a stale `node_modules` is not, and the suite says so by
+name instead of failing as a dozen unrecognized queries.
+
 This is the one part of the repo that needs `npm install` — the engine has to be
 present to answer. CI installs without a lockfile, so it resolves the newest
 `spytial-core` on the peer major every run: a release that changes what a spec
