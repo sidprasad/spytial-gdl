@@ -20,7 +20,15 @@ import { extractAnnotations } from '../src/annotations.js';
 import { mergeSpecStrings } from '../src/registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CORE_DIR = resolve(__dirname, '../../spytial-core/dist');
+// A sibling checkout first, so a core change can be tried here before it ships;
+// the installed devDependency otherwise. Until that dependency existed this test
+// had only the sibling to go on, which meant it skipped on every CI run — it has
+// never actually run there. Both layouts hold the same `dist`.
+const CORE_DIRS = [
+  resolve(__dirname, '../../spytial-core/dist'),
+  resolve(__dirname, '../node_modules/spytial-core/dist'),
+];
+const CORE_DIR = CORE_DIRS.find((d) => existsSync(resolve(d, 'evaluator.mjs'))) ?? CORE_DIRS[0];
 
 let pass = 0, fail = 0, skip = 0;
 function check(name, cond, extra = '') {
@@ -31,12 +39,12 @@ function note(msg) { skip++; console.log(`  skip  ${msg}`); }
 
 console.log(`DEFAULT_TYPE in relationalize.js = ${JSON.stringify(DEFAULT_TYPE)}\n`);
 
-// This is an integration test against a *sibling* build of spytial-core (loaded
-// as globals, the way a host app consumes it). It can only run where that build
-// exists; skip cleanly (exit 0) otherwise so `npm test` stays green standalone.
+// This is an integration test against a real build of spytial-core (loaded as
+// globals, the way a host app consumes it). It can only run where one exists;
+// skip cleanly (exit 0) otherwise so `npm test` stays green standalone.
 const EVAL_BUNDLE = resolve(CORE_DIR, 'evaluator.mjs');
 if (!existsSync(EVAL_BUNDLE)) {
-  console.log(`  skip  spytial-core build not found at ${CORE_DIR} — integration test skipped.`);
+  console.log(`  skip  no spytial-core build at ${CORE_DIRS.join(' or ')} — run npm install.`);
   console.log(`\n0 passed, 0 failed, 1 skipped`);
   process.exit(0);
 }

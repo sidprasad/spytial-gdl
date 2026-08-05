@@ -1,4 +1,11 @@
 node_modules/
+# Not committed on purpose. The only dependency is spytial-core, declared as a
+# caret range so it floats on the peer major — the same way every CDN tag here
+# floats (see test/pins.test.mjs). A lockfile would freeze the conformance suite
+# against one patch of core, which is exactly the drift it exists to catch: CI
+# resolves the newest 4.x on every run, so a core release that changes what a
+# spec entails fails a build rather than surfacing in someone's diagram.
+package-lock.json
 .DS_Store
 *.log
 dist/

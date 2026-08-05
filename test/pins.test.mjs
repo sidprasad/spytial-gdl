@@ -38,6 +38,14 @@ check('package.json declares a caret peer range on spytial-core',
 const floor = String(range).replace(/^\^/, '');   // 3.1.0 — the oldest core we support
 const major = floor.split('.')[0];                // 3     — the line the CDN tags float on
 
+// The conformance suite runs against the installed spytial-core, so that copy
+// has to be the same line we claim to support. A devDependency drifting to
+// another range would mean the entailments we verify come from a core no user
+// is running — the suite would still pass, and prove nothing about what we ship.
+const devRange = (pkg.devDependencies || {})['spytial-core'];
+check('the spytial-core devDependency is on the same range as the peer dependency',
+  devRange === range, `dev ${JSON.stringify(devRange)} vs peer ${JSON.stringify(range)}`);
+
 // Anywhere a pin can hide: sources, pages, and the docs/README prose.
 const SCAN_DIRS = ['src', 'examples', 'playground', 'docs', 'test'];
 const SCAN_FILES = ['README.md', 'GUIDE.md', 'index.html'];

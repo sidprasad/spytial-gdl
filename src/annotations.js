@@ -296,6 +296,21 @@ function validateItem(name, kwargs) {
   if (missing.length > 0) {
     throw new Error(`@${name}(...) requires ${missing.join(', ')}`);
   }
+
+  // Fields core's parser rejects the absence of even though the schema types
+  // them optional. Reported apart from `required` because the message has to
+  // name the escape hatch, and because the cost of getting it wrong is not the
+  // usual one: core throws out of parseLayoutSpec rather than dropping the one
+  // constraint, so without this the whole diagram's spec fails on an annotation
+  // that looked complete.
+  for (const [field, guard] of Object.entries(form.requiredUnless ?? {})) {
+    if (kwargs[field] !== undefined) continue;
+    if (String(kwargs[guard.field]) === guard.equals) continue;
+    throw new Error(
+      `@${name}(...) requires ${field} unless ${guard.field}=${guard.equals}; ` +
+      `core rejects the entire spec without it`
+    );
+  }
 }
 
 // Warn about a form core still reads but has deprecated. The replacement comes

@@ -55,8 +55,10 @@ echo "newest on ${MAJOR}.x:    $LATEST"
 if [[ "${NEWEST%%.*}" != "$MAJOR" ]]; then
     echo
     echo "NOTE: spytial-core $NEWEST is out, past the ${MAJOR}.x this package supports."
-    echo "      Widen peerDependencies and float the CDN tags first; this script"
-    echo "      stays on ${MAJOR}.x so a major cannot arrive as a side effect."
+    echo "      Widen both ranges in package.json — peerDependencies and"
+    echo "      devDependencies, which test/pins.test.mjs requires to match — and"
+    echo "      float the CDN tags first. This script stays on ${MAJOR}.x so a major"
+    echo "      cannot arrive as a side effect."
 fi
 
 TMP="$(mktemp -d)"
@@ -80,9 +82,11 @@ fi
 echo
 echo "Next:"
 echo "  1. git diff src/_spec-tables.js"
-echo "  2. npm test. test/spec-tables.test.mjs names whatever hand-written surface"
+echo "  2. npm install, so the conformance suite asks *this* core what our specs"
+echo "     entail rather than whichever one happens to be in node_modules."
+echo "  3. npm test. test/spec-tables.test.mjs names whatever hand-written surface"
 echo "     is now behind — a rewrite that no longer lands on a live form, a"
 echo "     deprecation policy that changed, a block that moved."
-echo "  3. If a form was newly deprecated, decide in generate-spec-tables.mjs"
+echo "  4. If a form was newly deprecated, decide in generate-spec-tables.mjs"
 echo "     whether spytial-gdl rewrites it (desugars: true, and teach"
 echo "     desugarLegacy the mapping) or just warns."

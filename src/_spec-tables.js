@@ -156,6 +156,8 @@ export const STYLE_BLOCKS = {
 // annotation is checked against is the first whose required fields are present.
 // `scalarKeyword` marks an item whose yaml value is a bare scalar rather than a
 // mapping (`- flag: hideDisconnected`), naming the keyword that carries it.
+// `requiredUnless` holds the fields core rejects the absence of even though the
+// schema lists them as optional, each with the field=value that excuses it.
 
 export const ITEMS = {
   orientation: {
@@ -288,6 +290,12 @@ export const ITEMS = {
           hold: {
             type: "enum",
             values: ["always", "never"],
+          },
+        },
+        requiredUnless: {
+          name: {
+            field: "hold",
+            equals: "never",
           },
         },
       },
