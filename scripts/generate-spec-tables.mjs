@@ -459,6 +459,27 @@ function build(schema) {
     }
   }
 
+  // Every block has to be reachable from some item or block field. readBlocks
+  // takes "a closed object $def that isn't an item" to mean "a style block", so
+  // a definition core adds for anything else would be published as an authorable
+  // `name(...)` call on the strength of its shape alone — the language widening
+  // on its own, which is the failure this generator exists to prevent.
+  const reachable = new Set();
+  const walkFields = (fields) => {
+    for (const rule of Object.values(fields)) if (rule.block) reachable.add(rule.block);
+  };
+  for (const block of Object.values(blocks)) walkFields(block.fields);
+  for (const item of Object.values(items)) {
+    for (const alt of item.alternatives) walkFields(alt.fields);
+  }
+  const orphans = Object.keys(blocks).filter((name) => !reachable.has(name));
+  if (orphans.length > 0) {
+    throw new SchemaDrift(
+      `no item or block field references ${orphans.join(', ')}. If core added a definition that ` +
+      `is not a style block, readBlocks has to stop treating every unreferenced $def as one.`
+    );
+  }
+
   // A form the schema tolerates in the other section. Nothing here compiles it
   // there — this is recorded so the fact stays visible in the generated file
   // rather than living only in this comment.
@@ -532,8 +553,7 @@ function key(name) {
   return /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
 }
 
-export function render(schema = loadSchema()) {
-  const t = build(schema);
+export function render(schema = loadSchema(), t = build(schema)) {
   const out = [];
 
   out.push(
@@ -628,12 +648,11 @@ export function render(schema = loadSchema()) {
 
 function main() {
   const schema = loadSchema();
-  const rendered = render(schema);
-  writeFileSync(OUTPUT_PATH, rendered, 'utf8');
-  const items = Object.keys(build(schema).items).length;
+  const tables = build(schema);
+  writeFileSync(OUTPUT_PATH, render(schema, tables), 'utf8');
   console.log(
     `Wrote src/_spec-tables.js (spec language ${schema['x-spytial-language-version']}, ` +
-    `spytial-core ${schema['x-spytial-core-version']}, ${items} items).`
+    `spytial-core ${schema['x-spytial-core-version']}, ${Object.keys(tables.items).length} items).`
   );
 }
 

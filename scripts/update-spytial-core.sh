@@ -38,8 +38,15 @@ CURRENT_LANG="$(read_json "$VENDOR_SCHEMA" "['x-spytial-language-version']")"
 # The newest release on the major this package supports. Deliberately not
 # `@latest`: if core has shipped a new major, that is a breaking change to walk
 # into on purpose, not one to vendor by running a script.
+# Sorted here rather than trusted from npm: the array comes back in whatever
+# order the registry gives, so a patch back-published to an older minor could
+# otherwise land last and be read as the newest.
 LATEST="$(npm view "spytial-core@^$MAJOR" version --json \
-    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s);process.stdout.write(Array.isArray(v)?v[v.length-1]:v)})")"
+    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+const v=JSON.parse(s), all=Array.isArray(v)?v:[v];
+const key=x=>x.split('.').map(Number);
+all.sort((a,b)=>{const [A,B]=[key(a),key(b)];return A[0]-B[0]||A[1]-B[1]||A[2]-B[2]});
+process.stdout.write(all[all.length-1])})")"
 NEWEST="$(npm view spytial-core version)"
 
 echo "peer range:      $RANGE"

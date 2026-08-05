@@ -385,6 +385,60 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     /invalid lineStyle.pattern "dashd"/.test(r.errors[0].message), j(r.errors));
 }
 
+// ── an argument named after an Object.prototype member ───────────────────────
+// The field tables are object literals, so a plain `table[key]` lookup resolves
+// `constructor` or `toString` to a function, takes it for a known field, and
+// emits it — the silent pass-through the tables exist to stop. `__proto__` is
+// worse: on a normal object it hits the prototype setter, so the key vanishes
+// during parsing and nothing reports it.
+{
+  const bad = {
+    'constructor as an item argument': '@edgeStyle(field=f, constructor=hello)',
+    'toString as an item argument': '@edgeStyle(field=f, toString=hello)',
+    'hasOwnProperty as an item argument': '@edgeStyle(field=f, hasOwnProperty=1)',
+    'valueOf as a block leaf': '@edgeStyle(field=f, lineStyle(valueOf=red))',
+    'constructor as a block name': '@edgeStyle(field=f, constructor(color=red))',
+    '__proto__ as an item argument': '@edgeStyle(field=f, __proto__=x)',
+    'a prototype member as a legacy literal': '@group(selector=x, name=G, addEdge=toString)',
+  };
+  for (const [label, src] of Object.entries(bad)) {
+    const r = extractAnnotations(src);
+    check(`prototype-safe: ${label} → one error, nothing compiled`,
+      r.errors.length === 1 && r.specYaml === '', j(r));
+  }
+  const r = extractAnnotations('@edgeStyle(field=f, constructor=hello)');
+  check('prototype-safe: the message reads as an unknown argument, not an internal crash',
+    /unknown "constructor" in @edgeStyle/.test(r.errors[0]?.message ?? ''), j(r.errors));
+}
+
+// ── a half-written annotation names the form it was reaching for ─────────────
+{
+  const r = extractAnnotations('@group(field=f)');
+  check('a partial by-field group asks for the by-field arguments, not selector',
+    /requires groupOn, addToGroup/.test(r.errors[0]?.message ?? ''), j(r.errors));
+  const mixed = extractAnnotations('@group(field=f, name=G)');
+  check('mixing two forms says so, instead of calling a real argument unknown',
+    /cannot be combined/.test(mixed.errors[0]?.message ?? ''), j(mixed.errors));
+}
+
+// ── a number where the schema says string ────────────────────────────────────
+// The schema types names and labels `string` because JSON Schema has no
+// "stringable" type, but core is JS and `name=2024` has always worked. Take it
+// and emit it quoted, so what core receives still validates. Block leaves stay
+// strict — `color=3` is a mistake, not a shorthand (asserted above).
+{
+  const cases = {
+    'a numeric group name': ['@group(selector=Team, name=2024)', "name: '2024'"],
+    'a numeric tag value': ['@tag(toTag=N, name=year, value=2024)', "value: '2024'"],
+    'an explicitly quoted number': ["@group(selector=Team, name='2024')", "name: '2024'"],
+  };
+  for (const [label, [src, expected]] of Object.entries(cases)) {
+    const r = extractAnnotations(src);
+    check(`${label} compiles, quoted so it stays a string`,
+      r.errors.length === 0 && r.specYaml.includes(expected), j(r));
+  }
+}
+
 // ── round-trip: blocks and legacy forms survive serialize verbatim ───────────
 {
   // specYaml is a lossy compiled form, so the *source* is what round-trips —

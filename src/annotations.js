@@ -71,6 +71,14 @@ function isPlainObject(v) {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
+// Look a user-supplied name up in a generated table. Plain `table[key]` walks
+// Object.prototype, so an argument named `constructor` or `toString` resolves to
+// a function, passes as a known field, and rides through to the emitted spec —
+// exactly the silent pass-through these tables exist to stop.
+function lookup(table, key) {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
 // ── Validation ──────────────────────────────────────────────────────────────
 // core validates almost none of this. An unknown key, a missing required
 // argument, and a value outside a closed vocabulary are all kept by the parser
@@ -150,7 +158,7 @@ function checkValue(rule, value, where) {
         return;
       }
       // A legacy literal spelling core still reads (`addEdge: true`).
-      if (rule.legacyValues && String(value) in rule.legacyValues) return;
+      if (rule.legacyValues && lookup(rule.legacyValues, String(value)) !== undefined) return;
       if (!rule.values.includes(value)) {
         throw new Error(
           `invalid ${where} "${value}"; expected one of ${rule.values.join(', ')}, ` +
@@ -199,14 +207,14 @@ function checkValue(rule, value, where) {
 // the annotation is dropped) on an unknown block, an unknown key within a known
 // block, or a leaf outside its vocabulary or bounds.
 function validateBlock(name, block) {
-  const schema = STYLE_BLOCKS[name];
+  const schema = lookup(STYLE_BLOCKS, name);
   if (!schema) {
     throw new Error(
       `unknown style block "${name}(...)"; expected one of ${Object.keys(STYLE_BLOCKS).join(', ')}`
     );
   }
   for (const [key, value] of Object.entries(block)) {
-    const rule = schema.fields[key];
+    const rule = lookup(schema.fields, key);
     if (!rule) {
       throw new Error(
         `unknown "${key}" in ${name}(...); expected one of ${Object.keys(schema.fields).join(', ')}`
@@ -221,34 +229,65 @@ function validateBlock(name, block) {
 // one applies is decided by the fields present, exactly as core decides it.
 function selectForm(item, kwargs) {
   const match = item.alternatives.find((alt) => alt.required.every((f) => kwargs[f] !== undefined));
-  return match ?? item.alternatives[0];
+  if (match) return match;
+  // Nothing is complete — the annotation is half-written. Fall back to whichever
+  // form explains the most of what *was* written, so the message names the form
+  // the author was reaching for. Falling back to alternatives[0] instead reports
+  // `@group(field=f)` as a missing `selector`, which sends them the wrong way.
+  let best = item.alternatives[0];
+  let bestScore = -1;
+  for (const alt of item.alternatives) {
+    const score = Object.keys(kwargs).filter((k) => Object.hasOwn(alt.fields, k)).length;
+    if (score > bestScore) {
+      best = alt;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 // Check an annotation's arguments against the generated table for its name.
 // Runs on the annotation as *written*, before any legacy rewrite, so a message
-// names the argument the author typed.
+// names the argument the author typed. Mutates `kwargs` in the one case below
+// where a value is accepted in a spelling core tolerates but the schema doesn't.
 function validateItem(name, kwargs) {
-  const item = ITEMS[name];
+  const item = lookup(ITEMS, name);
   if (!item) return;                       // unreachable: the caller checked the name
 
   // A deprecated form is checked for unknown keys only. Its values go through
   // desugarLegacy, which is lenient on purpose — core was lenient about them too,
   // so a 2.x-era diagram has to keep rendering rather than start erroring.
-  const legacy = Boolean(DEPRECATED_ITEMS[name]);
+  const legacy = Boolean(lookup(DEPRECATED_ITEMS, name));
   const form = selectForm(item, kwargs);
+  const known = new Set(item.alternatives.flatMap((alt) => Object.keys(alt.fields)));
 
   for (const key of Object.keys(kwargs)) {
-    const rule = form.fields[key];
+    const rule = lookup(form.fields, key);
     if (!rule) {
-      const known = item.alternatives.flatMap((alt) => Object.keys(alt.fields));
-      throw new Error(
-        `unknown "${key}" in @${name}(...); expected one of ${[...new Set(known)].join(', ')}`
-      );
+      // A real argument, but from the form the rest of the annotation didn't
+      // select. core's oneOf rejects the mix; say that, rather than calling a
+      // documented argument unknown while listing it as expected.
+      const others = Object.keys(kwargs).filter((k) => k !== key && Object.hasOwn(form.fields, k));
+      if (known.has(key) && others.length > 0) {
+        throw new Error(
+          `@${name}(...): "${key}" cannot be combined with ` +
+          `${others.map((k) => `"${k}"`).join(', ')} — they belong to different forms`
+        );
+      }
+      throw new Error(`unknown "${key}" in @${name}(...); expected one of ${[...known].join(', ')}`);
     }
     // A field core has deprecated is lenient for the same reason a deprecated
     // item is: desugarLegacy folds it into its replacement and drops a bad value
     // with a warning rather than failing the annotation.
-    if (legacy || form.deprecatedFields?.[key]) continue;
+    if (legacy || lookup(form.deprecatedFields ?? {}, key)) continue;
+    // The schema types names, labels and selectors as `string` because JSON
+    // Schema has no "stringable" type — but core is JS, and a group named 2024
+    // or a tag valued 42 has always worked. Take the convenience spelling and
+    // emit it quoted, so what we hand core still validates against the schema.
+    // Block leaves stay strict: `color=3` is a mistake, not a shorthand.
+    if (rule.type === 'string' && (typeof kwargs[key] === 'number' || typeof kwargs[key] === 'boolean')) {
+      kwargs[key] = String(kwargs[key]);
+    }
     checkValue(rule, kwargs[key], `${name}.${key}`);
   }
 
@@ -263,8 +302,8 @@ function validateItem(name, kwargs) {
 // from the generated tables, so a newly deprecated form starts warning on the
 // next spytial-core bump instead of going unnoticed.
 function warnIfDeprecated(name, kwargs) {
-  if (!ITEMS[name]) return;                // unreachable: the caller checked the name
-  const item = DEPRECATED_ITEMS[name];
+  if (!lookup(ITEMS, name)) return;        // unreachable: the caller checked the name
+  const item = lookup(DEPRECATED_ITEMS, name);
   if (item && !DESUGARED_ITEMS.has(name)) {
     warn(`@${name} is deprecated; use @${item.replacedBy} instead`);
     return;
@@ -457,7 +496,10 @@ function parseBlock(piece) {
 // Parse `key=value, key2=[a, b], block(k=v), …` into an object. Throws on a
 // malformed pair or an invalid style block.
 function parseArgs(argStr) {
-  const kwargs = {};
+  // Null-prototype so a literal `__proto__=x` lands as an ordinary own property
+  // and gets reported as an unknown argument. On a normal object it would hit
+  // the prototype setter instead: the key vanishes and nothing says why.
+  const kwargs = Object.create(null);
   const trimmed = argStr.trim();
   if (trimmed === '') return kwargs;
   for (const piece of splitTopLevel(trimmed)) {
@@ -493,11 +535,17 @@ function parseArgs(argStr) {
 // like '{x: Person | x}' and names like 'left subtree' survive the round-trip.
 const YAML_NEEDS_QUOTE = /[\s:{}\[\],&*#?|<>=!%@`'"]/;
 
+// A string that would parse back as a number has to be quoted or the round-trip
+// loses it: `name='2024'` emitted bare comes back to core as the number 2024.
+// `true` / `false` deliberately stay bare — parseValue can't tell a bareword
+// from a quoted one, and a boolean-typed field has to reach core as a boolean.
+const YAML_LOOKS_NUMERIC = /^-?\d+(\.\d+)?$/;
+
 function emitScalar(v) {
   if (typeof v === 'number') return String(v);
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   const s = String(v);
-  if (s === '' || YAML_NEEDS_QUOTE.test(s)) {
+  if (s === '' || YAML_NEEDS_QUOTE.test(s) || YAML_LOOKS_NUMERIC.test(s)) {
     return `'${s.replace(/'/g, "''")}'`;
   }
   return s;
