@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT BY HAND.
 //
 //   Source:   vendor/spytial-spec.schema.json
-//   Language: 2026-07-29 (spytial-core 4.4.1)
+//   Language: 2026-07-29 (spytial-core 4.4.2)
 //   Regenerate with: node scripts/generate-spec-tables.mjs
 //
 // Everything here is derived from the JSON Schema spytial-core publishes, so a
@@ -16,7 +16,7 @@
 // language itself changes, so an unchanged value across a spytial-core bump
 // means nothing here needed revisiting.
 export const LANGUAGE_VERSION = "2026-07-29";
-export const CORE_VERSION = "4.4.1";
+export const CORE_VERSION = "4.4.2";
 
 
 // ── Vocabularies ────────────────────────────────────────────────────────────
@@ -156,6 +156,8 @@ export const STYLE_BLOCKS = {
 // annotation is checked against is the first whose required fields are present.
 // `scalarKeyword` marks an item whose yaml value is a bare scalar rather than a
 // mapping (`- flag: hideDisconnected`), naming the keyword that carries it.
+// `requiredUnless` holds the fields core rejects the absence of even though the
+// schema lists them as optional, each with the field=value that excuses it.
 
 export const ITEMS = {
   orientation: {
@@ -288,6 +290,12 @@ export const ITEMS = {
           hold: {
             type: "enum",
             values: ["always", "never"],
+          },
+        },
+        requiredUnless: {
+          name: {
+            field: "hold",
+            equals: "never",
           },
         },
       },

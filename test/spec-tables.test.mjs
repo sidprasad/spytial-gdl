@@ -117,6 +117,22 @@ const j = (v) => JSON.stringify(v);
     bad.errors.length === 1 && /hideDisconnected/.test(bad.errors[0].message), j(bad.errors));
 }
 
+// ── requirements the schema states only in prose ─────────────────────────────
+// The schema's `required` is not the whole story: core throws on a group with no
+// name, and says so in `name`'s description rather than in `required`. That is
+// carried by CONDITIONAL_REQUIRED in the generator, and dropping the policy has
+// to fail here rather than quietly restoring a spec core cannot parse.
+{
+  const selectorForm = tables.ITEMS.group.alternatives.find((a) => a.fields.name);
+  check('the group selector form carries the prose-only name requirement',
+    j(selectorForm?.requiredUnless) === j({ name: { field: 'hold', equals: 'never' } }),
+    j(selectorForm?.requiredUnless));
+
+  const unnamed = extractAnnotations('@group(selector=team)');
+  check('...and an unnamed group is refused rather than emitted',
+    unnamed.errors.length === 1 && unnamed.specYaml === '', j(unnamed));
+}
+
 // ── the documented argument reference matches the one the compiler uses ──────
 // The docs table had drifted too — it listed `size` and `hideAtom` as
 // directives, listed `projection`, and was missing `iconStyle` and `showLabel`
@@ -155,9 +171,15 @@ const j = (v) => JSON.stringify(v);
     const documented = [...row.required, ...row.optional].sort();
     check(`docs: @${name} lists the arguments core reads`,
       j(documented) === j(fields.sort()), j({ documented, tables: fields.sort() }));
+    // A `requiredUnless` field counts as required in the table: you have to
+    // write it. The narrow case that excuses it is prose below, where it can say
+    // what the exception is — a bare `?` would read as "leave it out freely",
+    // which is how `@group(selector=…)` came to compile into a spec core throws
+    // on in the first place.
+    const mustWrite = [...form.required, ...Object.keys(form.requiredUnless ?? {})].sort();
     check(`docs: @${name} marks the right ones required`,
-      j([...row.required].sort()) === j([...form.required].sort()),
-      j({ documented: [...row.required].sort(), tables: [...form.required].sort() }));
+      j([...row.required].sort()) === j(mustWrite),
+      j({ documented: [...row.required].sort(), tables: mustWrite }));
     check(`docs: @${name} is in the right section`,
       row.kind === (tables.CONSTRAINT_NAMES.has(name) ? 'constraint' : 'directive'), row.kind);
   }

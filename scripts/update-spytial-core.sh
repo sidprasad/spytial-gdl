@@ -55,8 +55,10 @@ echo "newest on ${MAJOR}.x:    $LATEST"
 if [[ "${NEWEST%%.*}" != "$MAJOR" ]]; then
     echo
     echo "NOTE: spytial-core $NEWEST is out, past the ${MAJOR}.x this package supports."
-    echo "      Widen peerDependencies and float the CDN tags first; this script"
-    echo "      stays on ${MAJOR}.x so a major cannot arrive as a side effect."
+    echo "      Widen both ranges in package.json — peerDependencies and"
+    echo "      devDependencies, which test/pins.test.mjs requires to match — and"
+    echo "      float the CDN tags first. This script stays on ${MAJOR}.x so a major"
+    echo "      cannot arrive as a side effect."
 fi
 
 TMP="$(mktemp -d)"
@@ -69,6 +71,21 @@ cp "$PACKED" "$VENDOR_SCHEMA"
 
 NEW_LANG="$(read_json "$VENDOR_SCHEMA" "['x-spytial-language-version']")"
 node "$GENERATOR"
+
+# Re-resolve the installed copy too. The conformance suite asks the *installed*
+# engine what our specs entail, and an existing lockfile pins whatever was
+# resolved last — so without this the tables say one version while the suite
+# quietly keeps checking against another. Removed rather than updated in place
+# because the lockfile is gitignored on purpose: this package floats on the peer
+# major, and CI resolves fresh every run.
+if [[ -d "$REPO_ROOT/node_modules" || -f "$REPO_ROOT/package-lock.json" ]]; then
+    echo
+    echo "Re-resolving node_modules so the conformance suite runs against $LATEST..."
+    rm -f "$REPO_ROOT/package-lock.json"
+    ( cd "$REPO_ROOT" && npm install --silent )
+    INSTALLED="$(read_json "$REPO_ROOT/node_modules/spytial-core/package.json" ".version")"
+    echo "installed:       spytial-core $INSTALLED"
+fi
 
 echo
 if [[ "$NEW_LANG" == "$CURRENT_LANG" ]]; then

@@ -104,6 +104,64 @@ function isBooleanish(v) {
   return typeof v === 'boolean' || v === 'true' || v === 'false';
 }
 
+// Settle a value onto the JS type its rule describes, before it is checked or
+// emitted. Two conversions, both narrow:
+//
+//   * A boolean field written as a bareword arrives as the *string* "true",
+//     because the argument parser has no types to go on. Make it a real boolean,
+//     so emitScalar can keep it bare while quoting every string that merely
+//     looks like one (see YAML_RESERVED).
+//   * The schema types names, labels and selectors `string` because JSON Schema
+//     has no "stringable" type — but core is JS, and a group named 2024 or a tag
+//     valued 42 has always worked. Take the convenience spelling and emit it
+//     quoted, so what core receives still validates against the schema.
+//
+// Everything else is left exactly as written. The stringable conversion is for
+// an item's own arguments only — block leaves stay strict, so `color=3` is still
+// an error rather than the colour "3". The schema types `fillStyle.color` as a
+// plain string, so nothing but this distinction keeps that strict.
+function coerceValue(rule, value, { stringable = false } = {}) {
+  if (rule.type === 'boolean' && (value === 'true' || value === 'false')) {
+    return value === 'true';
+  }
+  if (stringable && rule.type === 'string' &&
+      (typeof value === 'number' || typeof value === 'boolean')) {
+    return String(value);
+  }
+  return value;
+}
+
+// Settle booleans on an annotation that is about to be emitted, against the
+// rules of the form it is being emitted *as*.
+//
+// A legacy form skips coercion on the way in — deprecated arguments are lenient
+// on purpose — so `@edgeColor(..., showLabel=true)` still carries the string
+// parseValue produced when desugarLegacy hands it over as an `edgeStyle`. Left
+// alone, emitScalar quotes it (a string that looks like a boolean has to be
+// quoted, or a group named `false` loses its name) and core reads "true" where a
+// boolean belongs. Idempotent: a form that came through validateItem is already
+// settled, and this finds nothing to do.
+function settleTypes(name, kwargs) {
+  const item = lookup(ITEMS, name);
+  if (!item) return kwargs;
+  const fields = item.alternatives.find((alt) =>
+    alt.required.every((f) => kwargs[f] !== undefined))?.fields ?? item.alternatives[0].fields;
+
+  const settle = (rules, obj) => {
+    for (const [key, value] of Object.entries(obj)) {
+      const rule = lookup(rules, key);
+      if (!rule) continue;
+      if (rule.block && value && typeof value === 'object' && !Array.isArray(value)) {
+        settle(lookup(STYLE_BLOCKS, rule.block)?.fields ?? {}, value);
+      } else {
+        obj[key] = coerceValue(rule, value);
+      }
+    }
+    return obj;
+  };
+  return settle(fields, kwargs);
+}
+
 // Check one value against a generated rule. `where` names it for the message.
 function checkValue(rule, value, where) {
   switch (rule.type) {
@@ -220,7 +278,8 @@ function validateBlock(name, block) {
         `unknown "${key}" in ${name}(...); expected one of ${Object.keys(schema.fields).join(', ')}`
       );
     }
-    checkValue(rule, value, `${name}.${key}`);
+    block[key] = coerceValue(rule, value);
+    checkValue(rule, block[key], `${name}.${key}`);
   }
 }
 
@@ -280,14 +339,7 @@ function validateItem(name, kwargs) {
     // item is: desugarLegacy folds it into its replacement and drops a bad value
     // with a warning rather than failing the annotation.
     if (legacy || lookup(form.deprecatedFields ?? {}, key)) continue;
-    // The schema types names, labels and selectors as `string` because JSON
-    // Schema has no "stringable" type — but core is JS, and a group named 2024
-    // or a tag valued 42 has always worked. Take the convenience spelling and
-    // emit it quoted, so what we hand core still validates against the schema.
-    // Block leaves stay strict: `color=3` is a mistake, not a shorthand.
-    if (rule.type === 'string' && (typeof kwargs[key] === 'number' || typeof kwargs[key] === 'boolean')) {
-      kwargs[key] = String(kwargs[key]);
-    }
+    kwargs[key] = coerceValue(rule, kwargs[key], { stringable: true });
     checkValue(rule, kwargs[key], `${name}.${key}`);
   }
 
@@ -295,6 +347,21 @@ function validateItem(name, kwargs) {
   const missing = form.required.filter((f) => kwargs[f] === undefined);
   if (missing.length > 0) {
     throw new Error(`@${name}(...) requires ${missing.join(', ')}`);
+  }
+
+  // Fields core's parser rejects the absence of even though the schema types
+  // them optional. Reported apart from `required` because the message has to
+  // name the escape hatch, and because the cost of getting it wrong is not the
+  // usual one: core throws out of parseLayoutSpec rather than dropping the one
+  // constraint, so without this the whole diagram's spec fails on an annotation
+  // that looked complete.
+  for (const [field, guard] of Object.entries(form.requiredUnless ?? {})) {
+    if (kwargs[field] !== undefined) continue;
+    if (String(kwargs[guard.field]) === guard.equals) continue;
+    throw new Error(
+      `@${name}(...) requires ${field} unless ${guard.field}=${guard.equals}; ` +
+      `core rejects the entire spec without it`
+    );
   }
 }
 
@@ -535,17 +602,24 @@ function parseArgs(argStr) {
 // like '{x: Person | x}' and names like 'left subtree' survive the round-trip.
 const YAML_NEEDS_QUOTE = /[\s:{}\[\],&*#?|<>=!%@`'"]/;
 
-// A string that would parse back as a number has to be quoted or the round-trip
-// loses it: `name='2024'` emitted bare comes back to core as the number 2024.
-// `true` / `false` deliberately stay bare — parseValue can't tell a bareword
-// from a quoted one, and a boolean-typed field has to reach core as a boolean.
-const YAML_LOOKS_NUMERIC = /^-?\d+(\.\d+)?$/;
+// A string YAML would read back as some other type has to be quoted, or what
+// core receives is not what was written: `name=2024` emitted bare returns the
+// number 2024, and `name=null` returns nothing at all — which core then rejects
+// as a group with no name, failing the entire spec rather than that one
+// constraint. Booleans, null and `~` are the reserved words; the numeric form
+// covers exponents, hex and octal, `.inf` and `.nan` alongside plain digits.
+//
+// Real booleans still emit bare, because they arrive here as JS booleans —
+// coerceValue settles a boolean-typed field before emission, which is what lets
+// a merely boolean-*looking* string be quoted without touching them.
+const YAML_LOOKS_NUMERIC = /^[-+]?(\d[\d_]*(\.[\d_]*)?([eE][-+]?\d+)?|\.\d+([eE][-+]?\d+)?|0[xXoObB][\dA-Fa-f_]+|\.(inf|Inf|INF|nan|NaN|NAN))$/;
+const YAML_RESERVED = /^(~|null|Null|NULL|true|True|TRUE|false|False|FALSE)$/;
 
 function emitScalar(v) {
   if (typeof v === 'number') return String(v);
   if (typeof v === 'boolean') return v ? 'true' : 'false';
   const s = String(v);
-  if (s === '' || YAML_NEEDS_QUOTE.test(s) || YAML_LOOKS_NUMERIC.test(s)) {
+  if (s === '' || YAML_NEEDS_QUOTE.test(s) || YAML_LOOKS_NUMERIC.test(s) || YAML_RESERVED.test(s)) {
     return `'${s.replace(/'/g, "''")}'`;
   }
   return s;
@@ -790,7 +864,7 @@ export function extractAnnotations(rawSource) {
       // Legacy forms are rewritten onto their current equivalents before
       // emission, so the compiled spec stays current even when the source isn't.
       const modern = desugarLegacy(name, kwargs);
-      entry = emitEntry(modern.name, modern.kwargs);
+      entry = emitEntry(modern.name, settleTypes(modern.name, modern.kwargs));
     } catch (err) {
       errors.push({ line: at, text: verbatim.trim(), message: err.message });
       continue;

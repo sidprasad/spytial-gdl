@@ -13,4 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # No lockfile, so this resolves the newest spytial-core on the peer major
+      # every run. That is deliberate: test/conformance.test.mjs asks the engine
+      # what our specs entail, and pinning it would freeze exactly the drift the
+      # suite exists to catch. A core release that changes an entailment fails a
+      # build here rather than turning up in someone's diagram.
+      - run: npm install
       - run: npm test

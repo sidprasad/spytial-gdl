@@ -97,6 +97,21 @@ const LEGACY_LITERALS = {
   'group.addEdge': { true: 'togroup' },
 };
 
+// Fields the schema leaves out of `required` but core's parser rejects the
+// absence of, unless another field excuses it. JSON Schema can express this;
+// the group definition does not, saying it in `name`'s description instead
+// ("Required unless the constraint is negated"). So, like REPLACEMENTS, it is a
+// fact the generator has to be told rather than one it can read.
+//
+// This gap costs more than the usual prose gap. core throws out of
+// parseLayoutSpec rather than dropping the one constraint it cannot build, so a
+// spec missing this field takes every other annotation in the diagram down with
+// it. Keyed by "<yamlKey>.<field>"; the policy is anchored against the schema in
+// build(), so a release that renames the field or the guard stops there.
+const CONDITIONAL_REQUIRED = {
+  'group.name': { field: 'hold', equals: 'never' },
+};
+
 // Vocabularies annotations.js refers to by name (the legacy desugar has to
 // normalize against the same list core does). Generating them from the schema
 // rather than restating them is what keeps the legacy path and the current path
@@ -480,6 +495,43 @@ function build(schema) {
     );
   }
 
+  // Anchor CONDITIONAL_REQUIRED against the schema. The policy names a field
+  // and the guard that excuses it; both have to still exist, and the guard's
+  // vocabulary has to still contain the value that does the excusing. The rule
+  // lands on whichever alternatives declare the field — `name` belongs to the
+  // selector form only, so the by-field form is left alone, which is also what
+  // core does. Matching nothing is drift, not a no-op: it would mean the policy
+  // is silently doing nothing.
+  for (const [path, guard] of Object.entries(CONDITIONAL_REQUIRED)) {
+    const [yamlKey, field] = path.split('.');
+    const item = items[yamlKey];
+    if (!item) {
+      throw new SchemaDrift(`CONDITIONAL_REQUIRED names ${path}, but there is no ${yamlKey} item.`);
+    }
+    let applied = 0;
+    for (const alt of item.alternatives) {
+      if (!Object.hasOwn(alt.fields, field)) continue;
+      const rule = alt.fields[guard.field];
+      if (!rule) {
+        throw new SchemaDrift(
+          `${path} is required unless ${guard.field}=${guard.equals}, but ${yamlKey} no longer ` +
+          `takes ${guard.field}. Re-read what core's parser now requires before changing this.`
+        );
+      }
+      if (!(rule.values ?? []).includes(guard.equals)) {
+        throw new SchemaDrift(
+          `${path}'s guard ${guard.field}=${guard.equals} is not in ${guard.field}'s vocabulary ` +
+          `(${(rule.values ?? []).join(', ') || 'none'}).`
+        );
+      }
+      (alt.requiredUnless ??= {})[field] = guard;
+      applied++;
+    }
+    if (applied === 0) {
+      throw new SchemaDrift(`CONDITIONAL_REQUIRED names ${path}, but no form of ${yamlKey} takes ${field}.`);
+    }
+  }
+
   // A form the schema tolerates in the other section. Nothing here compiles it
   // there — this is recorded so the fact stays visible in the generated file
   // rather than living only in this comment.
@@ -628,6 +680,8 @@ export function render(schema = loadSchema(), t = build(schema)) {
     '// annotation is checked against is the first whose required fields are present.',
     '// `scalarKeyword` marks an item whose yaml value is a bare scalar rather than a',
     '// mapping (`- flag: hideDisconnected`), naming the keyword that carries it.',
+    '// `requiredUnless` holds the fields core rejects the absence of even though the',
+    '// schema lists them as optional, each with the field=value that excuses it.',
     '',
     `export const ITEMS = ${lit(t.items)};`,
     '',

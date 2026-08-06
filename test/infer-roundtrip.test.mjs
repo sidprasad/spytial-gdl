@@ -35,7 +35,7 @@
 // demonstrations no name in the source explains. It lives here because it needs
 // the same spytial-core build.
 //
-// Needs a sibling spytial-core build; skips cleanly (exit 0) without one.
+// Needs a spytial-core build; skips cleanly (exit 0) without one.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +49,15 @@ import { proposeCycles } from '../src/cycles.js';
 import { makeSynthesizer, synthesisAvailable } from '../src/synthesize.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CORE_DIR = resolve(__dirname, '../../spytial-core/dist');
+// A sibling checkout first, so a core change can be tried here before it ships;
+// the installed devDependency otherwise. With only the sibling to go on, this
+// skipped on every CI run — none of the checks below had ever run there.
+const CORE_DIRS = [
+  resolve(__dirname, '../../spytial-core/dist'),
+  resolve(__dirname, '../node_modules/spytial-core/dist'),
+];
+const BUNDLE_REL = 'browser/spytial-core-complete.global.js';
+const CORE_DIR = CORE_DIRS.find((d) => existsSync(resolve(d, BUNDLE_REL))) ?? CORE_DIRS[0];
 
 let pass = 0, fail = 0, skip = 0;
 function check(name, cond, extra = '') {
@@ -58,9 +66,9 @@ function check(name, cond, extra = '') {
 }
 function note(msg) { skip++; console.log(`  skip  ${msg}`); }
 
-const BUNDLE = resolve(CORE_DIR, 'browser/spytial-core-complete.global.js');
+const BUNDLE = resolve(CORE_DIR, BUNDLE_REL);
 if (!existsSync(BUNDLE)) {
-  console.log(`  skip  spytial-core build not found at ${CORE_DIR} — round-trip test skipped.`);
+  console.log(`  skip  no spytial-core build at ${CORE_DIRS.join(' or ')} — run npm install.`);
   console.log('\n0 passed, 0 failed, 1 skipped');
   process.exit(0);
 }

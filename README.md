@@ -55,8 +55,8 @@ The [playground](playground/) and [examples](examples/) are runnable.
 
 ## Local development
 
-There is no `npm install`; the dependencies load from a CDN. A static server is
-required because the pages are ES modules.
+The pages need no `npm install` — the engine loads from a CDN — but a static
+server is required, because they are ES modules.
 
 ```bash
 npm run serve
@@ -64,8 +64,12 @@ npm run serve
 
 That serves `/docs/`, `/playground/`, and `/examples/` on port 8100.
 
+The tests are the one thing that does need an install. `test/conformance.test.mjs`
+asks spytial-core what the specs we emit actually entail, so it needs the engine
+locally rather than from a CDN.
+
 ```bash
-npm test
+npm install && npm test
 ```
 
 ## License

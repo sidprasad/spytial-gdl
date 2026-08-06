@@ -89,9 +89,59 @@ as a legacy alias. Vendor all three locally for an offline or version-pinned dep
 | `src/relationalize.js` | graph into `{ atoms, relations, hiddenRelations }` |
 | `src/registry.js` | per-class spec registry, plus `mergeSpecStrings` |
 | `src/serialize.js` | the inverse: value into spytial-gdl notation |
-| `src/index.js` | `mountGraph` / `renderSpytialGdl` / editable, and the render pipeline |
+| `src/index.js` | `compileSpytialGdl` (source into datum + spec), `mountGraph` / `renderSpytialGdl` / editable |
 | `src/markdown.js` | block detection, the framed device, the UNSAT panel |
 | `src/auto.js` | the drop-in `autoRender()` tag |
+
+## Testing what a spec means
+
+A spec can be well-formed, validate against the schema, and still say less than
+its author thought. The diagram then comes out plausible and wrong, and no string
+comparison catches it — the YAML is exactly what we meant to emit; it just does
+not *entail* what we meant.
+
+`test/conformance.test.mjs` asks the entailment question directly, using
+spytial-core's [conformance
+harness](https://sidprasad.github.io/spytial-core/#/testing-integrations). Cases
+are written as notation in `test/conformance/cases.mjs`, compiled with
+[`compileSpytialGdl`](embedding.md#compilespytialgdl), and checked with modal
+queries:
+
+```yaml
+- query: must.rightOf(a)
+  equals: [b, c]
+  because: orientation is transitive, so the whole tail is right of the head
+- query: must.above(a)
+  empty: true
+  because: the spec orders horizontally only
+```
+
+`must.rightOf(a)` does not mean "b landed right of a in the layout I got". It
+means every layout the spec permits puts b there — a fact about the spec, so it
+holds across renderers, machines, and core releases, and needs no browser.
+
+The negative assertions are the ones that earn their keep. `must.above(a)` being
+empty is what pins down that the spec says nothing about the vertical axis; a
+rendered picture would have put the nodes *somewhere* and told you nothing.
+
+Every constraint has a case: `orientation` and `align` through the directional
+and alignment queries, `group` through `groups()` / `grouped()`, `hideAtom`
+through `hidden()`, `size` through `sized(w, h)`, and `cyclic` through
+`cyclic(a)` — which reports membership, not rotation, since which way round a
+ring is drawn is not something the spec entails. Directives are covered where
+they change what a layout contains: `hideField` removes an edge, `inferredEdge`
+adds one the data never held, and `flag(hideDisconnected)` drops an atom
+*without* it turning up in `hidden()`, which reports only what `hideAtom` took.
+
+Those last three queries arrived in spytial-core 4.4.2, later than the 4.1.0
+floor spytial-gdl needs to render. Both dependency ranges are carets, so a fresh
+install is well past it; a stale `node_modules` is not, and the suite says so by
+name instead of failing as a dozen unrecognized queries.
+
+This is the one part of the repo that needs `npm install` — the engine has to be
+present to answer. CI installs without a lockfile, so it resolves the newest
+`spytial-core` on the peer major every run: a release that changes what a spec
+entails fails a build instead of surfacing in someone's diagram.
 
 ## These docs
 

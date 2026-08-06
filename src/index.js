@@ -125,18 +125,62 @@ function resolveRules(parsed, opts, annoYaml) {
   ]);
 }
 
-// Inject `hideField` directives for the selector-only relations so they stay
-// queryable in selectors but are not drawn as duplicate edges. We mutate the
-// parsed spec's directive list directly (the layout spec's data model), which
-// avoids fragile YAML string surgery.
-function hideRelations(spec, hiddenRelations) {
-  if (!spec || !hiddenRelations || hiddenRelations.length === 0) return;
-  if (!spec.directives) spec.directives = {};
-  if (!Array.isArray(spec.directives.hiddenFields)) spec.directives.hiddenFields = [];
-  const hidden = spec.directives.hiddenFields;
+// Express the selector-only relations as `hideField` directives in authoring
+// YAML, so they stay queryable in selectors but are not drawn as duplicate
+// edges. parseLayoutSpec folds these into `directives.hiddenFields`, which is
+// where both the read-only and editable paths need them. Field names are
+// single-quoted so `_links` / hyphenated classes stay valid scalars.
+function hideFieldsYaml(hiddenRelations) {
+  if (!hiddenRelations || hiddenRelations.length === 0) return '';
+  let out = 'directives:\n';
   for (const field of hiddenRelations) {
-    if (!hidden.some(h => h && h.field === field)) hidden.push({ field });
+    out += `  - hideField: { field: '${String(field).replace(/'/g, "''")}' }\n`;
   }
+  return out;
+}
+
+// ── Headless compilation ─────────────────────────────────────────────────────
+// Everything spytial-gdl is responsible for before spytial-core takes over: lift
+// the inline @annotations, parse the notation, relationalize it, and merge every
+// source of layout rules into one spec string. No DOM and no engine, which is
+// what lets test/conformance.test.mjs ask what the emitted spec *entails*
+// without rendering anything.
+//
+// Both render paths below go through this, so the datum and spec that suite
+// checks are the ones they actually hand core — a conformance suite built on a
+// parallel copy of the pipeline would only ever test the copy.
+//
+// Returns { ok: true, datum, rules, hiddenRelations, parsed, annotationLines,
+// annotationErrors, parseErrors }, or { ok: false, reason, ... } for a source
+// with no nodes.
+export function compileSpytialGdl(source, opts = {}) {
+  const { source: cleanSource, specYaml: annoYaml, annotationLines, errors: annotationErrors } =
+    extractAnnotations(source);
+
+  const parsed = parseGraph(cleanSource);
+  const parseErrors = parsed.errors || [];
+  if (parsed.nodes.size === 0) {
+    return {
+      ok: false, reason: 'no nodes parsed from source',
+      parsed, annotationLines, annotationErrors, parseErrors,
+    };
+  }
+
+  const { atoms, relations, hiddenRelations } = relationalize(parsed);
+  // The selector-only relations are hidden in the spec text itself rather than
+  // by mutating the parsed spec afterwards, so `rules` is the whole spec: there
+  // is nothing added downstream that could change what it entails. Both land in
+  // `directives.hiddenFields` either way.
+  const rules = mergeSpecStrings([
+    resolveRules(parsed, opts, annoYaml),
+    hideFieldsYaml(hiddenRelations),
+  ]);
+
+  return {
+    ok: true,
+    datum: { atoms, relations },
+    rules, hiddenRelations, parsed, annotationLines, annotationErrors, parseErrors,
+  };
 }
 
 // Render a spytial-gdl `source` onto a <webcola-cnd-graph> element using
@@ -163,35 +207,30 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
     if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 4.1.0`);
   }
 
-  // 0. lift inline `@orientation(...)` annotations out of the source before
-  //    parsing the graph; they compile to a layout spec, not graph syntax.
-  const { source: cleanSource, specYaml: annoYaml, errors: annotationErrors } =
-    extractAnnotations(source);
-
-  const parsed = parseGraph(cleanSource);
-  const parseErrors = parsed.errors || [];
-  if (parsed.nodes.size === 0) {
-    return { applied: false, reason: 'no nodes parsed from source', parsed, annotationErrors, parseErrors };
+  // 0. annotations → spec, notation → graph, graph → datum. Everything up to
+  //    here is engine-independent and shared with the editable path.
+  const compiled = compileSpytialGdl(source, opts);
+  const { parsed, annotationErrors, parseErrors } = compiled;
+  if (!compiled.ok) {
+    return { applied: false, reason: compiled.reason, parsed, annotationErrors, parseErrors };
   }
+  const { datum: data, rules, hiddenRelations } = compiled;
 
-  // 1. graph → relational data instance (+ which relations are selector-only)
-  const { atoms, relations, hiddenRelations } = relationalize(parsed);
-  const data = { atoms, relations };
+  // 1. datum → relational data instance
   const instance = new JSONDataInstance(data);
 
   // 2. relational evaluator
   const evaluator = new SGraphQueryEvaluator();
   evaluator.initialize({ sourceData: instance });
 
-  // 3. layout rules (YAML) → parsed spec, then hide the selector-only relations
-  const rules = resolveRules(parsed, opts, annoYaml);
+  // 3. layout rules (YAML) → parsed spec. The hideField directives for the
+  //    selector-only relations are already in `rules`.
   let spec;
   try {
     spec = parseLayoutSpec(rules || '');
   } catch (err) {
     throw new Error(`spytial-gdl: layout rules parse error: ${err.message}`);
   }
-  hideRelations(spec, hiddenRelations);
 
   // 4. solve (qualitative validator → IIS clash reporting / counterfactual)
   const li = new LayoutInstance(spec, evaluator, 0, true, undefined, opts.validator || 'qualitative');
@@ -224,21 +263,6 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
 // nodes, drag to connect edges, rename relations — constraints re-solve live —
 // and at any time *re-get the notation* via the handle's getSource(). That
 // round-trip (text → visual → edit → text) is the point.
-
-// Express the selector-only relations as `hideField` directives in authoring
-// YAML. The read-only path mutates a parsed spec's `hiddenFields`; the editor
-// parses a spec *string* internally, so we hand it the directives in YAML and
-// let parseLayoutSpec fold them into hiddenFields (layoutspec maps hideField →
-// hiddenFields). Field names are single-quoted so `_links` / hyphenated classes
-// stay valid scalars.
-function hideFieldsYaml(hiddenRelations) {
-  if (!hiddenRelations || hiddenRelations.length === 0) return '';
-  let out = 'directives:\n';
-  for (const field of hiddenRelations) {
-    out += `  - hideField: { field: '${String(field).replace(/'/g, "''")}' }\n`;
-  }
-  return out;
-}
 
 // The live instance the editor is currently backed by. clearAllItems() swaps in
 // a fresh instance, so always ask the element rather than caching it.
@@ -342,35 +366,28 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
     );
   }
 
-  // 0. lift inline @annotations; keep the raw lines so getSource() can re-append
-  //    them on the round-trip (specYaml is a lossy compiled form).
-  const { source: cleanSource, specYaml: annoYaml, annotationLines, errors: annotationErrors } =
-    extractAnnotations(source);
-
-  const parsed = parseGraph(cleanSource);
-  const parseErrors = parsed.errors || [];
-  if (parsed.nodes.size === 0) {
-    return { applied: false, reason: 'no nodes parsed from source', element: el, parsed, annotationErrors, parseErrors };
+  // 0. same compilation as the read-only path. `annotationLines` comes back too,
+  //    so getSource() can re-append the annotations verbatim on the round-trip
+  //    (the compiled specYaml is a lossy form).
+  const compiled = compileSpytialGdl(source, opts);
+  const { parsed, annotationLines, annotationErrors, parseErrors } = compiled;
+  if (!compiled.ok) {
+    return { applied: false, reason: compiled.reason, element: el, parsed, annotationErrors, parseErrors };
   }
+  const { datum, rules, hiddenRelations } = compiled;
 
-  // 1. graph → input-capable data instance (the editor mutates it in place)
-  const { atoms, relations, hiddenRelations } = relationalize(parsed);
-  const instance = new JSONDataInstance({ atoms, relations });
+  // 1. datum → input-capable data instance (the editor mutates it in place)
+  const instance = new JSONDataInstance(datum);
 
-  // 2. layout rules YAML + hideField directives for the selector-only relations,
-  //    merged into the single spec string the editor parses internally.
-  const rules = resolveRules(parsed, opts, annoYaml);
-  const mergedYaml = mergeSpecStrings([rules, hideFieldsYaml(hiddenRelations)]);
-
-  // 3. hand off data + spec; the element owns layout + live constraint enforcement
+  // 2. hand off data + spec; the element owns layout + live constraint enforcement
   el.setDataInstance(instance);
-  await el.setCnDSpec(mergedYaml);
+  await el.setCnDSpec(rules);
 
   return buildEditableHandle(el, instance, annotationLines, {
     parsed,
     annotationErrors,
     parseErrors,
     hiddenRelations,
-    rules: mergedYaml,
+    rules,
   });
 }
