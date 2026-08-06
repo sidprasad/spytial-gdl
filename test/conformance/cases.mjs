@@ -79,9 +79,12 @@ export const CASES = [
   {
     name: 'a two-way tree does not order the subtrees against each other',
     // The case worth reading. It is natural to assume the left subtree ends up
-    // left of the root, and it does not: `ll` is constrained against `l` and
-    // against nothing else, so a layout that puts it right of the root satisfies
-    // the spec. A rendered picture usually hides this. `must` does not.
+    // left of the root, and it does not. `ll` does — left-of chains the way
+    // below does, so `root -> l -> ll` carries it over. `lr` does not: it is
+    // placed *right* of `l`, and nothing relates it to the root, so a layout
+    // that puts it right of the root satisfies the spec just as well. Half the
+    // left subtree is pinned and half is free. A rendered picture picks one
+    // arrangement and hides the difference; `must` does not.
     gdl: `
       root:::Node -> l:::Node : left
       root -> r:::Node : right
@@ -92,12 +95,12 @@ export const CASES = [
     `,
     assertions: [
       {
-        query: 'must.leftOf(root)', contains: ['l'],
-        because: 'the root is joined to its own left child directly',
+        query: 'must.leftOf(root)', equals: ['l', 'll'],
+        because: 'left-of chains, so the left child and its own left child both carry over',
       },
       {
         query: 'must.leftOf(root)', excludes: ['lr'],
-        because: 'lr is placed against l only, so the spec permits it right of the root',
+        because: 'lr sits right of l and nothing relates it to the root, so the spec leaves it free',
       },
       {
         query: 'must.below(root)', contains: ['l', 'r', 'll', 'lr'],
@@ -126,6 +129,15 @@ export const CASES = [
         query: 'grouped(a, c)', empty: true,
         because: 'no group holds both — the classes are what separates them',
       },
+      {
+        // A class is a relation before it is a group: `class a,b home` puts both
+        // atoms in a unary `home` relation, which index.js hides from drawing.
+        // Miss that and every classed atom wears a self-loop. Nothing else in
+        // the suite covers the class half of that hiding — only the `_links`
+        // half — so this is the assertion holding it up.
+        query: 'edges(a, a)', empty: true,
+        because: 'the relation behind the class is a group, not an edge from a to itself',
+      },
     ],
   },
 
@@ -142,7 +154,7 @@ export const CASES = [
     assertions: [
       {
         query: 'nodes()', count: 4,
-        because: 'shared is written four times and is still one atom',
+        because: 'shared is written three times and is still one of the four atoms',
       },
       { query: 'must.rightOf(a)', equals: ['shared'] },
     ],
@@ -284,6 +296,27 @@ export const CASES = [
   },
 
   {
+    name: 'a scoped hideField on a class does not un-hide the rest of it',
+    // spytial-gdl hides the class relations unconditionally, because they exist
+    // to be selected rather than drawn. Writing a *narrower* hideField over the
+    // same name must not widen what gets drawn — but it used to: the old
+    // read-only path deduped by field name, so this annotation took the place of
+    // the unconditional hide and c and d picked up self-loops. Emitting both
+    // through the spec text fixed it; this is what keeps it fixed.
+    gdl: `
+      a:::Node -> b:::Node
+      c:::Node -> d:::Node
+      class a,b,c,d grp
+      @hideField(field=grp, selector=a)
+    `,
+    assertions: [
+      { query: 'edges(c, c)', empty: true, because: 'the class relation is still hidden everywhere else' },
+      { query: 'edges(a, a)', empty: true, because: 'and at the atom the annotation named' },
+      { query: 'nodes()', count: 4, because: 'hiding a relation removes no atoms' },
+    ],
+  },
+
+  {
     name: 'inferredEdge draws a link the data does not contain',
     gdl: `
       a:::Node -> b:::Node : next
@@ -299,22 +332,11 @@ export const CASES = [
     ],
   },
 
-  {
-    name: 'a directive constrains nothing',
-    // Style belongs to `directives`, and the section split is generated rather
-    // than transcribed (src/_spec-tables.js). This is the entailment side of
-    // that: a spec of nothing but directives has to leave the layout free.
-    gdl: `
-      a:::Node -> b:::Node : next
-      @edgeStyle(field=next, lineStyle(color=crimson))
-      @atomStyle(selector=Node, fillStyle(color=beige))
-    `,
-    assertions: [
-      { query: 'must.rightOf(a)', empty: true },
-      { query: 'must.leftOf(a)', empty: true },
-      { query: 'must.above(a)', empty: true },
-      { query: 'must.below(a)', empty: true },
-      { query: 'nodes()', count: 2, because: 'styling draws no extra atoms' },
-    ],
-  },
+  // There was a case here asserting that a spec of nothing but style directives
+  // leaves the layout free. It was dropped: it passed under every mutation tried
+  // against it, including compiling no annotations at all, so it distinguished
+  // nothing. What it meant to defend — that style compiles into `directives` and
+  // not `constraints` — is a string fact, already held by spec-tables.test.mjs
+  // and annotations.test.mjs, which do fail when the split is wrong. Same
+  // standard that keeps `attribute` out, applied to a case already written.
 ];

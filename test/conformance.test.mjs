@@ -20,6 +20,7 @@
 // what passes here is what a diagram on a page would be given.
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { CASES } from './conformance/cases.mjs';
 import { compileSpytialGdl } from '../src/index.js';
 import { LANGUAGE_VERSION, CORE_VERSION } from '../src/_spec-tables.js';
@@ -50,9 +51,22 @@ const { runCases, checkDatum, CONFORMANCE_FORMAT_VERSION } = conformance;
 // Always say what this ran against. The queries below are answered by whichever
 // core is installed, not by the vendored schema, so the version is part of
 // reading the result.
-const require_ = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
-const installed = require_('../node_modules/spytial-core/package.json').version;
-const installedLanguage = require_('../node_modules/spytial-core/docs/spytial-spec.schema.json')['x-spytial-language-version'];
+//
+// Resolved rather than reached for at ../node_modules: under npm workspaces, or
+// any install that hoists, spytial-core sits above this package and a hardcoded
+// path throws ENOENT — after the import above already succeeded, so the "run
+// npm install" message would never be the thing you saw.
+//
+// Read from the schema core exports rather than from its package.json, which is
+// not in its `exports` map and so cannot be resolved at all. The schema is the
+// better source anyway: it states both versions itself, and it is the same
+// document vendor/ holds, so the two sides of the comparison below are the same
+// field read from the same kind of file.
+const resolve_ = createRequire(import.meta.url);
+const installedSchema = JSON.parse(
+  readFileSync(resolve_.resolve('spytial-core/spec.schema.json'), 'utf8'));
+const installed = installedSchema['x-spytial-core-version'];
+const installedLanguage = installedSchema['x-spytial-language-version'];
 console.log(`spytial-core ${installed} installed (language ${installedLanguage});`);
 console.log(`vendor/ holds ${CORE_VERSION} (language ${LANGUAGE_VERSION})\n`);
 
@@ -153,6 +167,39 @@ check('every case reached its assertions',
       `it does not recognize ${[...new Set(unrecognized)].join(', ')} — these need a newer ` +
       '4.x than what is installed. Delete node_modules and package-lock.json, then npm install.');
   }
+}
+
+// ── the premise CONDITIONAL_REQUIRED rests on ────────────────────────────────
+// annotations.js refuses `@group(selector=…)` with no name because core throws
+// on it. That fact is stated nowhere the generator can read — not in the
+// schema's `required`, only in prose — so the policy is a claim about the
+// engine, asserted here against the engine.
+//
+// Without this, core relaxing the rule would leave spytial-gdl rejecting a form
+// core accepts, forever, with every test still green. The schema anchoring in
+// generate-spec-tables.mjs cannot cover it: the schema never stated the rule,
+// so there is nothing there to move.
+
+{
+  const datum = {
+    atoms: [{ id: 'a', type: 'N', label: 'a' }, { id: 'b', type: 'N', label: 'b' }],
+    relations: [{ id: 'g', name: 'g', types: ['N', 'N'], tuples: [{ atoms: ['a', 'b'], types: ['N', 'N'] }] }],
+  };
+  const groupSpec = (body) => `constraints:\n  - group: { ${body} }\n`;
+  const errorsFor = (body) =>
+    runCases([{ name: body, datum, spec: groupSpec(body), assertions: [{ query: 'nodes()', nonEmpty: true }] }])
+      .cases[0].errors;
+
+  const unnamed = errorsFor('selector: g');
+  check('core still refuses a group with no name — the reason @group requires one',
+    unnamed.some((e) => /must have a name/i.test(e.message)), j(unnamed));
+
+  const negated = errorsFor('selector: g, hold: never');
+  check('...and still exempts a negated group, the one case that excuses it',
+    !negated.some((e) => /must have a name/i.test(e.message)), j(negated));
+
+  const named = errorsFor('selector: g, name: G');
+  check('...while a named group parses cleanly', named.length === 0, j(named));
 }
 
 // ── a known disagreement about untyped atoms ─────────────────────────────────
