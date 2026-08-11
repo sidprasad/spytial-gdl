@@ -7,13 +7,13 @@
 // twice: the examples sat on 2.9.1 and markdown.js on 2.10.1 while the manifest
 // asked for ^2.10.1.
 //
-// The cure is to not name a patch version at all. peerDependencies says `^3.1.0`
-// — any 3.x will do — so the CDN tags float the same way: `spytial-core@3` gets
-// the latest 3.x. Nothing has to be rewritten on a core release, and there is no
+// The cure is to not name a patch version at all. peerDependencies says `^5.0.0`
+// — any 5.x will do — so the CDN tags float the same way: `spytial-core@5` gets
+// the latest 5.x. Nothing has to be rewritten on a core release, and there is no
 // triple left to go stale. Two claims still have to agree with the manifest:
 //
-//   * every `spytial-core@<tag>` floats — the bare major (`@3`) or a caret range
-//     (`^3.1`). A patch-exact `@3.1.0` is the drift bug itself, so it fails here.
+//   * every `spytial-core@<tag>` floats — the bare major (`@5`) or a caret range
+//     (`^5.0`). A patch-exact `@5.0.0` is the drift bug itself, so it fails here.
 //   * every `need spytial-core ≥ X.Y.Z` message states the *floor* — the oldest
 //     core we work against, which is the peer range's floor, not whatever the
 //     CDN happens to serve today. That floor only moves when we actually rely on
@@ -68,11 +68,22 @@ const files = [
 ];
 
 // The two shapes a version claim takes. TAG is the one that ships an engine —
-// `spytial-core@3` in a CDN URL or in prose. FLOOR is the one that only states a
-// minimum — `spytial-core ≥ 3.1.0` in an error message. They answer different
+// `spytial-core@5` in a CDN URL or in prose. FLOOR is the one that only states a
+// minimum — `spytial-core ≥ 5.0.0` in an error message. They answer different
 // questions, so they're held to different rules.
+//
+// FLOOR tolerates text between the name and the comparator, because a floor
+// claim is written as prose and prose puts words there. `registered by
+// spytial-core's global build (≥ 4.1.0)` in src/index.js is a floor claim in
+// every sense that matters, and the earlier pattern — which required the
+// comparator to follow the name directly — did not see it. The 5.x migration
+// found it by reading, which is the method this file exists to replace, so the
+// pattern is widened to cover the shape rather than the claim reworded to suit
+// the pattern. Bounded to a single line, and to a comparator, so the historical
+// mentions elsewhere — "arrived in spytial-core 4.4.2" — stay what they are:
+// facts about the past, not claims about now.
 const TAG = /spytial-core@(\^?[\w.\-]+)/g;
-const FLOOR = /spytial-core\s*[≥>=]+\s*v?(\d+\.\d+\.\d+)/g;
+const FLOOR = /spytial-core[^\n]{0,60}?[≥>=]+\s*v?(\d+\.\d+\.\d+)/g;
 
 // A tag floats if it's the bare major, or a caret range on that major. Anything
 // naming a patch is a pin that will rot the next time core ships.

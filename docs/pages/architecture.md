@@ -72,7 +72,7 @@ include them yourself.
 |---|---|
 | d3 **v4** | WebCola's rendering/data substrate |
 | `webcola@3.4.0` | the constraint-layout solver Spytial drives |
-| `spytial-core@^4.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
+| `spytial-core@^5.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
 spytial-core is a peer dependency. spytial-gdl doesn't `import` it, which is what
 lets its own modules load as bare browser ES modules. spytial-core auto-registers
@@ -133,15 +133,24 @@ they change what a layout contains: `hideField` removes an edge, `inferredEdge`
 adds one the data never held, and `flag(hideDisconnected)` drops an atom
 *without* it turning up in `hidden()`, which reports only what `hideAtom` took.
 
-Those last three queries arrived in spytial-core 4.4.2, later than the 4.1.0
-floor spytial-gdl needs to render. Both dependency ranges are carets, so a fresh
-install is well past it; a stale `node_modules` is not, and the suite says so by
-name instead of failing as a dozen unrecognized queries.
+Those last three queries arrived in spytial-core 4.4.2, once above the floor the
+peer range set; on 5.0.0 the range itself guarantees them. An unrecognized query
+now means a release retired one, and the suite names it rather than failing as a
+dozen unrecognized queries.
 
 This is the one part of the repo that needs `npm install` — the engine has to be
 present to answer. CI installs without a lockfile, so it resolves the newest
 `spytial-core` on the peer major every run: a release that changes what a spec
 entails fails a build instead of surfacing in someone's diagram.
+
+That is what the move to spytial-core 5 was checked with. The 5.0 major drops
+React surfaces spytial-gdl never mounted — `InstanceBuilder`, `ProjectionControls`,
+`ReplInterface` — and leaves the spec language untouched at 2026-07-29, so
+regenerating `src/_spec-tables.js` moved a version stamp and nothing else. The
+suite answered the question that claim rests on: every entailment in
+`test/conformance/cases.mjs` comes back identical on 4.4.2, 4.4.3, 5.0.0 and
+5.0.1. A vocabulary diff shows what a release *says* changed; this is what it
+turned out to mean.
 
 ## These docs
 

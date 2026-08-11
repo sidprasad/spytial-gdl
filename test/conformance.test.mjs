@@ -153,19 +153,25 @@ for (const c of run.cases) {
 check('every case reached its assertions',
   run.cases.length === built.length && run.cases.every((c) => c.errors.length === 0));
 
-// `hidden()`, `sized()` and `cyclic()` arrived in spytial-core 4.4.2, later than
-// the 4.1.0 floor spytial-gdl needs to *render*. Both ranges are carets so a
-// fresh install is well past that, but a stale node_modules is not — and it
-// fails as a dozen "Unrecognized spatial query" lines that say nothing about the
-// cause. Diagnose it once, here, rather than leaving that to be worked out.
+// `hidden()`, `sized()` and `cyclic()` arrived in spytial-core 4.4.2, which used
+// to sit above the floor: the range was ^4.1.0, so an install could satisfy it
+// and still not answer a third of this suite. On a 5.0.0 floor every core in
+// range is past 4.4.2, and the range itself now carries the guarantee.
+//
+// So an unrecognized query no longer means a stale node_modules — npm replaces a
+// 4.x that no longer satisfies the range. It means core dropped a query this
+// suite asks, which is a finding about the release rather than about the
+// checkout, and worth naming as one instead of as a dozen bare
+// "Unrecognized spatial query" lines.
 {
   const unrecognized = run.cases.flatMap((c) =>
     c.assertions.filter((a) => !a.ok && /Unrecognized spatial query/.test(a.message ?? ''))
       .map((a) => a.query));
   if (unrecognized.length > 0) {
     check(`spytial-core ${installed} answers every query this suite asks`, false,
-      `it does not recognize ${[...new Set(unrecognized)].join(', ')} — these need a newer ` +
-      '4.x than what is installed. Delete node_modules and package-lock.json, then npm install.');
+      `it does not recognize ${[...new Set(unrecognized)].join(', ')}. Every core on the ` +
+      'peer range answers these, so this is a query the release retired — check its ' +
+      'changelog before rewriting anything here.');
   }
 }
 

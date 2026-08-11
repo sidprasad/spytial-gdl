@@ -78,13 +78,28 @@ node "$GENERATOR"
 # quietly keeps checking against another. Removed rather than updated in place
 # because the lockfile is gitignored on purpose: this package floats on the peer
 # major, and CI resolves fresh every run.
+#
+# The installed copy goes too, and that is not belt-and-braces. `npm install`
+# keeps any version already present that satisfies the range, so deleting only
+# the lockfile leaves an older-but-satisfying copy exactly where it was: this
+# script announced 5.0.1 and left 5.0.0 installed, which is the mismatch the
+# paragraph above says it exists to prevent, arriving through the fix for it.
+# The check below is what caught that, so it is now an error rather than a line
+# of output to read carefully.
 if [[ -d "$REPO_ROOT/node_modules" || -f "$REPO_ROOT/package-lock.json" ]]; then
     echo
     echo "Re-resolving node_modules so the conformance suite runs against $LATEST..."
     rm -f "$REPO_ROOT/package-lock.json"
+    rm -rf "$REPO_ROOT/node_modules/spytial-core"
     ( cd "$REPO_ROOT" && npm install --silent )
     INSTALLED="$(read_json "$REPO_ROOT/node_modules/spytial-core/package.json" ".version")"
     echo "installed:       spytial-core $INSTALLED"
+    if [[ "$INSTALLED" != "$LATEST" ]]; then
+        echo
+        echo "ERROR: vendored $LATEST but node_modules resolved $INSTALLED." >&2
+        echo "       The tables and the conformance suite would describe different engines." >&2
+        exit 1
+    fi
 fi
 
 echo

@@ -51,9 +51,9 @@
     "test:pins": "node test/pins.test.mjs"
   },
   "devDependencies": {
-    "spytial-core": "^4.1.0"
+    "spytial-core": "^5.0.0"
   },
   "peerDependencies": {
-    "spytial-core": "^4.1.0"
+    "spytial-core": "^5.0.0"
   }
 }
