@@ -27,6 +27,7 @@ jobs:
         with:
           node-version: '22'           # trusted publishing needs Node >= 22.14
       - run: npm install -g npm@latest  # ...and npm >= 11.5.1
+      - run: npm install                # spytial-core, for the conformance suite
       - run: npm test
       - run: npm publish --provenance --access public
       - uses: softprops/action-gh-release@v2

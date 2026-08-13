@@ -387,6 +387,30 @@ The two ends of the pipeline, usable standalone:
   `{ atoms, relations }` value back into spytial-gdl source. This is what powers
   the editable handle's [`getSource()`](#the-serializer-on-its-own).
 
+### compileSpytialGdl
+
+Everything spytial-gdl does *before* the engine: no DOM, no `spytial-core`, no
+rendering. Useful on a server, in a test, or anywhere you want the spec without a
+diagram.
+
+```js
+import { compileSpytialGdl } from 'spytial-gdl';
+
+const { ok, datum, rules, hiddenRelations, annotationErrors } =
+  compileSpytialGdl('a -> b : next\n@orientation(selector=next, directions=[right])');
+```
+
+- `datum` — `{ atoms, relations }`, the graph in relational form.
+- `rules` — the complete layout spec as YAML, with every source already merged
+  (registered class specs, inline annotations, `opts.rules`) and the selector-only
+  relations already hidden. This is the exact string handed to the engine.
+- `ok` is `false`, with a `reason`, when the source parses to no nodes.
+
+Both render paths call this, so what you get here is what a diagram gets. That is
+also what lets [the conformance
+suite](architecture.md#testing-what-a-spec-means) check what our specs entail
+without rendering anything.
+
 ## Next
 
 - [Conflicts & errors](annotations.md#errors-and-conflicts): reading the panels when something clashes.

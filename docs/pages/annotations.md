@@ -109,6 +109,12 @@ class web frontend
 @orientation(selector=_links, directions=[below])
 ```
 
+`name` is not optional, even though a group without one would draw a perfectly
+sensible unlabeled region: spytial-core refuses to parse it, and it fails the
+*whole* spec rather than the one constraint, so every other annotation in the
+diagram goes with it. The one exception is a negated group — `hold=never` — where
+core generates a name, since nothing is drawn to caption.
+
 ### align
 
 Line the two endpoints of each edge in a relation up on a shared axis. `direction`
@@ -218,7 +224,7 @@ the engine rather than to have been right when someone last typed it out.
 | `orientation` | constraint | `selector`, `directions`, `hold?` |
 | `align` | constraint | `selector`, `direction`, `hold?` |
 | `cyclic` | constraint | `selector`, `direction?`, `hold?` |
-| `group` | constraint | `selector`, `name?`, `addEdge?`, `textStyle(…)?`, `hold?` |
+| `group` | constraint | `selector`, `name` (except with `hold=never`), `addEdge?`, `textStyle(…)?`, `hold?` |
 | `size` | constraint | `width`, `height`, `selector?` |
 | `hideAtom` | constraint | `selector` |
 | `atomStyle` | directive | `selector?` (absent means every node), `fillStyle(…)?`, `borderStyle(…)?`, `iconStyle(…)?`, `textStyle(…)?`, `showLabel?` |

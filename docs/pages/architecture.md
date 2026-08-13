@@ -72,7 +72,7 @@ include them yourself.
 |---|---|
 | d3 **v4** | WebCola's rendering/data substrate |
 | `webcola@3.4.0` | the constraint-layout solver Spytial drives |
-| `spytial-core@^4.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
+| `spytial-core@^5.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
 spytial-core is a peer dependency. spytial-gdl doesn't `import` it, which is what
 lets its own modules load as bare browser ES modules. spytial-core auto-registers
@@ -89,9 +89,68 @@ as a legacy alias. Vendor all three locally for an offline or version-pinned dep
 | `src/relationalize.js` | graph into `{ atoms, relations, hiddenRelations }` |
 | `src/registry.js` | per-class spec registry, plus `mergeSpecStrings` |
 | `src/serialize.js` | the inverse: value into spytial-gdl notation |
-| `src/index.js` | `mountGraph` / `renderSpytialGdl` / editable, and the render pipeline |
+| `src/index.js` | `compileSpytialGdl` (source into datum + spec), `mountGraph` / `renderSpytialGdl` / editable |
 | `src/markdown.js` | block detection, the framed device, the UNSAT panel |
 | `src/auto.js` | the drop-in `autoRender()` tag |
+
+## Testing what a spec means
+
+A spec can be well-formed, validate against the schema, and still say less than
+its author thought. The diagram then comes out plausible and wrong, and no string
+comparison catches it — the YAML is exactly what we meant to emit; it just does
+not *entail* what we meant.
+
+`test/conformance.test.mjs` asks the entailment question directly, using
+spytial-core's [conformance
+harness](https://sidprasad.github.io/spytial-core/#/testing-integrations). Cases
+are written as notation in `test/conformance/cases.mjs`, compiled with
+[`compileSpytialGdl`](embedding.md#compilespytialgdl), and checked with modal
+queries:
+
+```yaml
+- query: must.rightOf(a)
+  equals: [b, c]
+  because: orientation is transitive, so the whole tail is right of the head
+- query: must.above(a)
+  empty: true
+  because: the spec orders horizontally only
+```
+
+`must.rightOf(a)` does not mean "b landed right of a in the layout I got". It
+means every layout the spec permits puts b there — a fact about the spec, so it
+holds across renderers, machines, and core releases, and needs no browser.
+
+The negative assertions are the ones that earn their keep. `must.above(a)` being
+empty is what pins down that the spec says nothing about the vertical axis; a
+rendered picture would have put the nodes *somewhere* and told you nothing.
+
+Every constraint has a case: `orientation` and `align` through the directional
+and alignment queries, `group` through `groups()` / `grouped()`, `hideAtom`
+through `hidden()`, `size` through `sized(w, h)`, and `cyclic` through
+`cyclic(a)` — which reports membership, not rotation, since which way round a
+ring is drawn is not something the spec entails. Directives are covered where
+they change what a layout contains: `hideField` removes an edge, `inferredEdge`
+adds one the data never held, and `flag(hideDisconnected)` drops an atom
+*without* it turning up in `hidden()`, which reports only what `hideAtom` took.
+
+Those last three queries arrived in spytial-core 4.4.2, once above the floor the
+peer range set; on 5.0.0 the range itself guarantees them. An unrecognized query
+now means a release retired one, and the suite names it rather than failing as a
+dozen unrecognized queries.
+
+This is the one part of the repo that needs `npm install` — the engine has to be
+present to answer. CI installs without a lockfile, so it resolves the newest
+`spytial-core` on the peer major every run: a release that changes what a spec
+entails fails a build instead of surfacing in someone's diagram.
+
+That is what the move to spytial-core 5 was checked with. The 5.0 major drops
+React surfaces spytial-gdl never mounted — `InstanceBuilder`, `ProjectionControls`,
+`ReplInterface` — and leaves the spec language untouched at 2026-07-29, so
+regenerating `src/_spec-tables.js` moved a version stamp and nothing else. The
+suite answered the question that claim rests on: every entailment in
+`test/conformance/cases.mjs` comes back identical on 4.4.2, 4.4.3, 5.0.0 and
+5.0.1. A vocabulary diff shows what a release *says* changed; this is what it
+turned out to mean.
 
 ## These docs
 

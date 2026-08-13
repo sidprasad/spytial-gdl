@@ -421,6 +421,35 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     /cannot be combined/.test(mixed.errors[0]?.message ?? ''), j(mixed.errors));
 }
 
+// ── a field the schema calls optional and core throws on ─────────────────────
+// `@group(selector=…)` with no name compiled fine and then made core's parser
+// throw out of parseLayoutSpec — which fails the *whole* spec, so every other
+// annotation in the diagram went with it. The schema says so only in `name`'s
+// description; CONDITIONAL_REQUIRED in the generator is where that is recorded.
+// Found by the conformance suite, which could not build a group case at all.
+{
+  const r = extractAnnotations('@group(selector=home)');
+  check('a group with no name is an error, not a spec core throws on',
+    r.errors.length === 1 && r.specYaml === '', j(r));
+  check('...and the message names the escape hatch rather than contradicting the docs',
+    /requires name unless hold=never/.test(r.errors[0]?.message ?? ''), j(r.errors));
+
+  const ok = {
+    'a named group': '@group(selector=home, name=Home)',
+    'a negated group, where core generates the name': '@group(selector=home, hold=never)',
+    'the by-field form, which core never names': '@group(field=f, groupOn=0, addToGroup=1)',
+  };
+  for (const [label, src] of Object.entries(ok)) {
+    const r2 = extractAnnotations(src);
+    check(`${label} still compiles`, r2.errors.length === 0 && r2.specYaml !== '', j(r2));
+  }
+
+  // The guard is the value, not the presence of the key: `hold=always` is a
+  // group that holds, which core requires a name for like any other.
+  const held = extractAnnotations('@group(selector=home, hold=always)');
+  check('hold=always does not excuse the missing name', held.errors.length === 1, j(held));
+}
+
 // ── a number where the schema says string ────────────────────────────────────
 // The schema types names and labels `string` because JSON Schema has no
 // "stringable" type, but core is JS and `name=2024` has always worked. Take it
@@ -437,6 +466,57 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     check(`${label} compiles, quoted so it stays a string`,
       r.errors.length === 0 && r.specYaml.includes(expected), j(r));
   }
+}
+
+// ── a string YAML would read back as something else ──────────────────────────
+// Same bug as the numeric one above, and it bit in the place it costs most. A
+// group named `null` emitted bare comes back to core as *no name*, which core
+// refuses — and refuses the whole spec with it, so every other annotation in
+// the diagram is lost. `false` the same. Quote anything YAML reserves.
+{
+  const reserved = {
+    'a group named null': ['@group(selector=g, name=null)', "name: 'null'"],
+    'a group named false': ['@group(selector=g, name=false)', "name: 'false'"],
+    'a group named true': ['@group(selector=g, name=true)', "name: 'true'"],
+    'a group named ~': ['@group(selector=g, name=~)', "name: '~'"],
+    'shouting NULL': ['@group(selector=g, name=NULL)', "name: 'NULL'"],
+    'a name in exponent form': ['@group(selector=g, name=1e5)', "name: '1e5'"],
+    'a name that looks hex': ['@group(selector=g, name=0x1F)', "name: '0x1F'"],
+    'a name that looks infinite': ['@group(selector=g, name=.inf)', "name: '.inf'"],
+  };
+  for (const [label, [src, expected]] of Object.entries(reserved)) {
+    const r = extractAnnotations(src);
+    check(`${label} survives as a name`,
+      r.errors.length === 0 && r.specYaml.includes(expected), j(r));
+  }
+  // YAML 1.2 — which is what core parses — reads these as plain strings, so
+  // quoting them would only add noise.
+  const plain = extractAnnotations('@group(selector=g, name=yes)');
+  check('a group named yes is left bare (1.2 has no yes/no booleans)',
+    plain.specYaml.includes('name: yes'), j(plain));
+}
+
+// ── a boolean field still reaches core as a boolean ──────────────────────────
+// The other side of the quoting above: `showLabel=true` must not become the
+// string "true". Arguments arrive untyped, so the value is settled against its
+// rule before emission — including on the legacy forms, which skip validation
+// and would otherwise carry the raw string through the rewrite.
+{
+  const bools = {
+    'showLabel on a current form': ['@edgeStyle(field=f, showLabel=true)', 'showLabel: true'],
+    'hidden on a current form': ['@edgeStyle(field=f, hidden=false)', 'hidden: false'],
+    'showLabel carried through a legacy rewrite':
+      ['@edgeColor(field=f, value=red, showLabel=true)', 'showLabel: true'],
+    'hidden carried through a legacy rewrite':
+      ['@edgeColor(field=f, value=red, hidden=false)', 'hidden: false'],
+  };
+  for (const [label, [src, expected]] of Object.entries(bools)) {
+    const r = extractAnnotations(src);
+    check(`${label} emits unquoted`,
+      r.errors.length === 0 && r.specYaml.includes(expected), j(r));
+  }
+  const bad = extractAnnotations('@edgeStyle(field=f, showLabel=maybe)');
+  check('and a non-boolean is still refused', bad.errors.length === 1, j(bad));
 }
 
 // ── round-trip: blocks and legacy forms survive serialize verbatim ───────────
