@@ -12,17 +12,14 @@
 //   classesPerNode:  Map<id, Set<string>>
 //   labelLines:      Map<label, line>   first line each edge label appears on
 //   classLines:      Map<class, line>   first line each class is assigned on
-//   badNames:        Set<name>          names reported here as unselectable and
-//                    kept for display, so the engine check need not repeat it
 //
 // Names. An edge label, a sort, and a class are all selectors — the engine's
 // query grammar reads them — so they have to be names that grammar can read
 // back: letters, digits and `_`, not starting with a digit. What the grammar
 // *reserves* (`no`, `in`, `some`, …) is the engine's to say and changes between
-// releases, so it is not listed here: index.js asks the installed engine to
-// resolve every name it hands over, and reports the ones it cannot. The three
-// kinds share one namespace in the engine, so a spelling used for two of them
-// is a collision, reported here.
+// releases, so it is not listed here: an annotation that names one is reported
+// by the engine during the solve. The three kinds share one namespace in the
+// engine, so a spelling used for two of them is a collision, reported here.
 //
 // Edges:
 //   A -> B               an edge
@@ -235,7 +232,6 @@ export function parseGraph(source) {
   const classLines = new Map();   // class → first line
   const classTexts = new Map();   // class → that line's text, for the report
   const edgeSeen = new Map();     // "src\0tgt\0label" → first line
-  const badNames = new Set();     // names reported here as unselectable but kept for display
 
   const addClass = (id, c) => {
     if (!classesPerNode.has(id)) classesPerNode.set(id, new Set());
@@ -281,7 +277,6 @@ export function parseGraph(source) {
     if (!problem) return;
     errors.push({ line: at, text, severity: 'error', message: problem.message });
     if (problem.drop) n.type = null;
-    else badNames.add(n.type);
   };
 
   rawLines.forEach((raw, idx) => {
@@ -311,7 +306,6 @@ export function parseGraph(source) {
       if (problem) {
         errors.push({ line: at, text: line, severity: 'error', message: problem.message });
         if (problem.drop) return;
-        badNames.add(cls);
       }
       const ids = classAssign[1].split(',').map(s => s.trim()).filter(Boolean);
       for (const id of ids) addClass(id, cls);
@@ -344,7 +338,6 @@ export function parseGraph(source) {
           if (problem) {
             errors.push({ line: at, text: line, severity: 'error', message: problem.message });
             if (problem.drop) label = null;
-            else badNames.add(label);
           }
         }
         const key = `${left.id} ${right.id} ${label ?? ''}`;
@@ -440,5 +433,5 @@ export function parseGraph(source) {
         `a selector named ${s} will reach one of them, not both. Rename one of them` });
   }
 
-  return { nodes, edges, classesPerNode, errors, labelLines, classLines, badNames };
+  return { nodes, edges, classesPerNode, errors, labelLines, classLines };
 }

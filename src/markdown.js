@@ -738,9 +738,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         // Every diagnostic for the currently-applied text: the parser's, the
         // annotation compiler's, and the engine's (a render handle carries them
         // whether or not it produced nodes).
-        const diagOf = (h) => (h && Array.isArray(h.diagnostics)) ? h.diagnostics
-          : [...((h && h.annotationErrors) || []), ...((h && h.parseErrors) || [])];
-        const reflectDiag = (h) => ui.setDiagnostics(diagOf(h));
+        const reflectDiag = (h) => ui.setDiagnostics((h && h.diagnostics) || []);
 
         let handle = null;
         let unsub = null;
@@ -756,14 +754,10 @@ export async function renderSpytialGdls(root = document, opts = {}) {
             catch (_) { return source; }
           });
           if (h && typeof h.onChange === 'function') {
-            unsub = h.onChange(({ source: s, error, diagnostics }) => {
+            unsub = h.onChange(({ source: s, error }) => {
               if (applying) return;
               ui.setSourceText(s);          // diagram → text (keeps unsaved typing)
               reflectConflict(error || null);
-              // The editor re-solves on every edit but reports only a clash;
-              // the handle re-diagnoses the edited graph so a selector an edit
-              // left matching nothing is said here, not nowhere.
-              if (Array.isArray(diagnostics)) ui.setDiagnostics(diagnostics);
             });
           }
         };
@@ -829,8 +823,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         // React panel below and stop the drawing; they are text here now, so
         // they read without a second CDN load and the layout under every other
         // rule is still shown.
-        ui.setDiagnostics(result.diagnostics ||
-          [...(result.annotationErrors || []), ...(result.parseErrors || [])]);
+        ui.setDiagnostics(result.diagnostics || []);
         // A clash still draws the best-feasible layout; explain it below.
         showCoreConflict(doc, ui.conflict, result.error, null);
         results.push({ host: ui.graphHost, applied: result.applied, result });

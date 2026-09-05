@@ -383,8 +383,8 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     stamped.specYaml ===
       "constraints:\n  - orientation: { selector: left, directions: [left], source: { text: '@orientation(selector=left, directions=[left])', location: 'line 2' } }\n",
     j(stamped.specYaml));
-  check('…and annotationMeta.entry is the stamped entry, so a refused rule still maps to its line',
-    stamped.annotationMeta[0].entry === 'orientation: { selector: left, directions: [left], source: { text: \'@orientation(selector=left, directions=[left])\', location: \'line 2\' } }',
+  check('…and annotationMeta records the line, name, and selectors for attribution',
+    j(stamped.annotationMeta) === j([{ line: 2, name: 'orientation', selectors: ['left'] }]),
     j(stamped.annotationMeta));
   const wrapped = extractAnnotations('A -> B\n@group(\n  selector=x,\n  name=\'It\'\'s\',\n)', { provenance: true });
   check('a wrapped annotation is folded onto one line, quotes escaped, line = where it starts',

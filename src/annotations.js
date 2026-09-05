@@ -596,11 +596,10 @@ function emitEntry(name, kwargs) {
 //                     never touches the layout directives, and specYaml is a lossy
 //                     compiled form, so we keep the originals.
 //   annotationMeta  — one record per compiled annotation, parallel to
-//                     annotationLines: { line, name, section, entry,
-//                     selectors, text }. `entry` is the exact list item that went
-//                     into specYaml and `selectors` the selector/field strings it
-//                     carries, which is how diagnostics.js maps what the engine
-//                     later says about a rule or a selector back to this line.
+//                     annotationLines: { line, name, selectors }, where
+//                     `selectors` is the selector/field strings it names. This is
+//                     how diagnostics.js maps what the engine later says about a
+//                     selector back to the line it was written on.
 //   errors          — [{ line, text, message }] for malformed / unknown / unterminated
 //                     annotations. `line` is the 1-based line the annotation starts on.
 //
@@ -721,14 +720,7 @@ export function extractAnnotations(rawSource, opts = {}) {
 
     (isConstraint ? constraints : directives).push(entry);
     annotationLines.push(verbatim);
-    annotationMeta.push({
-      line: at,
-      name,
-      section: isConstraint ? 'constraints' : 'directives',
-      entry,
-      selectors: selectorStrings(kwargs),
-      text: verbatim.trim(),
-    });
+    annotationMeta.push({ line: at, name, selectors: selectorStrings(kwargs) });
   }
 
   const source = kept.join('\n');

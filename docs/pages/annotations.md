@@ -353,39 +353,33 @@ one shape, so a host can show them all at once:
 |---|---|---|---|
 | parse graph | bad line / ignored Mermaid / a name that cannot be a selector | `parseErrors`, `diagnostics` | ⚠ … in this source |
 | lift annotations | bad `@name` / args | `annotationErrors`, `diagnostics` | ⚠ … in this source |
-| ask the engine | a name it cannot read back, a rule it refuses, a selector it cannot use or that matches nothing | `diagnostics` (raw: `selectorErrors`, `warnings`) | ⚠ … in this source |
+| solve | a selector the engine cannot use or that matches nothing; a spec it refuses | `diagnostics` (raw: `selectorErrors`, `warnings`) | ⚠ … in this source |
 | solve constraints | rules can't all hold | `error` (UNSAT core) | ⚠ These rules can't all hold |
 
 ### What the engine reports
 
-Selector problems are the engine's to find, and it finds three kinds.
+Selector problems are the engine's to find, and it finds two kinds.
 
-A selector of the wrong shape — a sort where `@orientation` needs edges, an edge
-label where `@atomStyle` needs nodes — is a *selector error*. The engine skips
-that one rule, solves the rest, and the diagram is drawn under the rules it could
-use, with the error beside it.
+A selector the engine cannot use — a sort where `@orientation` needs edges, an
+edge label where `@atomStyle` needs nodes, a word its query grammar reserves
+(`no`, `in`, `some`, and whichever others the installed release has) — is a
+*selector error*. The engine skips that one rule, solves the rest, and the diagram
+is drawn under the rules it could use, with the error beside it. There is no list
+of reserved words in spytial-gdl: the grammar that reserves them reports them.
 
 A selector that matches nothing at all — a typo'd label, a class you never
 assigned — is a *warning*. The rule constrains nothing and the diagram draws as if
 it were not there, which is the quietest way a diagram can be wrong; it is
 reported so that it is not.
 
-A rule the engine's parser refuses outright is reported and left out, so the
-other rules still apply instead of failing along with it. The annotation compiler
-catches the cases it knows from the schema first; this is the backstop for
-whatever the installed release rejects.
+Both arrive on `diagnostics`, each with the line of the annotation it concerns,
+and in an embed they share the **⚠ … in this source** band with the parse and
+annotation errors. `selectorErrors` and `warnings` carry the engine's own records
+for anyone who wants them raw.
 
-All three arrive on `diagnostics`, each with the line of the annotation it
-concerns, and in an embed they share the **⚠ … in this source** band with the
-parse and annotation errors. `selectorErrors` and `warnings` carry the engine's
-own records for anyone who wants them raw.
-
-One more check runs before the solve. Every name the notation declares — each
-edge label, sort and class — is handed to the engine's evaluator and read back,
-and one that does not come back as the thing declared is reported on the line it
-was written. That is how a word the query grammar reserves (`no`, `in`, `some`,
-and whichever others the installed release has) is caught: by the grammar that
-reserves it, not by a list in spytial-gdl that would describe an older release.
+A spec the engine's parser refuses outright is reported the same way, and the
+diagram is drawn under no rules rather than not at all. The annotation compiler
+catches the cases it knows from the schema first, so this is rare.
 
 ```js
 const r = await renderSpytialGdl(graph, source);

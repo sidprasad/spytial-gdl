@@ -21,12 +21,10 @@ import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } f
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
 import { serializeToSpytialGdl } from './serialize.js';
-import {
-  sourceDiagnostics, engineDiagnostics, checkRulesWithEngine, checkNamesWithEngine,
-} from './diagnostics.js';
+import { sourceDiagnostics, engineDiagnostics } from './diagnostics.js';
 
 export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGdl };
-export { sourceDiagnostics, engineDiagnostics, checkRulesWithEngine, checkNamesWithEngine, attributeLine } from './diagnostics.js';
+export { sourceDiagnostics, engineDiagnostics, attributeLine } from './diagnostics.js';
 
 // Constraint inference — the layout → spec direction. `abduce` reads a hand-made
 // arrangement as qualitative predicates, `generalize` names the relation that
@@ -200,8 +198,8 @@ function engineApi(spytial) {
 }
 
 // ── Headless solve ───────────────────────────────────────────────────────────
-// Hand a compiled diagram to the engine and collect everything it has to say
-// about it, without a DOM. Both render paths go through this, and so does
+// Hand a compiled diagram to the engine and collect what it has to say, without
+// a DOM. Both render paths go through this, and so does
 // test/engine-diagnostics.test.mjs, so what the suite checks is what a page
 // reports.
 //
@@ -209,20 +207,11 @@ function engineApi(spytial) {
 //   compiled — an `ok` result of compileSpytialGdl
 //   opts     — { validator?: 'qualitative' | 'kiwi' }
 //
-// Three questions are put to the engine before and after the solve, each
-// answered by the installed release rather than by a table here:
-//   1. does every name the notation declared (label, sort, class) resolve to
-//      the thing declared?              → checkNamesWithEngine
-//   2. does the engine's spec parser accept each rule? A refused one is left
-//      out and reported, so the rest still apply.   → checkRulesWithEngine
-//   3. what did the solve warn about, and which selectors could it not use?
-//                                        → engineDiagnostics
-//
 // Returns { instance, evaluator, spec, rules, result, layout, error,
-//           selectorErrors, warnings, diagnostics }. `rules` is the spec that
-// was actually solved (the compiled spec minus any rule the engine refused).
-// `diagnostics` is the engine's part only; sourceDiagnostics() holds the
-// parser's and the annotation compiler's.
+//           selectorErrors, warnings, diagnostics }. `diagnostics` is the
+// engine's part only — a spec its parser refused, a selector it could not use,
+// one that matched nothing — each on the annotation's line where there is one.
+// sourceDiagnostics() holds the parser's and the annotation compiler's.
 export function solveSpytialGdl(spytial, compiled, opts = {}) {
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = engineApi(spytial);
   if (!compiled || !compiled.ok) {
@@ -235,34 +224,29 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
   const evaluator = new SGraphQueryEvaluator();
   evaluator.initialize({ sourceData: instance });
 
-  // 2. every declared name, read back through the engine
-  diagnostics.push(...checkNamesWithEngine(evaluator, compiled.parsed));
-
-  // 3. layout rules → parsed spec, one rule at a time first so a refused rule
-  //    is named and dropped instead of failing the whole spec
-  const checked = checkRulesWithEngine(parseLayoutSpec, compiled.rules, compiled.annotationMeta);
-  diagnostics.push(...checked.diagnostics);
-  let rules = checked.rules;
+  // 2. layout rules → parsed spec. The engine's parser throws on a spec it
+  //    refuses, and every rule goes with it; say so, and solve under only the
+  //    hideField directives so the graph is still drawn once, with the reason
+  //    beside it, rather than not at all.
+  let rules = compiled.rules;
   let spec;
   try {
     spec = parseLayoutSpec(rules || '');
   } catch (err) {
-    // Every rule parsed alone and the set does not: report it and solve with
-    // only the hideField directives, so the graph is still drawn once.
     diagnostics.push({
       severity: 'error', source: 'engine', code: 'rules-rejected',
-      message: 'the engine rejected the layout rules as a set, so the diagram is drawn without them: ' +
+      message: 'the engine rejected the layout rules, so the diagram is drawn without them: ' +
         (err && err.message ? err.message : String(err)),
     });
     rules = hideFieldsYaml(compiled.hiddenRelations);
     spec = parseLayoutSpec(rules || '');
   }
 
-  // 4. solve (qualitative validator → IIS clash reporting / counterfactual)
+  // 3. solve (qualitative validator → IIS clash reporting / counterfactual)
   const li = new LayoutInstance(spec, evaluator, 0, true, undefined, opts.validator || 'qualitative');
   const result = li.generateLayout(instance);
 
-  // 5. what the solve had to say
+  // 4. what the solve had to say
   diagnostics.push(...engineDiagnostics(result, compiled.annotationMeta));
 
   return {
@@ -364,25 +348,6 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
   // with the original spatial @annotations re-appended verbatim.
   const getSource = () => serializeToSpytialGdl(getValue(), { annotations: annotationLines });
 
-  // Diagnostics for the graph as it stands now. The editor solves on every
-  // edit but reports only a constraint clash; a selector that an edit left
-  // matching nothing, or a name that stopped resolving, it says nothing about.
-  // So re-derive the notation and put it through the same headless solve the
-  // read-only path uses. Line numbers are relative to getSource(), which is the
-  // text the Source panel shows. Never throws: a failure to diagnose is itself
-  // reported, as a warning, rather than breaking an edit.
-  const diagnose = (source) => {
-    try {
-      const compiled = compileSpytialGdl(source, meta.opts);
-      const own = sourceDiagnostics(compiled.annotationErrors, compiled.parseErrors);
-      if (!compiled.ok) return own;
-      return [...own, ...solveSpytialGdl(meta.spytial, compiled, meta.opts).diagnostics];
-    } catch (err) {
-      return [{ severity: 'warning', source: 'engine', code: 'diagnostics-unavailable',
-        message: `diagnostics could not be refreshed after this edit: ${err && err.message ? err.message : err}` }];
-    }
-  };
-
   // Subscribe to edits. Every mutation — toolbar, drag-to-connect, delete,
   // keyboard — flows through the data instance, which emits these four events;
   // that's a more reliable signal than the element's constraint events (which
@@ -400,8 +365,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
         scheduled = false;
         let error = null;
         try { error = el.getCurrentConstraintError ? el.getCurrentConstraintError() : null; } catch (_) {}
-        const source = getSource();
-        cb({ source, value: getValue(), error, diagnostics: diagnose(source) });
+        cb({ source: getSource(), value: getValue(), error });
       });
     };
     const unbind = () => {
@@ -450,8 +414,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
 //     diagnostics, hiddenRelations, rules, getSource(), getValue(),
 //     onChange(cb) → unsubscribe }
 // or { applied:false, reason, ... } if the source has no nodes. `diagnostics`
-// is the same list renderSpytialGdl returns, and onChange delivers a fresh one
-// with every edit.
+// is the same list renderSpytialGdl returns, for the text that was applied.
 export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const spytial = getSpytialCore();
   const { JSONDataInstance } = engineApi(spytial);
@@ -479,12 +442,11 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const { datum, hiddenRelations } = compiled;
 
   // 1. a headless solve first, for what the engine has to say. The editor
-  //    element solves too, but it reports only a constraint clash: a rule its
+  //    element solves too, but it reports only a constraint clash: a spec its
   //    parser refuses is logged to the console and the graph is drawn under no
   //    rules at all, and a selector it cannot use is dropped without a word.
   //    Solving here, through the same public calls the read-only path uses,
-  //    surfaces both — and hands the element the spec minus any refused rule,
-  //    so the rules that do parse still apply.
+  //    surfaces both.
   const solved = solveSpytialGdl(spytial, compiled, opts);
   const rules = solved.rules;
   const diagnostics = [...own, ...solved.diagnostics];
@@ -503,7 +465,5 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
     diagnostics,
     hiddenRelations,
     rules,
-    spytial,
-    opts,
   });
 }

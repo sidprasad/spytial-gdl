@@ -31,10 +31,10 @@ A -> C : miss
 > line (`-` is set difference in the query grammar, so `left-child` would read as
 > `left` minus `child`), and so is a name starting with `_`, which spytial-gdl
 > keeps for `_` and `_links`. The query grammar also reserves a few words of its
-> own (`no`, `in`, `some`, and others that vary by spytial-core release). Rather
-> than list them here, spytial-gdl asks the installed engine to read every name
-> back and reports the ones it will not, on the line they were written. The same
-> rule applies to sorts and classes.
+> own (`no`, `in`, `some`, and others that vary by spytial-core release); an
+> annotation that names one is reported by the engine, on that annotation's line,
+> so there is no list here to go stale. The same rule applies to sorts and
+> classes.
 
 ## Nodes, labels, and ids
 
@@ -270,11 +270,10 @@ of them, for instance edge label `member_of` against class `team`. A class line
 that names a node no line declares is reported the same way.
 
 > **Note.** A selector that doesn't resolve to what you meant is reported rather
-> than failing silently. One of the wrong shape (a sort where edges are needed) is a
-> selector error; one that matches nothing is a warning; a name the engine reads
-> as something else is caught before the solve. All arrive on the result's
-> `diagnostics` with the line concerned, and in an embed they appear in the
-> **⚠ … in this source** band under the diagram. See
+> than failing silently. One the engine cannot use (a sort where edges are needed,
+> a reserved word) is a selector error; one that matches nothing is a warning.
+> Both arrive on the result's `diagnostics` with the annotation's line, and in an
+> embed they appear in the **⚠ … in this source** band under the diagram. See
 > [What the engine reports](annotations.md#what-the-engine-reports).
 
 ### Advanced: comprehensions

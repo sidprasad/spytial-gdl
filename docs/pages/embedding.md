@@ -206,7 +206,7 @@ handle below.
 |---|---|
 | `getSource()` | re-get spytial-gdl notation for the current graph, with your `@annotations` re-appended verbatim |
 | `getValue()` | the reified value: `{ atoms, relations }` JSON |
-| `onChange(cb)` | runs `cb({ source, value, error, diagnostics })` after every edit; returns an unsubscribe function |
+| `onChange(cb)` | runs `cb({ source, value, error })` after every edit; returns an unsubscribe function |
 | `element` | the live `<structured-input-graph>` |
 | `dataInstance` | the backing data instance |
 | `diagnostics` | every problem found in the initial source, in the same shape as on the [read-only result](#the-result-object) |
@@ -217,11 +217,9 @@ plus an add, for instance) into a single callback, and rebinds automatically if 
 editor's "clear all" swaps in a fresh data instance. You get one clean event per
 logical edit.
 
-The `diagnostics` it delivers are recomputed for the edited graph: the notation is
-re-derived and put through the same headless solve the read-only path uses, so a
-selector that an edit leaves matching nothing is reported rather than dropped. The
-editor element itself reports only a constraint clash. Line numbers refer to
-`getSource()`, which is what the Source panel shows.
+`diagnostics` describes the text that was applied (the initial source, or the last
+**Run ▸**). The editor element itself reports only a constraint clash as you edit;
+run the text again to refresh the rest.
 
 ### The serializer on its own
 
@@ -333,7 +331,7 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 | `parsed` | `{ nodes, edges, classesPerNode, errors, labelLines, classLines }` from the parser |
 | `data` | the relational `{ atoms, relations }` handed to spytial-core |
 | `instance` | the `JSONDataInstance` built from `data` |
-| `rules` | the layout YAML actually solved: the merged spec, minus any rule the engine refused |
+| `rules` | the layout YAML actually solved: the merged spec, or only the hidden-field directives if the engine refused it |
 | `hiddenRelations` | selector-only relations hidden from drawing (`_links`, types, classes) |
 
 When `source` has no nodes, you get
@@ -416,9 +414,9 @@ const { ok, datum, rules, hiddenRelations, annotationErrors } =
   inline annotation's rule carries a `source` block with the annotation's text
   and line, which spytial-core 5.4+ cites in conflict reports; pass
   `{ provenance: false }` for the bare rules.
-- `annotationMeta` — one record per compiled annotation (`line`, `name`,
-  `section`, the exact `entry` emitted, the `selectors` it names), which is how
-  an engine diagnostic is mapped back to a line.
+- `annotationMeta` — one record per compiled annotation (`line`, `name`, the
+  `selectors` it names), which is how an engine diagnostic is mapped back to a
+  line.
 - `ok` is `false`, with a `reason`, when the source parses to no nodes.
 
 To put the compiled diagram through the engine without a DOM, `solveSpytialGdl(spytial, compiled, opts)`

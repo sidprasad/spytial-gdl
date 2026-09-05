@@ -45,31 +45,19 @@ export function mergeSpecStrings(yamlList) {
     allConstraints.push(...constraints);
     allDirectives.push(...directives);
   }
-  return specFromEntries({ constraints: allConstraints, directives: allDirectives });
-}
 
-// The inverse pair for anything that needs to take a spec apart and put it
-// back together — diagnostics.js parses each rule on its own to find the one
-// the engine refuses, then rebuilds the spec from the rest.
-//   splitSpecEntries(yaml)  → { constraints: [entry, …], directives: [entry, …] }
-//   specFromEntries(blocks) → the authoring YAML, both sections always present
-export function splitSpecEntries(yaml) {
-  return extractBlocks(String(yaml ?? ''));
-}
-
-export function specFromEntries({ constraints = [], directives = [] } = {}) {
   let out = '';
   out += 'constraints:\n';
-  if (constraints.length === 0) {
+  if (allConstraints.length === 0) {
     out += '  []\n';
   } else {
-    for (const c of constraints) out += `  - ${c}\n`;
+    for (const c of allConstraints) out += `  - ${c}\n`;
   }
   out += 'directives:\n';
-  if (directives.length === 0) {
+  if (allDirectives.length === 0) {
     out += '  []\n';
   } else {
-    for (const d of directives) out += `  - ${d}\n`;
+    for (const d of allDirectives) out += `  - ${d}\n`;
   }
   return out;
 }
