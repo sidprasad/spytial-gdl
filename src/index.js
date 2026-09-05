@@ -12,7 +12,7 @@
 //     → <webcola-cnd-graph>.renderLayout(layout)
 //
 // spytial-core is a peer dependency loaded on the page (CDN or bundler) as the
-// global `window.spytialcore` (legacy alias `CndCore`); it auto-registers the
+// global `window.spytialcore`; it auto-registers the
 // <webcola-cnd-graph> custom element and needs d3 v4 + cola.js present. We do
 // NOT import it, so this module loads as a bare ES module in the browser.
 
@@ -48,10 +48,7 @@ export {
 } from './demonstrate.js';
 
 function getSpytialCore() {
-  const s =
-    (typeof window !== 'undefined' && (window.spytialcore || window.CndCore || window.CnDCore)) ||
-    globalThis.spytialcore ||
-    globalThis.CndCore;
+  const s = (typeof window !== 'undefined' && window.spytialcore) || globalThis.spytialcore;
   if (!s) {
     throw new Error(
       'spytial-gdl: spytial-core is not loaded. Include ' +

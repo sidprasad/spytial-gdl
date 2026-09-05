@@ -111,10 +111,8 @@ else
 fi
 echo
 echo "Next:"
-echo "  1. git diff src/_spec-tables.js"
+echo "  1. git diff src/_spec-tables.js. A form the release deprecated is gone"
+echo "     from the tables — spytial-gdl's language is what the schema marks"
+echo "     current, nothing else — and the generator's output above names it."
 echo "  2. npm test. test/spec-tables.test.mjs names whatever hand-written surface"
-echo "     is now behind — a rewrite that no longer lands on a live form, a"
-echo "     deprecation policy that changed, a block that moved."
-echo "  3. If a form was newly deprecated, decide in generate-spec-tables.mjs"
-echo "     whether spytial-gdl rewrites it (desugars: true, and teach"
-echo "     desugarLegacy the mapping) or just warns."
+echo "     is now behind: the docs' argument table, a block that moved."

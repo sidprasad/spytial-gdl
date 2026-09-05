@@ -54,7 +54,7 @@ export function attributeLine(meta, selector, context) {
   const s = String(selector);
   let cands = meta.filter((m) => Array.isArray(m.selectors) && m.selectors.includes(s));
   if (cands.length > 1 && typeof context === 'string') {
-    const narrowed = cands.filter((m) => m.emitted && context.includes(m.emitted));
+    const narrowed = cands.filter((m) => m.name && context.includes(m.name));
     if (narrowed.length > 0) cands = narrowed;
   }
   return cands.length > 0 ? cands[0].line : undefined;

@@ -44,9 +44,7 @@ only in which bucket they compile to, and the value syntax is identical.
 | `hideAtom` | hide matching nodes |
 
 `size` and `hideAtom` read like styling but are constraints: both change what the
-layout has to solve for, rather than decorating a solved one. Core accepts them
-among the directives too, behind a deprecation warning, which is why they are
-sometimes written there.
+layout has to solve for, rather than decorating a solved one.
 
 ### orientation
 
@@ -240,11 +238,11 @@ Only the constraints listed with it take it; `size` and `hideAtom` accept the ke
 syntactically and ignore it, so writing it there would quietly mean the opposite
 of what it says, and spytial-gdl rejects it rather than emitting a no-op.
 
-One form is deprecated but still compiles, since core still reads it:
-`@icon(selector, path, showLabels?)`, which `atomStyle`'s `iconStyle(…)` block
-replaces. It warns. The old by-field group, `@group(field, groupOn, addToGroup)`,
-was removed in spytial-core 5.4.0; writing it is reported as such, with the
-binary-selector form to write instead, rather than as an unknown argument.
+The table above is the whole language. spytial-gdl accepts exactly what the
+current spytial-core schema marks current, so a form core has deprecated or
+removed — `icon`, `atomColor`, `edgeColor`, `inferredEdge`'s inline `color` and
+`style`, the old by-field `group` — is not a warning or a rewrite here; it is an
+unknown annotation or argument, reported on its line like any other.
 
 > The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
 > authoritative. `test/spec-tables.test.mjs` holds the table above to the same
@@ -297,26 +295,12 @@ everything is optional, so write only the parts you mean.
 > rendering. `fillStyle` paints the interior and is opt-in. If a diagram looks
 > unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
 
-### The older `atomColor` / `edgeColor`
-
-Both still compile, since they're rewritten to the blocks above, so existing
-diagrams keep working unchanged:
-
-| you wrote | it compiles to |
-|---|---|
-| `@atomColor(selector=S, value=V)` | `@atomStyle(selector=S, borderStyle(color=V))` |
-| `@edgeColor(field=F, value=V, style=P)` | `@edgeStyle(field=F, lineStyle(color=V, pattern=P))` |
-| `@inferredEdge(…, color=V, style=P)` | `@inferredEdge(…, lineStyle(color=V, pattern=P))` |
-
-`atomColor`'s `value` becomes the outline rather than the fill, which is what it
-has always drawn. Prefer the block forms in new diagrams.
-
-> **Breaking in spytial-core 3.0: style collisions are an error.** Two rules that
-> set the same style leaf to different values now fail with a
-> `StyleCollisionError` instead of one silently winning. Rules that touch different
-> leaves still compose freely, so `borderStyle(color=…)` from one rule and
-> `textStyle(size=…)` from another is fine. This is checked when the diagram is
-> drawn, so it surfaces in the browser rather than as an annotation error.
+> **Style collisions are an error.** Two rules that set the same style leaf to
+> different values fail with a `StyleCollisionError` instead of one silently
+> winning. Rules that touch different leaves still compose freely, so
+> `borderStyle(color=…)` from one rule and `textStyle(size=…)` from another is
+> fine. This is checked when the diagram is drawn, so it surfaces in the browser
+> rather than as an annotation error.
 
 ## Mermaid-safe annotations
 

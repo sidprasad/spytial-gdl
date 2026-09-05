@@ -35,16 +35,14 @@ import { mountDemonstration } from './demonstrate.js';
 import { paintInto } from './highlight.js';
 
 // Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
-// is the short alias. `spytial-graph` is the pre-rename name, still accepted so
-// docs and embeds authored before the rename keep rendering.
-const LANGS = ['spytial-gdl', 'spytial', 'spytial-graph'];
+// is the short alias.
+const LANGS = ['spytial-gdl', 'spytial'];
 
 // Editable variants. Most markdown renderers keep only the first info-string
 // token as the language class, so a dedicated language is the portable way to
 // opt a block into the editor (` ```spytial-gdl-editable `). A `data-editable`
 // attribute on the host (hand-authored HTML) works too, as does opts.editable.
-// `spytial-graph-editable` is kept as a legacy alias, same as above.
-const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable', 'spytial-graph-editable'];
+const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable'];
 const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS];
 
 // CSS selectors covering how a fenced block comes out the other side of the
@@ -195,8 +193,8 @@ function collectBlocks(root, opts = {}) {
 // Is the spytial-core engine (+ the custom element) ready on the page?
 function engineReady() {
   const core =
-    (typeof window !== 'undefined' && (window.spytialcore || window.CndCore || window.CnDCore)) ||
-    (typeof globalThis !== 'undefined' && (globalThis.spytialcore || globalThis.CndCore));
+    (typeof window !== 'undefined' && window.spytialcore) ||
+    (typeof globalThis !== 'undefined' && globalThis.spytialcore);
   return !!(
     core &&
     core.JSONDataInstance &&

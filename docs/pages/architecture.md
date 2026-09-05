@@ -81,8 +81,8 @@ include them yourself.
 
 spytial-core is a peer dependency. spytial-gdl doesn't `import` it, which is what
 lets its own modules load as bare browser ES modules. spytial-core auto-registers
-the custom element and exposes the engine on `window.spytialcore`, with `CndCore`
-as a legacy alias. Vendor all three locally for an offline or version-pinned deploy
+the custom element and exposes the engine on `window.spytialcore`. Vendor all
+three locally for an offline or version-pinned deploy
 ([Embedding → self-hosting](embedding.md#self-hosting-the-engine)).
 
 ## File map
