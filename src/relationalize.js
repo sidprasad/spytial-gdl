@@ -120,7 +120,10 @@ export function relationalize({ nodes, edges, classesPerNode }) {
   for (const cls of allClasses) {
     const members = [];
     for (const [id, classes] of classesPerNode) {
-      if (classes.has(cls)) members.push(id);
+      // parse.js reports and drops a member no line declares; this is the
+      // backstop for a caller that built classesPerNode itself, since a tuple
+      // over a missing atom fails inside the engine with no line to point at.
+      if (classes.has(cls) && nodes.has(id)) members.push(id);
     }
     relations.push({
       id: `cls_${cls}`,

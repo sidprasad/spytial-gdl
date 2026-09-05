@@ -206,15 +206,22 @@ handle below.
 |---|---|
 | `getSource()` | re-get spytial-gdl notation for the current graph, with your `@annotations` re-appended verbatim |
 | `getValue()` | the reified value: `{ atoms, relations }` JSON |
-| `onChange(cb)` | runs `cb({ source, value, error })` after every edit; returns an unsubscribe function |
+| `onChange(cb)` | runs `cb({ source, value, error, diagnostics })` after every edit; returns an unsubscribe function |
 | `element` | the live `<structured-input-graph>` |
 | `dataInstance` | the backing data instance |
-| `applied`, `parsed`, `annotationErrors`, `hiddenRelations`, `rules` | render metadata, as on the read-only result |
+| `diagnostics` | every problem found in the initial source, in the same shape as on the [read-only result](#the-result-object) |
+| `applied`, `parsed`, `annotationErrors`, `parseErrors`, `hiddenRelations`, `rules` | render metadata, as on the read-only result |
 
 `onChange` coalesces a burst of synchronous mutations (an edge rename is a remove
 plus an add, for instance) into a single callback, and rebinds automatically if the
 editor's "clear all" swaps in a fresh data instance. You get one clean event per
 logical edit.
+
+The `diagnostics` it delivers are recomputed for the edited graph: the notation is
+re-derived and put through the same headless solve the read-only path uses, so a
+selector that an edit leaves matching nothing is reported rather than dropped. The
+editor element itself reports only a constraint clash. Line numbers refer to
+`getSource()`, which is what the Source panel shows.
 
 ### The serializer on its own
 
@@ -309,26 +316,28 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 #### The result object
 
 ```text
-{ applied, layout, error, selectorErrors, annotationErrors, parseErrors,
-  parsed, data, instance, rules, hiddenRelations }
+{ applied, layout, error, selectorErrors, warnings, diagnostics,
+  annotationErrors, parseErrors, parsed, data, instance, rules, hiddenRelations }
 ```
 
 | field | meaning |
 |---|---|
 | `applied` | `true` if a layout was drawn onto the element |
-| `layout` | the computed layout; on a clash, the best-feasible counterfactual |
+| `layout` | the computed layout; on a clash, the best-feasible counterfactual; with a selector error, the layout under every other rule |
 | `error` | the constraint error / UNSAT core, or `null` (see [Conflicts](annotations.md#errors-and-conflicts)) |
-| `selectorErrors` | selectors that didn't resolve; `[]` when clean |
+| `diagnostics` | every problem in one list: `[{ severity, message, line?, source }]`, where `severity` is `'error'` or `'warning'` and `source` is `'parse'`, `'annotation'` or `'engine'`. What an embed's **⚠ … in this source** band shows. See [What the engine reports](annotations.md#what-the-engine-reports) |
+| `selectorErrors` | the engine's own records of selectors it could not use (wrong arity, unparseable); `[]` when clean. Each is also on `diagnostics` with a line |
+| `warnings` | the engine's advisories, chiefly a selector that matched nothing; `[]` when clean. Each is also on `diagnostics` with a line |
 | `annotationErrors` | malformed or unknown annotations, as `[{ line, text, message }]` |
-| `parseErrors` | graph lines the parser flagged, as `[{ line, text, severity, message }]`, where `severity` is `'error'` or `'warning'` (an ignored Mermaid construct) |
-| `parsed` | `{ nodes, edges, classesPerNode, errors }` from the parser |
+| `parseErrors` | graph lines the parser flagged, as `[{ line, text, severity, message }]`, where `severity` is `'error'` (a line it could not read, or a name that cannot be a selector) or `'warning'` (an ignored Mermaid construct, a node labeled twice, a repeated edge) |
+| `parsed` | `{ nodes, edges, classesPerNode, errors, labelLines, classLines }` from the parser |
 | `data` | the relational `{ atoms, relations }` handed to spytial-core |
 | `instance` | the `JSONDataInstance` built from `data` |
-| `rules` | the merged layout YAML actually solved |
+| `rules` | the layout YAML actually solved: the merged spec, minus any rule the engine refused |
 | `hiddenRelations` | selector-only relations hidden from drawing (`_links`, types, classes) |
 
 When `source` has no nodes, you get
-`{ applied: false, reason, parsed, annotationErrors, parseErrors }` instead.
+`{ applied: false, reason, parsed, annotationErrors, parseErrors, diagnostics }` instead.
 
 #### Re-rendering
 
@@ -403,8 +412,20 @@ const { ok, datum, rules, hiddenRelations, annotationErrors } =
 - `datum` — `{ atoms, relations }`, the graph in relational form.
 - `rules` — the complete layout spec as YAML, with every source already merged
   (registered class specs, inline annotations, `opts.rules`) and the selector-only
-  relations already hidden. This is the exact string handed to the engine.
+  relations already hidden. This is the exact string handed to the engine. Each
+  inline annotation's rule carries a `source` block with the annotation's text
+  and line, which spytial-core 5.4+ cites in conflict reports; pass
+  `{ provenance: false }` for the bare rules.
+- `annotationMeta` — one record per compiled annotation (`line`, `name`,
+  `section`, the exact `entry` emitted, the `selectors` it names), which is how
+  an engine diagnostic is mapped back to a line.
 - `ok` is `false`, with a `reason`, when the source parses to no nodes.
+
+To put the compiled diagram through the engine without a DOM, `solveSpytialGdl(spytial, compiled, opts)`
+takes the engine module (`window.spytialcore`, or `await import('spytial-core')`) and
+returns `{ layout, error, selectorErrors, warnings, diagnostics, rules, … }`, the
+same solve both render paths perform. That is what
+`test/engine-diagnostics.test.mjs` runs against the installed core.
 
 Both render paths call this, so what you get here is what a diagram gets. That is
 also what lets [the conformance

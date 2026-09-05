@@ -159,7 +159,11 @@ export function sourceFromBlock(el) {
       else if (SRC_LINE_TAGS.has(child.tagName)) endLine();
     }
   })(inner || el);
-  return out;
+  // A hand-authored <div> almost always opens with a newline before its first
+  // line of notation. Left in, that empty first line is "line 1", and every
+  // diagnostic and conflict report is off by one from what the author sees in
+  // their file. A fenced block's text starts on its first line already.
+  return out.replace(/^[ \t]*\n/, '');
 }
 
 function collectBlocks(root, opts = {}) {
@@ -439,11 +443,13 @@ function buildDevice(doc, opts, height, editable) {
   const demoSlot = doc.createElement('div');
   device.appendChild(demoSlot);
 
-  // ── diagnostics band (parse / annotation problems; non-fatal) ──
-  // Distinct from the conflict region below: this reports source-level problems
-  // (a malformed line, an unknown annotation, an ignored Mermaid construct). The
-  // diagram still renders best-effort; this just says what was wrong, with line
-  // numbers. `severity: 'error'` reads red, everything else amber ("ignored").
+  // ── diagnostics band (parse / annotation / engine problems; non-fatal) ──
+  // Distinct from the conflict region below: this reports everything that is
+  // not a constraint clash — a malformed line, an unknown annotation, an
+  // ignored Mermaid construct, a selector the engine could not use or that
+  // matched nothing, a rule it refused. The diagram still renders best-effort;
+  // this says what was wrong, with line numbers. `severity: 'error'` reads red,
+  // warnings amber.
   const AMBER = dark
     ? { bg: '#332711', ink: '#f0d9a3', border: '#5a4415', accent: '#d0a24a' }
     : { bg: '#fff8e6', ink: '#7a5b00', border: '#f0dca0', accent: '#e0ac30' };
@@ -466,7 +472,7 @@ function buildDevice(doc, opts, height, editable) {
     const nWarn = list.length - nErr;
     const parts = [];
     if (nErr) parts.push(`${nErr} problem${nErr > 1 ? 's' : ''}`);
-    if (nWarn) parts.push(`${nWarn} ignored`);
+    if (nWarn) parts.push(`${nWarn} warning${nWarn > 1 ? 's' : ''}`);
     const head = doc.createElement('div');
     head.style.cssText = `font: 700 13px/1.3 ${SANS}; margin-bottom: 5px;`;
     head.textContent = `⚠ ${parts.join(', ')} in this source`;
@@ -731,10 +737,12 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           if (e) showCoreConflict(doc, ui.conflict, e, null);
           else clearCoreConflict(ui.conflict);
         };
-        // Source-level diagnostics for the currently-applied text (a render handle
-        // carries them whether or not it produced nodes).
-        const reflectDiag = (h) =>
-          ui.setDiagnostics([...((h && h.annotationErrors) || []), ...((h && h.parseErrors) || [])]);
+        // Every diagnostic for the currently-applied text: the parser's, the
+        // annotation compiler's, and the engine's (a render handle carries them
+        // whether or not it produced nodes).
+        const diagOf = (h) => (h && Array.isArray(h.diagnostics)) ? h.diagnostics
+          : [...((h && h.annotationErrors) || []), ...((h && h.parseErrors) || [])];
+        const reflectDiag = (h) => ui.setDiagnostics(diagOf(h));
 
         let handle = null;
         let unsub = null;
@@ -750,10 +758,14 @@ export async function renderSpytialGdls(root = document, opts = {}) {
             catch (_) { return source; }
           });
           if (h && typeof h.onChange === 'function') {
-            unsub = h.onChange(({ source: s, error }) => {
+            unsub = h.onChange(({ source: s, error, diagnostics }) => {
               if (applying) return;
               ui.setSourceText(s);          // diagram → text (keeps unsaved typing)
               reflectConflict(error || null);
+              // The editor re-solves on every edit but reports only a clash;
+              // the handle re-diagnoses the edited graph so a selector an edit
+              // left matching nothing is said here, not nowhere.
+              if (Array.isArray(diagnostics)) ui.setDiagnostics(diagnostics);
             });
           }
         };
@@ -812,11 +824,17 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         refit(graphEl);
         ui.setSourceProvider(() => source);
         ui.refreshSource(true);
-        // Source-level problems (bad line, unknown annotation, ignored Mermaid),
-        // with line numbers. The diagram still renders best-effort above them.
-        ui.setDiagnostics([...(result.annotationErrors || []), ...(result.parseErrors || [])]);
+        // Everything that is not a clash — a bad line, an unknown annotation,
+        // an ignored Mermaid construct, a selector the engine could not use or
+        // that matched nothing — with line numbers. The diagram still renders
+        // best-effort above them. Selector errors used to go to the engine's
+        // React panel below and stop the drawing; they are text here now, so
+        // they read without a second CDN load and the layout under every other
+        // rule is still shown.
+        ui.setDiagnostics(result.diagnostics ||
+          [...(result.annotationErrors || []), ...(result.parseErrors || [])]);
         // A clash still draws the best-feasible layout; explain it below.
-        showCoreConflict(doc, ui.conflict, result.error, result.selectorErrors);
+        showCoreConflict(doc, ui.conflict, result.error, null);
         results.push({ host: ui.graphHost, applied: result.applied, result });
       }
     } catch (err) {
@@ -955,14 +973,41 @@ export function observeBlocks(opts = {}) {
   return () => obs.disconnect();
 }
 
+// When the engine never loads — the CDN is blocked, a CSP forbids it, the page
+// is offline — every block is left as the code the author wrote. That is the
+// intended degradation, but a reader should be told a render was attempted and
+// why it did not happen, on the page and beside each block, not only on the
+// console. renderSpytialGdls rejects only for that whole-page failure (a
+// per-block problem is caught inside it), so anything reaching here is one.
+export function noteEngineFailure(doc, err) {
+  const message = err && err.message ? err.message : String(err);
+  const noted = [];
+  for (const el of doc.querySelectorAll(blockSelector())) {
+    const host = absorbWrapper(hostFor(el));
+    if (host.dataset && host.dataset.spytialProcessed) continue;
+    if (noted.some((h) => h === host || h.contains(host) || host.contains(h))) continue;
+    noted.push(host);
+    const note = doc.createElement('div');
+    note.className = 'spytial-gdl-notice';
+    note.setAttribute('role', 'note');
+    note.style.cssText =
+      'font: 12px/1.5 system-ui, sans-serif; color: #7a5b00; background: #fff8e6;' +
+      ' border-left: 3px solid #e0ac30; padding: 6px 10px; margin: 8px 0 0;';
+    note.textContent = `spytial-gdl could not render this diagram: ${message}. The notation is shown as written.`;
+    if (host.parentNode) host.parentNode.insertBefore(note, host);
+  }
+  return noted.length;
+}
+
 // Render every spytial-gdl block once the DOM is ready, injecting the engine
 // if needed, and keep watching for blocks added later. The one-liner a page adds
 // to turn on rendering. Pass { observe: false } for a strictly one-shot pass.
 export function autoRender(opts = {}) {
   const run = () => {
     renderSpytialGdls(document, opts).catch((err) => {
-      // Surface load failures on the console rather than failing silently.
+      // On the console for the developer, and on the page for the reader.
       console.error('[spytial-gdl] auto-render failed:', err);
+      try { noteEngineFailure(document, err); } catch (_) { /* the note is best-effort */ }
     });
     if (opts.observe !== false) observeBlocks(opts);
   };

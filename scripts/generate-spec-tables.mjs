@@ -67,12 +67,11 @@ const REPLACEMENTS = {
   // core's language manifest documents the exact pairing; adopt it here
   // deliberately, not as a side effect of a version bump.
   icon: { replacedBy: 'atomStyle', desugars: false },
-  // Not an annotation of its own: the by-field form is selected by the presence
-  // of `field`, so it shares `group`'s yaml key. It stays in the tables as an
-  // alternative field set, which is how `@group(field=…, groupOn=0,
-  // addToGroup=1)` keeps validating. `replacedBy` names the other form rather
-  // than the annotation, since both are spelled `@group`.
-  group_byField: { replacedBy: 'group(selector=…)', desugars: false },
+  // `group_byField` was here until spytial-core 5.4.0 removed the form outright.
+  // A removed form leaves the schema, so no policy can describe it any more;
+  // what remains is a tombstone in annotations.js (RETIRED_FORMS) so an author
+  // upgrading a diagram is told the form is gone rather than that `field` is
+  // unknown. The check after the item loop is what catches the next one.
   'inferredEdge.color': { replacedBy: 'inferredEdge.lineStyle.color', desugars: true },
   'inferredEdge.style': { replacedBy: 'inferredEdge.lineStyle.pattern', desugars: true },
   'inferredEdge.weight': { replacedBy: 'inferredEdge.lineStyle.weight', desugars: true },
@@ -86,6 +85,18 @@ const REPLACEMENTS = {
 const SCALAR_KEYWORDS = {
   flag: 'name',
 };
+
+// Fields the schema describes as a generator's to write, not an author's. The
+// schema's own words for `source`: "For generators only — hand-written YAML
+// needs no `source`, because there the YAML is the author's text." spytial-gdl
+// is the generator: annotations.js stamps every compiled rule with the
+// annotation's text and line, and core cites that in its conflict reports. An
+// author has no business writing it, so it leaves the authorable vocabulary —
+// the item tables, the docs' argument reference, and the style-block list —
+// while still reaching the engine. Anchored below: a release that drops the
+// field stops the generator by name, since the stamp would then be an unknown
+// key to core.
+const GENERATOR_ONLY = new Set(['source']);
 
 // Deprecated literal spellings of a field's value, and what each one means now.
 // The schema marks the branch deprecated and states the equivalence only in
@@ -378,7 +389,7 @@ function yamlKeyOf(def, name) {
 // One item's field table. Items sharing a yaml key (`group` and its deprecated
 // by-field form) become alternative field sets: the first whose required fields
 // are all present is the one the annotation is checked against.
-function readItem(schema, name, blocks) {
+function readItem(schema, name, blocks, generatorOnlySeen = new Set()) {
   const def = schema.$defs[name];
   const inner = innerOf(def, name);
   const yamlKey = yamlKeyOf(def, name);
@@ -408,6 +419,9 @@ function readItem(schema, name, blocks) {
   const fields = {};
   const deprecatedFields = [];
   for (const [field, node] of Object.entries(inner.properties)) {
+    // A generator's field, not an author's: noted (for the anchor in build)
+    // and left out of the table the compiler checks an annotation against.
+    if (GENERATOR_ONLY.has(field)) { generatorOnlySeen.add(field); continue; }
     fields[field] = ruleFor(node, `${name}.${field}`, known);
     if (node.deprecated) deprecatedFields.push(field);
   }
@@ -441,12 +455,21 @@ function build(schema) {
 
   const blocks = readInlineBlocks(schema, itemDefs, readBlocks(schema, itemDefs));
 
+  // The block a generator-only field points at is not an authorable style
+  // block either (`source(text=…)` in an annotation is a mistake, not a
+  // style), so it leaves STYLE_BLOCKS along with the field. Removed here,
+  // before the items are read, so the orphan check below does not see it.
+  const generatorOnlySeen = new Set();
+  for (const name of GENERATOR_ONLY) {
+    if (blocks[name]) delete blocks[name];
+  }
+
   const sections = { constraints: [], directives: [] };
   const items = {};
   const deprecatedItems = {};
 
   for (const [name, section] of home) {
-    const entry = readItem(schema, name, blocks);
+    const entry = readItem(schema, name, blocks, generatorOnlySeen);
     const isDeprecated = Boolean(schema.$defs[name].deprecated);
     if (isDeprecated) {
       const policy = REPLACEMENTS[name];
@@ -471,6 +494,35 @@ function build(schema) {
     }
     if (items[entry.yamlKey].section !== section) {
       throw new SchemaDrift(`${entry.yamlKey} is split across sections by its alternative forms.`);
+    }
+  }
+
+  // Anchor GENERATOR_ONLY against the schema. annotations.js stamps every rule
+  // with `source`; if no item in the schema takes it any more, that stamp has
+  // become an unknown key, and what core does with one is not something to
+  // find out from a diagram.
+  for (const name of GENERATOR_ONLY) {
+    if (!generatorOnlySeen.has(name)) {
+      throw new SchemaDrift(
+        `GENERATOR_ONLY names ${name}, but no item in the schema has that field — core has dropped ` +
+        `it. annotations.js still stamps it on every rule; decide what replaces it before regenerating.`
+      );
+    }
+  }
+
+  // The reverse drift: a policy for a form the schema no longer defines. A
+  // deprecated form that core then *removes* leaves the schema entirely, so
+  // the loop above never asks for its policy and the entry would sit here
+  // describing a form that no longer exists — while annotations.js starts
+  // calling its arguments unknown. Stop by name instead: the form is retired,
+  // and needs a RETIRED_FORMS tombstone rather than a replacement policy.
+  for (const key of Object.keys(REPLACEMENTS)) {
+    if (key.includes('.')) continue;             // a field-level policy, checked where it is used
+    if (!schema.$defs[key]) {
+      throw new SchemaDrift(
+        `REPLACEMENTS names ${key}, but the schema no longer defines it — core has removed the ` +
+        `form. Delete the entry here and add a RETIRED_FORMS tombstone in src/annotations.js.`
+      );
     }
   }
 

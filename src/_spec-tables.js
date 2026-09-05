@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT BY HAND.
 //
 //   Source:   vendor/spytial-spec.schema.json
-//   Language: 2026-07-29 (spytial-core 5.0.1)
+//   Language: 2026-08-25 (spytial-core 5.4.0)
 //   Regenerate with: node scripts/generate-spec-tables.mjs
 //
 // Everything here is derived from the JSON Schema spytial-core publishes, so a
@@ -15,8 +15,8 @@
 // The schema this was generated from. LANGUAGE_VERSION only moves when the spec
 // language itself changes, so an unchanged value across a spytial-core bump
 // means nothing here needed revisiting.
-export const LANGUAGE_VERSION = "2026-07-29";
-export const CORE_VERSION = "5.0.1";
+export const LANGUAGE_VERSION = "2026-08-25";
+export const CORE_VERSION = "5.4.0";
 
 
 // ── Vocabularies ────────────────────────────────────────────────────────────
@@ -297,33 +297,6 @@ export const ITEMS = {
             field: "hold",
             equals: "never",
           },
-        },
-      },
-      {
-        yamlKey: "group",
-        required: ["field", "groupOn", "addToGroup"],
-        fields: {
-          field: {
-            type: "string",
-            minLength: 1,
-          },
-          groupOn: {
-            type: "integer",
-          },
-          addToGroup: {
-            type: "integer",
-          },
-          selector: {
-            type: "string",
-          },
-          hold: {
-            type: "enum",
-            values: ["always", "never"],
-          },
-        },
-        deprecated: {
-          replacedBy: "group(selector=…)",
-          desugars: false,
         },
       },
     ],

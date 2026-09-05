@@ -60,6 +60,21 @@ const NOT_IN_CORE = {
     'controls, not something a spec declares; no released spytial-core reads it',
 };
 
+// Forms core has removed outright — the name survives, a field set does not.
+// The schema no longer describes them, so the generated tables cannot name
+// them, and without this an author upgrading a diagram would be told that
+// `field` is "unknown" in `@group(...)` while it is listed nowhere. Keyed by
+// annotation name; `when` is any argument that identifies the retired form.
+// Remove an entry once the spelling has had time to disappear.
+const RETIRED_FORMS = {
+  group: {
+    when: ['field', 'groupOn', 'addToGroup'],
+    message: 'the by-field group (field, groupOn, addToGroup) was removed from spytial-core ' +
+      'in 5.4.0; write @group(selector=…, name=…) with a binary selector whose first ' +
+      'column is the group key and whose second is the members',
+  },
+};
+
 // The deprecated forms desugarLegacy rewrites onto their replacement, so the
 // compiled spec is current even when the source is not. The rest are emitted as
 // written, behind a warning. `test/spec-tables.test.mjs` holds this to the
@@ -769,14 +784,27 @@ function desugarLegacy(name, kwargs) {
 //                     these to round-trip the notation: editing the graph's *data*
 //                     never touches the layout directives, and specYaml is a lossy
 //                     compiled form, so we keep the originals.
+//   annotationMeta  — one record per compiled annotation, parallel to
+//                     annotationLines: { line, name, emitted, section, entry,
+//                     selectors, text }. `entry` is the exact list item that went
+//                     into specYaml and `selectors` the selector/field strings it
+//                     carries, which is how diagnostics.js maps what the engine
+//                     later says about a rule or a selector back to this line.
 //   errors          — [{ line, text, message }] for malformed / unknown / unterminated
 //                     annotations. `line` is the 1-based line the annotation starts on.
-export function extractAnnotations(rawSource) {
+//
+// opts.provenance — stamp each compiled rule with a `source` block holding the
+//                   annotation's verbatim text and line, which spytial-core 5.4+
+//                   cites in its conflict reports and warnings. Off here by
+//                   default so the compiled YAML is the bare rule; compileSpytialGdl
+//                   turns it on for everything that reaches the engine.
+export function extractAnnotations(rawSource, opts = {}) {
   const lines = String(rawSource ?? '').split(/\r?\n/);
   const kept = [];
   const constraints = [];
   const directives = [];
   const annotationLines = [];
+  const annotationMeta = [];
   const errors = [];
 
   let i = 0;
@@ -856,15 +884,32 @@ export function extractAnnotations(rawSource) {
     }
 
     let entry;
+    let modern;
     try {
+      // A form core has removed is said so by name, before the field check
+      // could call its arguments unknown.
+      const retired = lookup(RETIRED_FORMS, name);
+      if (retired && retired.when.some((k) => kwargs[k] !== undefined)) {
+        throw new Error(`@${name}(...): ${retired.message}`);
+      }
       // Checked as written, so a message names the argument the author typed
       // rather than whatever the legacy rewrite turned it into.
       validateItem(name, kwargs);
       warnIfDeprecated(name, kwargs);
       // Legacy forms are rewritten onto their current equivalents before
       // emission, so the compiled spec stays current even when the source isn't.
-      const modern = desugarLegacy(name, kwargs);
-      entry = emitEntry(modern.name, settleTypes(modern.name, modern.kwargs));
+      modern = desugarLegacy(name, kwargs);
+      const settled = settleTypes(modern.name, modern.kwargs);
+      // Provenance. spytial-core (5.4+) accepts a `source` block on every rule
+      // and cites its `text` and `location` in conflict reports and warnings in
+      // place of its own rendering of the rule — so the UNSAT panel quotes the
+      // annotation as the author wrote it, on the line they wrote it. Older
+      // cores parse and ignore the block. A wrapped annotation is folded onto
+      // one line, since a YAML flow scalar would fold it anyway.
+      const stamped = opts.provenance
+        ? { ...settled, source: { text: verbatim.trim().replace(/\s*\n\s*/g, ' '), location: `line ${at}` } }
+        : settled;
+      entry = emitEntry(modern.name, stamped);
     } catch (err) {
       errors.push({ line: at, text: verbatim.trim(), message: err.message });
       continue;
@@ -881,6 +926,15 @@ export function extractAnnotations(rawSource) {
 
     (isConstraint ? constraints : directives).push(entry);
     annotationLines.push(verbatim);
+    annotationMeta.push({
+      line: at,
+      name,
+      emitted: modern.name,
+      section: isConstraint ? 'constraints' : 'directives',
+      entry,
+      selectors: selectorStrings(modern.kwargs),
+      text: verbatim.trim(),
+    });
   }
 
   const source = kept.join('\n');
@@ -899,5 +953,19 @@ export function extractAnnotations(rawSource) {
     specYaml = out;
   }
 
-  return { source, specYaml, annotationLines, errors };
+  return { source, specYaml, annotationLines, annotationMeta, errors };
+}
+
+// The selector-like strings an annotation carries, for matching an engine
+// diagnostic back to it. `selector` is the selector proper; `field` names a
+// relation, which the engine reports under the same `selector` key when it
+// cannot resolve it. Both are read as written, so a comprehension selector
+// matches only its own exact text.
+function selectorStrings(kwargs) {
+  const out = [];
+  for (const key of ['selector', 'field']) {
+    const v = kwargs && kwargs[key];
+    if (typeof v === 'string' || typeof v === 'number') out.push(String(v));
+  }
+  return out;
 }

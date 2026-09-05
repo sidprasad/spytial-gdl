@@ -32,8 +32,13 @@ Stage by stage:
 | lift annotations | `annotations.js` | pull `@orientation(...)` and the rest out of the source, giving `{ source, specYaml }` |
 | parse | `parse.js` | `{ nodes, edges, classesPerNode }` |
 | relationalize | `relationalize.js` | `{ atoms, relations, hiddenRelations }` |
-| solve | spytial-core | `JSONDataInstance` → `SGraphQueryEvaluator` → `parseLayoutSpec` → `LayoutInstance.generateLayout` → `{ layout, error, selectorErrors }` |
+| ask the engine | `diagnostics.js` | every declared name read back through the evaluator; every rule through `parseLayoutSpec` on its own, refused ones left out |
+| solve | spytial-core | `JSONDataInstance` → `SGraphQueryEvaluator` → `parseLayoutSpec` → `LayoutInstance.generateLayout` → `{ layout, error, selectorErrors, warnings }` |
+| report | `diagnostics.js` | `selectorErrors` and `warnings` normalized and mapped back to annotation lines, onto one `diagnostics` list with the parser's and compiler's |
 | draw | `<webcola-cnd-graph>` | `.renderLayout(layout)` |
+
+The three engine-facing stages are one function, `solveSpytialGdl`, which both
+render paths call and `test/engine-diagnostics.test.mjs` calls in Node.
 
 The custom element owns layout as well as drawing, which is the design decision
 everything else follows from. spytial-gdl never positions anything itself. It
@@ -89,9 +94,40 @@ as a legacy alias. Vendor all three locally for an offline or version-pinned dep
 | `src/relationalize.js` | graph into `{ atoms, relations, hiddenRelations }` |
 | `src/registry.js` | per-class spec registry, plus `mergeSpecStrings` |
 | `src/serialize.js` | the inverse: value into spytial-gdl notation |
-| `src/index.js` | `compileSpytialGdl` (source into datum + spec), `mountGraph` / `renderSpytialGdl` / editable |
+| `src/diagnostics.js` | what the engine says about a diagram, read by field and pinned to lines |
+| `src/index.js` | `compileSpytialGdl` (source into datum + spec), `solveSpytialGdl` (datum + spec through the engine), `mountGraph` / `renderSpytialGdl` / editable |
 | `src/markdown.js` | block detection, the framed device, the UNSAT panel |
 | `src/auto.js` | the drop-in `autoRender()` tag |
+
+## Asking the engine, not modeling it
+
+Most of what can go quietly wrong in a diagram is the engine's to know: whether
+a bare name is one its query grammar reads, which of two things a shared spelling
+resolves to, whether a rule parses, whether a selector matched anything. Each of
+those moves between spytial-core releases, and a copy of the answer kept here
+would describe the release it was copied from.
+
+So `diagnostics.js` holds no such copy. Before the solve it hands every name the
+notation declared — each edge label, sort and class — to the evaluator and checks
+that what comes back is the thing declared; a word the grammar reserves comes
+back refused, by the grammar that reserves it. It parses each rule on its own
+through `parseLayoutSpec`, so a rule the installed release refuses is named and
+left out rather than failing the whole spec. After the solve it reads
+`selectorErrors` and `warnings` by field — `severity`, `code`, `selector`,
+`context` — and shows `message` verbatim, never matching against it. A field a
+future release drops degrades to a diagnostic without it.
+
+The parser keeps only the part that is spytial-gdl's own: the shape of a name
+(letters, digits, `_`), the `_` prefix it reserves for `_` and `_links`, and the
+fact that labels, sorts and classes share one namespace.
+
+`test/engine-diagnostics.test.mjs` pins the two claims this rests on against the
+installed engine: that a solve result carries `warnings` and `selectorErrors` we
+can read by field, and that the evaluator's answer about a name is the one we
+report. The name checks are written as parity — for each candidate label the
+suite asks the evaluator itself, then asserts we flag exactly those — so which
+words are reserved is never asserted, only that we agree with the engine about
+them.
 
 ## Testing what a spec means
 

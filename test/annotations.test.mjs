@@ -411,14 +411,47 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     /unknown "constructor" in @edgeStyle/.test(r.errors[0]?.message ?? ''), j(r.errors));
 }
 
-// ── a half-written annotation names the form it was reaching for ─────────────
+// ── a form core has removed is said so by name ───────────────────────────────
+// spytial-core 5.4.0 removed the by-field group (`field`, `groupOn`,
+// `addToGroup`) outright, so it left the schema and the generated tables with
+// it. Without a tombstone, an author upgrading a diagram would be told `field`
+// is unknown in `@group(...)` — a worse message than "this form is gone, write
+// this instead". The tombstone fires on any of the retired arguments, alone or
+// mixed with the current form, before the field check can call them unknown.
 {
-  const r = extractAnnotations('@group(field=f)');
-  check('a partial by-field group asks for the by-field arguments, not selector',
-    /requires groupOn, addToGroup/.test(r.errors[0]?.message ?? ''), j(r.errors));
-  const mixed = extractAnnotations('@group(field=f, name=G)');
-  check('mixing two forms says so, instead of calling a real argument unknown',
-    /cannot be combined/.test(mixed.errors[0]?.message ?? ''), j(mixed.errors));
+  for (const src of ['@group(field=f)', '@group(field=f, groupOn=0, addToGroup=1)', '@group(field=f, name=G)']) {
+    const r = extractAnnotations(src);
+    check(`retired by-field group: ${src} → one error naming the removal and the replacement`,
+      r.errors.length === 1 && r.specYaml === '' &&
+      /by-field group .* was removed/.test(r.errors[0].message) && /@group\(selector=/.test(r.errors[0].message),
+      j(r.errors));
+  }
+  const cur = extractAnnotations('@group(selector=g, name=G)');
+  check('the current group form is untouched by the tombstone', cur.errors.length === 0, j(cur));
+}
+
+// ── provenance: the rule as written travels with the compiled rule ───────────
+// spytial-core 5.4+ accepts a `source` block on every rule and cites its text
+// and line in conflict reports and warnings in place of its own rendering.
+// Off by default here, so the compiled YAML is the bare rule; compileSpytialGdl
+// turns it on for everything that reaches the engine.
+{
+  const src = 'A -> B : left\n@orientation(selector=left, directions=[left])';
+  const bare = extractAnnotations(src);
+  check('provenance off by default: no source block',
+    !/source/.test(bare.specYaml), j(bare.specYaml));
+  const stamped = extractAnnotations(src, { provenance: true });
+  check('provenance on: the rule carries its own text and line',
+    stamped.specYaml ===
+      "constraints:\n  - orientation: { selector: left, directions: [left], source: { text: '@orientation(selector=left, directions=[left])', location: 'line 2' } }\n",
+    j(stamped.specYaml));
+  check('…and annotationMeta.entry is the stamped entry, so a refused rule still maps to its line',
+    stamped.annotationMeta[0].entry === 'orientation: { selector: left, directions: [left], source: { text: \'@orientation(selector=left, directions=[left])\', location: \'line 2\' } }',
+    j(stamped.annotationMeta));
+  const wrapped = extractAnnotations('A -> B\n@group(\n  selector=x,\n  name=\'It\'\'s\',\n)', { provenance: true });
+  check('a wrapped annotation is folded onto one line, quotes escaped, line = where it starts',
+    /source: \{ text: '@group\( selector=x, name=''It''''s'', \)', location: 'line 2' \}/.test(wrapped.specYaml),
+    j(wrapped.specYaml));
 }
 
 // ── a field the schema calls optional and core throws on ─────────────────────
@@ -437,7 +470,6 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
   const ok = {
     'a named group': '@group(selector=home, name=Home)',
     'a negated group, where core generates the name': '@group(selector=home, hold=never)',
-    'the by-field form, which core never names': '@group(field=f, groupOn=0, addToGroup=1)',
   };
   for (const [label, src] of Object.entries(ok)) {
     const r2 = extractAnnotations(src);
