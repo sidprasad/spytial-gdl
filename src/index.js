@@ -12,7 +12,7 @@
 //     → <webcola-cnd-graph>.renderLayout(layout)
 //
 // spytial-core is a peer dependency loaded on the page (CDN or bundler) as the
-// global `window.spytialcore` (legacy alias `CndCore`); it auto-registers the
+// global `window.spytialcore`; it auto-registers the
 // <webcola-cnd-graph> custom element and needs d3 v4 + cola.js present. We do
 // NOT import it, so this module loads as a bare ES module in the browser.
 
@@ -21,8 +21,10 @@ import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } f
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
 import { serializeToSpytialGdl } from './serialize.js';
+import { sourceDiagnostics, engineDiagnostics } from './diagnostics.js';
 
 export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGdl };
+export { sourceDiagnostics, engineDiagnostics, attributeLine } from './diagnostics.js';
 
 // Constraint inference — the layout → spec direction. `abduce` reads a hand-made
 // arrangement as qualitative predicates, `generalize` names the relation that
@@ -44,10 +46,7 @@ export {
 } from './demonstrate.js';
 
 function getSpytialCore() {
-  const s =
-    (typeof window !== 'undefined' && (window.spytialcore || window.CndCore || window.CnDCore)) ||
-    globalThis.spytialcore ||
-    globalThis.CndCore;
+  const s = (typeof window !== 'undefined' && window.spytialcore) || globalThis.spytialcore;
   if (!s) {
     throw new Error(
       'spytial-gdl: spytial-core is not loaded. Include ' +
@@ -151,18 +150,23 @@ function hideFieldsYaml(hiddenRelations) {
 // parallel copy of the pipeline would only ever test the copy.
 //
 // Returns { ok: true, datum, rules, hiddenRelations, parsed, annotationLines,
-// annotationErrors, parseErrors }, or { ok: false, reason, ... } for a source
-// with no nodes.
+// annotationMeta, annotationErrors, parseErrors }, or { ok: false, reason, ... }
+// for a source with no nodes. `annotationMeta` is what lets a later engine
+// diagnostic be reported on the annotation's line (see diagnostics.js).
 export function compileSpytialGdl(source, opts = {}) {
-  const { source: cleanSource, specYaml: annoYaml, annotationLines, errors: annotationErrors } =
-    extractAnnotations(source);
+  // Every rule that reaches the engine carries its annotation's text and line
+  // (`source`), so a conflict report cites what the author wrote. Pass
+  // `provenance: false` to compile the bare rules.
+  const {
+    source: cleanSource, specYaml: annoYaml, annotationLines, annotationMeta, errors: annotationErrors,
+  } = extractAnnotations(source, { provenance: opts.provenance !== false });
 
   const parsed = parseGraph(cleanSource);
   const parseErrors = parsed.errors || [];
   if (parsed.nodes.size === 0) {
     return {
       ok: false, reason: 'no nodes parsed from source',
-      parsed, annotationLines, annotationErrors, parseErrors,
+      parsed, annotationLines, annotationMeta, annotationErrors, parseErrors,
     };
   }
 
@@ -179,7 +183,79 @@ export function compileSpytialGdl(source, opts = {}) {
   return {
     ok: true,
     datum: { atoms, relations },
-    rules, hiddenRelations, parsed, annotationLines, annotationErrors, parseErrors,
+    rules, hiddenRelations, parsed, annotationLines, annotationMeta, annotationErrors, parseErrors,
+  };
+}
+
+// The four engine entry points every solve needs, checked by name so a missing
+// one is reported as such rather than as a TypeError three calls later.
+function engineApi(spytial) {
+  const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial || {};
+  for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
+    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 5.0.0`);
+  }
+  return { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance };
+}
+
+// ── Headless solve ───────────────────────────────────────────────────────────
+// Hand a compiled diagram to the engine and collect what it has to say, without
+// a DOM. Both render paths go through this, and so does
+// test/engine-diagnostics.test.mjs, so what the suite checks is what a page
+// reports.
+//
+//   spytial  — the engine (window.spytialcore, or `import('spytial-core')`)
+//   compiled — an `ok` result of compileSpytialGdl
+//   opts     — { validator?: 'qualitative' | 'kiwi' }
+//
+// Returns { instance, evaluator, spec, rules, result, layout, error,
+//           selectorErrors, warnings, diagnostics }. `diagnostics` is the
+// engine's part only — a spec its parser refused, a selector it could not use,
+// one that matched nothing — each on the annotation's line where there is one.
+// sourceDiagnostics() holds the parser's and the annotation compiler's.
+export function solveSpytialGdl(spytial, compiled, opts = {}) {
+  const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = engineApi(spytial);
+  if (!compiled || !compiled.ok) {
+    throw new Error('solveSpytialGdl: expected an ok result of compileSpytialGdl');
+  }
+  const diagnostics = [];
+
+  // 1. datum → relational data instance, and the evaluator over it
+  const instance = new JSONDataInstance(compiled.datum);
+  const evaluator = new SGraphQueryEvaluator();
+  evaluator.initialize({ sourceData: instance });
+
+  // 2. layout rules → parsed spec. The engine's parser throws on a spec it
+  //    refuses, and every rule goes with it; say so, and solve under only the
+  //    hideField directives so the graph is still drawn once, with the reason
+  //    beside it, rather than not at all.
+  let rules = compiled.rules;
+  let spec;
+  try {
+    spec = parseLayoutSpec(rules || '');
+  } catch (err) {
+    diagnostics.push({
+      severity: 'error', source: 'engine', code: 'rules-rejected',
+      message: 'the engine rejected the layout rules, so the diagram is drawn without them: ' +
+        (err && err.message ? err.message : String(err)),
+    });
+    rules = hideFieldsYaml(compiled.hiddenRelations);
+    spec = parseLayoutSpec(rules || '');
+  }
+
+  // 3. solve (qualitative validator → IIS clash reporting / counterfactual)
+  const li = new LayoutInstance(spec, evaluator, 0, true, undefined, opts.validator || 'qualitative');
+  const result = li.generateLayout(instance);
+
+  // 4. what the solve had to say
+  diagnostics.push(...engineDiagnostics(result, compiled.annotationMeta));
+
+  return {
+    instance, evaluator, spec, rules, result,
+    layout: result.layout,
+    error: result.error || null,
+    selectorErrors: Array.isArray(result.selectorErrors) ? result.selectorErrors : [],
+    warnings: Array.isArray(result.warnings) ? result.warnings : [],
+    diagnostics,
   };
 }
 
@@ -191,8 +267,11 @@ export function compileSpytialGdl(source, opts = {}) {
 //              spatial annotations (see annotations.js)
 //   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
 //
-// Returns { applied, layout, error, selectorErrors, annotationErrors, parsed,
-//           data, instance, rules, hiddenRelations }.
+// Returns { applied, layout, error, selectorErrors, warnings, diagnostics,
+//           annotationErrors, parseErrors, parsed, data, instance, rules,
+//           hiddenRelations }. `diagnostics` is every problem in one list, with
+// line numbers where there are any: the parser's, the annotation compiler's,
+// and the engine's (see diagnostics.js).
 export async function renderSpytialGdl(graphEl, source, opts = {}) {
   if (!graphEl || typeof graphEl.renderLayout !== 'function') {
     throw new Error(
@@ -202,59 +281,44 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
   }
 
   const spytial = getSpytialCore();
-  const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial;
-  for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 5.0.0`);
-  }
+  engineApi(spytial);
 
   // 0. annotations → spec, notation → graph, graph → datum. Everything up to
   //    here is engine-independent and shared with the editable path.
   const compiled = compileSpytialGdl(source, opts);
   const { parsed, annotationErrors, parseErrors } = compiled;
+  const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
-    return { applied: false, reason: compiled.reason, parsed, annotationErrors, parseErrors };
+    return { applied: false, reason: compiled.reason, parsed, annotationErrors, parseErrors, diagnostics: own };
   }
-  const { datum: data, rules, hiddenRelations } = compiled;
+  const { datum: data, hiddenRelations } = compiled;
 
-  // 1. datum → relational data instance
-  const instance = new JSONDataInstance(data);
+  // 1. solve headlessly, collecting what the engine says on the way
+  const solved = solveSpytialGdl(spytial, compiled, opts);
+  const { instance, rules, layout, error, selectorErrors, warnings } = solved;
+  const diagnostics = [...own, ...solved.diagnostics];
 
-  // 2. relational evaluator
-  const evaluator = new SGraphQueryEvaluator();
-  evaluator.initialize({ sourceData: instance });
-
-  // 3. layout rules (YAML) → parsed spec. The hideField directives for the
-  //    selector-only relations are already in `rules`.
-  let spec;
-  try {
-    spec = parseLayoutSpec(rules || '');
-  } catch (err) {
-    throw new Error(`spytial-gdl: layout rules parse error: ${err.message}`);
-  }
-
-  // 4. solve (qualitative validator → IIS clash reporting / counterfactual)
-  const li = new LayoutInstance(spec, evaluator, 0, true, undefined, opts.validator || 'qualitative');
-  const result = li.generateLayout(instance);
-  const layout = result.layout;
-  const selectorErrors = result.selectorErrors || [];
-  const error = result.error || null;
-
-  // 5. reflect unsat state on the element (drives the renderer's conflict styling)
-  if (selectorErrors.length > 0 || error) graphEl.setAttribute('unsat', '');
+  // 2. reflect a constraint clash on the element (drives the renderer's
+  //    conflict styling). A selector error is not a clash: the engine skipped
+  //    that one rule and solved the rest, and it is reported in `diagnostics`.
+  if (error) graphEl.setAttribute('unsat', '');
   else graphEl.removeAttribute('unsat');
 
-  // 6. render. On a constraint clash, `layout` is the best-feasible
-  //    counterfactual — still worth drawing. Selector errors mean the spec
-  //    itself is malformed, so we skip drawing a degenerate layout.
+  // 3. render whatever layout came back. On a clash it is the best-feasible
+  //    counterfactual; with a selector error it is the layout under every
+  //    other rule. Both are worth drawing, and both are explained beside it.
   let applied = false;
-  if (layout && selectorErrors.length === 0) {
+  if (layout) {
     blankDefaultLabels(layout);
     if (typeof graphEl.clear === 'function') graphEl.clear();
     await graphEl.renderLayout(layout);
     applied = true;
   }
 
-  return { applied, layout, error, selectorErrors, annotationErrors, parseErrors, parsed, data, instance, rules, hiddenRelations };
+  return {
+    applied, layout, error, selectorErrors, warnings, diagnostics,
+    annotationErrors, parseErrors, parsed, data, instance, rules, hiddenRelations,
+  };
 }
 
 // ── Editable rendering ───────────────────────────────────────────────────────
@@ -330,6 +394,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
     parsed: meta.parsed,
     annotationErrors: meta.annotationErrors,
     parseErrors: meta.parseErrors,
+    diagnostics: meta.diagnostics,
     hiddenRelations: meta.hiddenRelations,
     rules: meta.rules,
     getValue,
@@ -345,15 +410,14 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
 //   opts      — { rules?, extraSpec?, width?, height?, theme?, ariaLabel? }
 //
 // Returns a handle:
-//   { applied, element, dataInstance, parsed, annotationErrors, hiddenRelations,
-//     rules, getSource(), getValue(), onChange(cb) → unsubscribe }
-// or { applied:false, reason, ... } if the source has no nodes.
+//   { applied, element, dataInstance, parsed, annotationErrors, parseErrors,
+//     diagnostics, hiddenRelations, rules, getSource(), getValue(),
+//     onChange(cb) → unsubscribe }
+// or { applied:false, reason, ... } if the source has no nodes. `diagnostics`
+// is the same list renderSpytialGdl returns, for the text that was applied.
 export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const spytial = getSpytialCore();
-  const { JSONDataInstance } = spytial;
-  if (!JSONDataInstance) {
-    throw new Error('spytial-gdl: spytial-core is missing JSONDataInstance; need spytial-core ≥ 5.0.0');
-  }
+  const { JSONDataInstance } = engineApi(spytial);
 
   const el =
     container && container.tagName && container.tagName.toLowerCase() === 'structured-input-graph'
@@ -371,15 +435,26 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   //    (the compiled specYaml is a lossy form).
   const compiled = compileSpytialGdl(source, opts);
   const { parsed, annotationLines, annotationErrors, parseErrors } = compiled;
+  const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
-    return { applied: false, reason: compiled.reason, element: el, parsed, annotationErrors, parseErrors };
+    return { applied: false, reason: compiled.reason, element: el, parsed, annotationErrors, parseErrors, diagnostics: own };
   }
-  const { datum, rules, hiddenRelations } = compiled;
+  const { datum, hiddenRelations } = compiled;
 
-  // 1. datum → input-capable data instance (the editor mutates it in place)
+  // 1. a headless solve first, for what the engine has to say. The editor
+  //    element solves too, but it reports only a constraint clash: a spec its
+  //    parser refuses is logged to the console and the graph is drawn under no
+  //    rules at all, and a selector it cannot use is dropped without a word.
+  //    Solving here, through the same public calls the read-only path uses,
+  //    surfaces both.
+  const solved = solveSpytialGdl(spytial, compiled, opts);
+  const rules = solved.rules;
+  const diagnostics = [...own, ...solved.diagnostics];
+
+  // 2. datum → input-capable data instance (the editor mutates it in place)
   const instance = new JSONDataInstance(datum);
 
-  // 2. hand off data + spec; the element owns layout + live constraint enforcement
+  // 3. hand off data + spec; the element owns layout + live constraint enforcement
   el.setDataInstance(instance);
   await el.setCnDSpec(rules);
 
@@ -387,6 +462,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
     parsed,
     annotationErrors,
     parseErrors,
+    diagnostics,
     hiddenRelations,
     rules,
   });

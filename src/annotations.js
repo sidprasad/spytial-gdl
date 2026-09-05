@@ -38,34 +38,23 @@
 // that replaced `icon`, was rejected as unknown. Core reports none of that, so
 // none of it was visible from here.
 //
+// The tables hold only what the schema marks current. A form core has
+// deprecated or removed is not in spytial-gdl's language at all: a deprecated
+// name is an unknown annotation, a deprecated argument an unknown argument.
+// There is no rewrite path and no tombstone, because there is no installed
+// base of old diagrams to keep rendering — the vocabulary is whatever the
+// vendored schema says today, and nothing else.
+//
 // What stays hand-written below is everything the schema has no opinion about:
-// the scanner, the legacy desugar, and the YAML emitter.
+// the scanner and the YAML emitter.
 import {
   CONSTRAINT_NAMES,
   DIRECTIVE_NAMES,
-  DEPRECATED_ITEMS,
   ITEMS,
-  LINE_PATTERNS,
   STYLE_BLOCKS,
 } from './_spec-tables.js';
 
 export { CONSTRAINT_NAMES, DIRECTIVE_NAMES };
-
-// Annotations spytial-gdl used to accept that core has never had a parser for.
-// Kept as tombstones so authoring one says why rather than reporting an unknown
-// name, which would be a worse message for anyone upgrading. Remove an entry
-// once the spelling has had time to disappear.
-const NOT_IN_CORE = {
-  projection: 'projection is a pre-layout transform driven by the viewer\'s projection ' +
-    'controls, not something a spec declares; no released spytial-core reads it',
-};
-
-// The deprecated forms desugarLegacy rewrites onto their replacement, so the
-// compiled spec is current even when the source is not. The rest are emitted as
-// written, behind a warning. `test/spec-tables.test.mjs` holds this to the
-// generated tables, so a form whose policy changes upstream cannot end up
-// warning about a rewrite that never happens.
-export const DESUGARED_ITEMS = new Set(['atomColor', 'edgeColor']);
 
 function isPlainObject(v) {
   return !!v && typeof v === 'object' && !Array.isArray(v);
@@ -131,37 +120,6 @@ function coerceValue(rule, value, { stringable = false } = {}) {
   return value;
 }
 
-// Settle booleans on an annotation that is about to be emitted, against the
-// rules of the form it is being emitted *as*.
-//
-// A legacy form skips coercion on the way in — deprecated arguments are lenient
-// on purpose — so `@edgeColor(..., showLabel=true)` still carries the string
-// parseValue produced when desugarLegacy hands it over as an `edgeStyle`. Left
-// alone, emitScalar quotes it (a string that looks like a boolean has to be
-// quoted, or a group named `false` loses its name) and core reads "true" where a
-// boolean belongs. Idempotent: a form that came through validateItem is already
-// settled, and this finds nothing to do.
-function settleTypes(name, kwargs) {
-  const item = lookup(ITEMS, name);
-  if (!item) return kwargs;
-  const fields = item.alternatives.find((alt) =>
-    alt.required.every((f) => kwargs[f] !== undefined))?.fields ?? item.alternatives[0].fields;
-
-  const settle = (rules, obj) => {
-    for (const [key, value] of Object.entries(obj)) {
-      const rule = lookup(rules, key);
-      if (!rule) continue;
-      if (rule.block && value && typeof value === 'object' && !Array.isArray(value)) {
-        settle(lookup(STYLE_BLOCKS, rule.block)?.fields ?? {}, value);
-      } else {
-        obj[key] = coerceValue(rule, value);
-      }
-    }
-    return obj;
-  };
-  return settle(fields, kwargs);
-}
-
 // Check one value against a generated rule. `where` names it for the message.
 function checkValue(rule, value, where) {
   switch (rule.type) {
@@ -215,8 +173,6 @@ function checkValue(rule, value, where) {
         validateBlock(rule.block, value);
         return;
       }
-      // A legacy literal spelling core still reads (`addEdge: true`).
-      if (rule.legacyValues && lookup(rule.legacyValues, String(value)) !== undefined) return;
       if (!rule.values.includes(value)) {
         throw new Error(
           `invalid ${where} "${value}"; expected one of ${rule.values.join(', ')}, ` +
@@ -284,8 +240,9 @@ function validateBlock(name, block) {
 }
 
 // Pick the field set an annotation is written against. Two forms may share one
-// name — the current `group` and its deprecated by-field spelling — and which
-// one applies is decided by the fields present, exactly as core decides it.
+// name, and which one applies is decided by the fields present, exactly as core
+// decides it. (Today every item has one form; the machinery stays because the
+// schema allows more.)
 function selectForm(item, kwargs) {
   const match = item.alternatives.find((alt) => alt.required.every((f) => kwargs[f] !== undefined));
   if (match) return match;
@@ -305,18 +262,13 @@ function selectForm(item, kwargs) {
   return best;
 }
 
-// Check an annotation's arguments against the generated table for its name.
-// Runs on the annotation as *written*, before any legacy rewrite, so a message
-// names the argument the author typed. Mutates `kwargs` in the one case below
-// where a value is accepted in a spelling core tolerates but the schema doesn't.
+// Check an annotation's arguments against the generated table for its name, and
+// settle each value onto the type its rule describes (coerceValue), so what is
+// emitted is what core expects. Messages name the argument the author typed.
 function validateItem(name, kwargs) {
   const item = lookup(ITEMS, name);
   if (!item) return;                       // unreachable: the caller checked the name
 
-  // A deprecated form is checked for unknown keys only. Its values go through
-  // desugarLegacy, which is lenient on purpose — core was lenient about them too,
-  // so a 2.x-era diagram has to keep rendering rather than start erroring.
-  const legacy = Boolean(lookup(DEPRECATED_ITEMS, name));
   const form = selectForm(item, kwargs);
   const known = new Set(item.alternatives.flatMap((alt) => Object.keys(alt.fields)));
 
@@ -335,15 +287,10 @@ function validateItem(name, kwargs) {
       }
       throw new Error(`unknown "${key}" in @${name}(...); expected one of ${[...known].join(', ')}`);
     }
-    // A field core has deprecated is lenient for the same reason a deprecated
-    // item is: desugarLegacy folds it into its replacement and drops a bad value
-    // with a warning rather than failing the annotation.
-    if (legacy || lookup(form.deprecatedFields ?? {}, key)) continue;
     kwargs[key] = coerceValue(rule, kwargs[key], { stringable: true });
     checkValue(rule, kwargs[key], `${name}.${key}`);
   }
 
-  if (legacy) return;
   const missing = form.required.filter((f) => kwargs[f] === undefined);
   if (missing.length > 0) {
     throw new Error(`@${name}(...) requires ${missing.join(', ')}`);
@@ -362,22 +309,6 @@ function validateItem(name, kwargs) {
       `@${name}(...) requires ${field} unless ${guard.field}=${guard.equals}; ` +
       `core rejects the entire spec without it`
     );
-  }
-}
-
-// Warn about a form core still reads but has deprecated. The replacement comes
-// from the generated tables, so a newly deprecated form starts warning on the
-// next spytial-core bump instead of going unnoticed.
-function warnIfDeprecated(name, kwargs) {
-  if (!lookup(ITEMS, name)) return;        // unreachable: the caller checked the name
-  const item = lookup(DEPRECATED_ITEMS, name);
-  if (item && !DESUGARED_ITEMS.has(name)) {
-    warn(`@${name} is deprecated; use @${item.replacedBy} instead`);
-    return;
-  }
-  const form = selectForm(ITEMS[name], kwargs);
-  if (form.deprecated) {
-    warn(`this form of @${name} is deprecated; use @${form.deprecated.replacedBy} instead`);
   }
 }
 
@@ -651,111 +582,6 @@ function emitEntry(name, kwargs) {
   return `${name}: ${emitMap(kwargs)}`;
 }
 
-// ── Legacy → 3.x desugar ─────────────────────────────────────────────────────
-// core still parses `edgeColor` / `atomColor` / inferredEdge's inline style
-// keys, but `console.warn`s on every one. Rewriting them here keeps the compiled
-// spec pure 3.x: the browser console stays quiet, and a legacy diagram compiles
-// to byte-identical YAML to its modern equivalent. The author's *source* is
-// untouched — `annotationLines` keeps it verbatim, so the round-trip still hands
-// back what they wrote.
-//
-// New-form blocks are strict (validateBlock); the legacy path below is lenient,
-// mirroring core's own normalization, because a 2.x-era diagram has to keep
-// rendering exactly as it does today.
-
-function warn(message) {
-  if (typeof console !== 'undefined' && typeof console.warn === 'function') {
-    console.warn(`spytial-gdl: ${message}`);
-  }
-}
-
-// core's normalizeEdgeStyle: trim + lowercase, so `style=Dashed` / `style=' dashed '`
-// rendered dashed at 2.x. Normalize the same way rather than strict-matching, or
-// those specs would silently fall back to solid.
-function legacyPattern(raw, where) {
-  if (raw === undefined) return null;
-  const s = String(raw).trim().toLowerCase();
-  if (LINE_PATTERNS.includes(s)) return s;
-  warn(`ignoring invalid ${where} style "${raw}" (expected ${LINE_PATTERNS.join(', ')})`);
-  return null;
-}
-
-// Mirrors core's weight check: finite and positive, or dropped. A *quoted*
-// weight (`weight='2'`) counts: emitScalar writes the string 2 as bare YAML,
-// which parses numeric, so 2.x core always saw it as a number — coerce first.
-function legacyWeight(raw, where) {
-  if (raw === undefined) return null;
-  const n = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
-  if (typeof n === 'number' && Number.isFinite(n) && n > 0) return n;
-  warn(`ignoring invalid ${where} weight "${raw}" (expected a positive number)`);
-  return null;
-}
-
-// Gather legacy inline styling into a lineStyle block. `colorKey` differs by
-// directive: edgeColor spells it `value`, inferredEdge spells it `color`.
-function legacyLineStyle(kwargs, colorKey, where) {
-  const line = {};
-  if (kwargs[colorKey] !== undefined) line.color = kwargs[colorKey];
-  const pattern = legacyPattern(kwargs.style, where);
-  if (pattern) line.pattern = pattern;
-  const weight = legacyWeight(kwargs.weight, where);
-  if (weight) line.weight = weight;
-  if (kwargs.highlight !== undefined) line.highlight = kwargs.highlight;
-  return line;
-}
-
-// Rewrite a legacy annotation onto its 3.x form; everything else passes through
-// untouched. Throws when the legacy input can't be carried over faithfully.
-function desugarLegacy(name, kwargs) {
-  if (name === 'edgeColor') {
-    const out = {};
-    for (const k of ['field', 'selector', 'filter']) {
-      if (kwargs[k] !== undefined) out[k] = kwargs[k];
-    }
-    const line = legacyLineStyle(kwargs, 'value', 'edgeColor');
-    if (Object.keys(line).length > 0) out.lineStyle = line;
-    for (const k of ['showLabel', 'hidden']) {
-      if (kwargs[k] !== undefined) out[k] = kwargs[k];
-    }
-    return { name: 'edgeStyle', kwargs: out };
-  }
-
-  if (name === 'atomColor') {
-    // core drops a selectorless atomColor — it was always a no-op, never a global
-    // recolor. atomStyle reads an *absent* selector as "every atom", so blindly
-    // desugaring one would repaint the whole graph. Report it instead.
-    if (kwargs.selector === undefined || String(kwargs.selector).trim() === '') {
-      throw new Error('atomColor requires a selector');
-    }
-    const out = { selector: kwargs.selector };
-    // The border-preserving mapping: atomColor drives a node's *outline*, so
-    // value → borderStyle.color leaves existing diagrams looking identical.
-    // fillStyle is the opt-in interior fill.
-    if (kwargs.value !== undefined) out.borderStyle = { color: kwargs.value };
-    return { name: 'atomStyle', kwargs: out };
-  }
-
-  if (name === 'inferredEdge') {
-    const INLINE = ['color', 'style', 'weight', 'highlight'];
-    const used = INLINE.filter((k) => kwargs[k] !== undefined);
-    if (used.length === 0) return { name, kwargs };
-    if (kwargs.lineStyle !== undefined) {
-      throw new Error(
-        `inferredEdge: inline ${used.join('/')} conflicts with the lineStyle block — keep the block`
-      );
-    }
-    const out = {};
-    for (const [k, v] of Object.entries(kwargs)) {
-      if (!INLINE.includes(k)) out[k] = v;
-    }
-    const line = legacyLineStyle(kwargs, 'color', 'inferredEdge');
-    if (Object.keys(line).length > 0) out.lineStyle = line;
-    return { name, kwargs: out };
-  }
-
-  return { name, kwargs };
-}
-
 // Extract inline annotations from `rawSource`.
 //
 // Returns { source, specYaml, annotationLines, errors }:
@@ -769,14 +595,26 @@ function desugarLegacy(name, kwargs) {
 //                     these to round-trip the notation: editing the graph's *data*
 //                     never touches the layout directives, and specYaml is a lossy
 //                     compiled form, so we keep the originals.
+//   annotationMeta  — one record per compiled annotation, parallel to
+//                     annotationLines: { line, name, selectors }, where
+//                     `selectors` is the selector/field strings it names. This is
+//                     how diagnostics.js maps what the engine later says about a
+//                     selector back to the line it was written on.
 //   errors          — [{ line, text, message }] for malformed / unknown / unterminated
 //                     annotations. `line` is the 1-based line the annotation starts on.
-export function extractAnnotations(rawSource) {
+//
+// opts.provenance — stamp each compiled rule with a `source` block holding the
+//                   annotation's verbatim text and line, which spytial-core 5.4+
+//                   cites in its conflict reports and warnings. Off here by
+//                   default so the compiled YAML is the bare rule; compileSpytialGdl
+//                   turns it on for everything that reaches the engine.
+export function extractAnnotations(rawSource, opts = {}) {
   const lines = String(rawSource ?? '').split(/\r?\n/);
   const kept = [];
   const constraints = [];
   const directives = [];
   const annotationLines = [];
+  const annotationMeta = [];
   const errors = [];
 
   let i = 0;
@@ -841,9 +679,7 @@ export function extractAnnotations(rawSource) {
     const isConstraint = CONSTRAINT_NAMES.has(name);
     const isDirective = DIRECTIVE_NAMES.has(name);
     if (!isConstraint && !isDirective) {
-      const tombstone = NOT_IN_CORE[name];
-      errors.push({ line: at, text: verbatim.trim(),
-        message: tombstone ? `@${name} does nothing: ${tombstone}` : `unknown annotation "@${name}"` });
+      errors.push({ line: at, text: verbatim.trim(), message: `unknown annotation "@${name}"` });
       continue;
     }
 
@@ -857,14 +693,17 @@ export function extractAnnotations(rawSource) {
 
     let entry;
     try {
-      // Checked as written, so a message names the argument the author typed
-      // rather than whatever the legacy rewrite turned it into.
       validateItem(name, kwargs);
-      warnIfDeprecated(name, kwargs);
-      // Legacy forms are rewritten onto their current equivalents before
-      // emission, so the compiled spec stays current even when the source isn't.
-      const modern = desugarLegacy(name, kwargs);
-      entry = emitEntry(modern.name, settleTypes(modern.name, modern.kwargs));
+      // Provenance. spytial-core (5.4+) accepts a `source` block on every rule
+      // and cites its `text` and `location` in conflict reports and warnings in
+      // place of its own rendering of the rule — so the UNSAT panel quotes the
+      // annotation as the author wrote it, on the line they wrote it. Older
+      // cores parse and ignore the block. A wrapped annotation is folded onto
+      // one line, since a YAML flow scalar would fold it anyway.
+      const stamped = opts.provenance
+        ? { ...kwargs, source: { text: verbatim.trim().replace(/\s*\n\s*/g, ' '), location: `line ${at}` } }
+        : kwargs;
+      entry = emitEntry(name, stamped);
     } catch (err) {
       errors.push({ line: at, text: verbatim.trim(), message: err.message });
       continue;
@@ -881,6 +720,7 @@ export function extractAnnotations(rawSource) {
 
     (isConstraint ? constraints : directives).push(entry);
     annotationLines.push(verbatim);
+    annotationMeta.push({ line: at, name, selectors: selectorStrings(kwargs) });
   }
 
   const source = kept.join('\n');
@@ -899,5 +739,19 @@ export function extractAnnotations(rawSource) {
     specYaml = out;
   }
 
-  return { source, specYaml, annotationLines, errors };
+  return { source, specYaml, annotationLines, annotationMeta, errors };
+}
+
+// The selector-like strings an annotation carries, for matching an engine
+// diagnostic back to it. `selector` is the selector proper; `field` names a
+// relation, which the engine reports under the same `selector` key when it
+// cannot resolve it. Both are read as written, so a comprehension selector
+// matches only its own exact text.
+function selectorStrings(kwargs) {
+  const out = [];
+  for (const key of ['selector', 'field']) {
+    const v = kwargs && kwargs[key];
+    if (typeof v === 'string' || typeof v === 'number') out.push(String(v));
+  }
+  return out;
 }

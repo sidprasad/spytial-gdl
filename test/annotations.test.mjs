@@ -292,69 +292,26 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
   }
 }
 
-// ── legacy desugar (core 2.x forms still compile, onto the 3.x blocks) ───────
+// ── deprecated and removed forms are simply not in the language ──────────────
+// The tables hold only what the vendored schema marks current. There is no
+// rewrite path and no tombstone: a deprecated name is an unknown annotation, a
+// deprecated argument an unknown argument, a deprecated literal an invalid
+// value. Each is one error naming what was written, and nothing compiles.
 {
-  check('atomColor → atomStyle, value → borderStyle.color (outline-preserving)',
-    body("@atomColor(selector=Person, value='#cfe8d8')") ===
-    "atomStyle: { selector: Person, borderStyle: { color: '#cfe8d8' } }");
-  check('edgeColor → edgeStyle, value/style → lineStyle.color/pattern',
-    body("@edgeColor(field=f, value=red, style=dashed)") ===
-    'edgeStyle: { field: f, lineStyle: { color: red, pattern: dashed } }');
-  check("edgeColor's style is normalized like core's normalizeEdgeStyle (trim + lowercase)",
-    body("@edgeColor(field=f, value=red, style=' Dashed ')") ===
-    'edgeStyle: { field: f, lineStyle: { color: red, pattern: dashed } }');
-  check('edgeColor carries selector / filter / showLabel / hidden across',
-    body("@edgeColor(field=f, selector=S, filter=T, value=red, showLabel=true, hidden=false)") ===
-    'edgeStyle: { field: f, selector: S, filter: T, lineStyle: { color: red }, showLabel: true, hidden: false }');
-  check('inferredEdge inline color/style → lineStyle',
-    body("@inferredEdge(name=p, selector='~c', color=gray, style=dotted)") ===
-    'inferredEdge: { name: p, selector: ~c, lineStyle: { color: gray, pattern: dotted } }');
-}
-{
-  // A legacy annotation and its modern equivalent must compile identically —
-  // that's what makes the desugar a rewrite rather than a second code path.
-  check('legacy and modern forms compile to byte-identical YAML',
-    extractAnnotations("@atomColor(selector=P, value='#fff')").specYaml ===
-    extractAnnotations("@atomStyle(selector=P, borderStyle(color='#fff'))").specYaml);
-}
-{
-  // Lenient on purpose: a 2.x-era spec must keep rendering, so an invalid legacy
-  // style drops that one leaf rather than failing the annotation. (core does the
-  // same, silently.) The new block form is strict — see below.
-  const r = extractAnnotations('@edgeColor(field=f, value=red, style=wavy)');
-  check('an invalid legacy style drops the leaf and still compiles',
-    r.errors.length === 0 && body('@edgeColor(field=f, value=red, style=wavy)') ===
-    'edgeStyle: { field: f, lineStyle: { color: red } }', j(r));
-  const w = extractAnnotations('@edgeColor(field=f, value=red, weight=0)');
-  check('a non-positive legacy weight drops the leaf and still compiles',
-    w.errors.length === 0 && body('@edgeColor(field=f, value=red, weight=0)') ===
-    'edgeStyle: { field: f, lineStyle: { color: red } }', j(w));
-}
-{
-  // A quoted legacy weight was numeric by the time 2.x core saw it (the string
-  // 2 emits as bare YAML), so it must survive the desugar as a number.
-  check('a quoted legacy weight coerces to a number, not a drop',
-    body("@edgeColor(field=f, value=red, weight='2')") ===
-    'edgeStyle: { field: f, lineStyle: { color: red, weight: 2 } }');
-  check('inferredEdge: a quoted weight coerces too',
-    body("@inferredEdge(name=p, selector=s, weight='2.5')") ===
-    'inferredEdge: { name: p, selector: s, lineStyle: { weight: 2.5 } }');
-  check('a non-numeric quoted weight still drops the leaf',
-    body("@edgeColor(field=f, value=red, weight='abc')") ===
-    'edgeStyle: { field: f, lineStyle: { color: red } }');
-}
-{
-  // atomStyle reads an absent selector as *every atom*, so a selectorless
-  // atomColor must not desugar into a whole-graph repaint. core drops it; we say why.
-  const r = extractAnnotations("@atomColor(value='#fff')");
-  check('a selectorless atomColor is an error, not a whole-graph repaint',
-    r.errors.length === 1 && /atomColor requires a selector/.test(r.errors[0].message), j(r.errors));
-  check('a selectorless atomColor compiles nothing', r.specYaml === '', j(r.specYaml));
-}
-{
-  const r = extractAnnotations("@inferredEdge(name=p, selector=s, color=gray, lineStyle(color=red))");
-  check('inferredEdge: inline style + a lineStyle block is a conflict',
-    r.errors.length === 1 && /conflicts with the lineStyle block/.test(r.errors[0].message), j(r.errors));
+  const gone = {
+    'the deprecated atomColor': ['@atomColor(selector=P, value=red)', /unknown annotation "@atomColor"/],
+    'the deprecated edgeColor': ['@edgeColor(field=f, value=red)', /unknown annotation "@edgeColor"/],
+    'the deprecated icon': ["@icon(selector=P, path='x.svg')", /unknown annotation "@icon"/],
+    'projection, which no core ever read': ['@projection(selector=P)', /unknown annotation "@projection"/],
+    "inferredEdge's old inline color": ['@inferredEdge(name=p, selector=s, color=gray)', /unknown "color" in @inferredEdge/],
+    'the removed by-field group': ['@group(field=f, groupOn=0, addToGroup=1)', /unknown "field" in @group/],
+    "addEdge's old literal true": ['@group(selector=g, name=G, addEdge=true)', /invalid group\.addEdge "true"/],
+  };
+  for (const [label, [src, message]] of Object.entries(gone)) {
+    const r = extractAnnotations(src);
+    check(`${label} → one error, nothing compiled`,
+      r.errors.length === 1 && r.specYaml === '' && message.test(r.errors[0].message), j(r));
+  }
 }
 
 // ── strict validation of the block vocabulary ────────────────────────────────
@@ -399,7 +356,7 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     'valueOf as a block leaf': '@edgeStyle(field=f, lineStyle(valueOf=red))',
     'constructor as a block name': '@edgeStyle(field=f, constructor(color=red))',
     '__proto__ as an item argument': '@edgeStyle(field=f, __proto__=x)',
-    'a prototype member as a legacy literal': '@group(selector=x, name=G, addEdge=toString)',
+    'a prototype member as an enum value': '@group(selector=x, name=G, addEdge=toString)',
   };
   for (const [label, src] of Object.entries(bad)) {
     const r = extractAnnotations(src);
@@ -411,14 +368,28 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     /unknown "constructor" in @edgeStyle/.test(r.errors[0]?.message ?? ''), j(r.errors));
 }
 
-// ── a half-written annotation names the form it was reaching for ─────────────
+// ── provenance: the rule as written travels with the compiled rule ───────────
+// spytial-core 5.4+ accepts a `source` block on every rule and cites its text
+// and line in conflict reports and warnings in place of its own rendering.
+// Off by default here, so the compiled YAML is the bare rule; compileSpytialGdl
+// turns it on for everything that reaches the engine.
 {
-  const r = extractAnnotations('@group(field=f)');
-  check('a partial by-field group asks for the by-field arguments, not selector',
-    /requires groupOn, addToGroup/.test(r.errors[0]?.message ?? ''), j(r.errors));
-  const mixed = extractAnnotations('@group(field=f, name=G)');
-  check('mixing two forms says so, instead of calling a real argument unknown',
-    /cannot be combined/.test(mixed.errors[0]?.message ?? ''), j(mixed.errors));
+  const src = 'A -> B : left\n@orientation(selector=left, directions=[left])';
+  const bare = extractAnnotations(src);
+  check('provenance off by default: no source block',
+    !/source/.test(bare.specYaml), j(bare.specYaml));
+  const stamped = extractAnnotations(src, { provenance: true });
+  check('provenance on: the rule carries its own text and line',
+    stamped.specYaml ===
+      "constraints:\n  - orientation: { selector: left, directions: [left], source: { text: '@orientation(selector=left, directions=[left])', location: 'line 2' } }\n",
+    j(stamped.specYaml));
+  check('…and annotationMeta records the line, name, and selectors for attribution',
+    j(stamped.annotationMeta) === j([{ line: 2, name: 'orientation', selectors: ['left'] }]),
+    j(stamped.annotationMeta));
+  const wrapped = extractAnnotations('A -> B\n@group(\n  selector=x,\n  name=\'It\'\'s\',\n)', { provenance: true });
+  check('a wrapped annotation is folded onto one line, quotes escaped, line = where it starts',
+    /source: \{ text: '@group\( selector=x, name=''It''''s'', \)', location: 'line 2' \}/.test(wrapped.specYaml),
+    j(wrapped.specYaml));
 }
 
 // ── a field the schema calls optional and core throws on ─────────────────────
@@ -437,7 +408,6 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
   const ok = {
     'a named group': '@group(selector=home, name=Home)',
     'a negated group, where core generates the name': '@group(selector=home, hold=never)',
-    'the by-field form, which core never names': '@group(field=f, groupOn=0, addToGroup=1)',
   };
   for (const [label, src] of Object.entries(ok)) {
     const r2 = extractAnnotations(src);
@@ -499,16 +469,11 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
 // ── a boolean field still reaches core as a boolean ──────────────────────────
 // The other side of the quoting above: `showLabel=true` must not become the
 // string "true". Arguments arrive untyped, so the value is settled against its
-// rule before emission — including on the legacy forms, which skip validation
-// and would otherwise carry the raw string through the rewrite.
+// rule during validation, before emission.
 {
   const bools = {
-    'showLabel on a current form': ['@edgeStyle(field=f, showLabel=true)', 'showLabel: true'],
-    'hidden on a current form': ['@edgeStyle(field=f, hidden=false)', 'hidden: false'],
-    'showLabel carried through a legacy rewrite':
-      ['@edgeColor(field=f, value=red, showLabel=true)', 'showLabel: true'],
-    'hidden carried through a legacy rewrite':
-      ['@edgeColor(field=f, value=red, hidden=false)', 'hidden: false'],
+    'showLabel': ['@edgeStyle(field=f, showLabel=true)', 'showLabel: true'],
+    'hidden': ['@edgeStyle(field=f, hidden=false)', 'hidden: false'],
   };
   for (const [label, [src, expected]] of Object.entries(bools)) {
     const r = extractAnnotations(src);
@@ -519,11 +484,10 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
   check('and a non-boolean is still refused', bad.errors.length === 1, j(bad));
 }
 
-// ── round-trip: blocks and legacy forms survive serialize verbatim ───────────
+// ── round-trip: block annotations survive serialize verbatim ─────────────────
 {
-  // specYaml is a lossy compiled form, so the *source* is what round-trips —
-  // including a legacy annotation, which stays legacy in the text it hands back.
-  const src = "A -> B\n\n@edgeStyle(\n  field=_,\n  lineStyle(color=crimson, pattern=dashed)\n)\n@atomColor(selector=x, value='#fff')";
+  // specYaml is a lossy compiled form, so the *source* is what round-trips.
+  const src = "A -> B\n\n@edgeStyle(\n  field=_,\n  lineStyle(color=crimson, pattern=dashed)\n)\n@atomStyle(selector=x, borderStyle(color='#fff'))";
   const { source, annotationLines } = extractAnnotations(src);
   const g = parseGraph(source);
   const atoms = [...g.nodes.values()].map(n => ({ id: n.id, type: n.type || '', label: n.label || n.id }));
@@ -532,8 +496,8 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
   const out = serializeToSpytialGdl({ atoms, relations }, { annotations: annotationLines });
   check('round-trip: a wrapped block annotation is re-appended verbatim',
     out.includes('@edgeStyle(\n  field=_,\n  lineStyle(color=crimson, pattern=dashed)\n)'), `\n${out}`);
-  check('round-trip: a legacy annotation is handed back as written, not rewritten',
-    out.includes("@atomColor(selector=x, value='#fff')"), `\n${out}`);
+  check('round-trip: a one-line annotation is handed back as written',
+    out.includes("@atomStyle(selector=x, borderStyle(color='#fff'))"), `\n${out}`);
   check('round-trip: re-extracting gives the same compiled spec',
     extractAnnotations(out).specYaml === extractAnnotations(src).specYaml, `\n${out}`);
 }

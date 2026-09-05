@@ -32,10 +32,7 @@
 // expression that mentions an individual node.
 
 function getCore() {
-  const c =
-    (typeof window !== 'undefined' && (window.spytialcore || window.CndCore || window.CnDCore)) ||
-    globalThis.spytialcore ||
-    globalThis.CndCore;
+  const c = (typeof window !== 'undefined' && window.spytialcore) || globalThis.spytialcore;
   return c || null;
 }
 

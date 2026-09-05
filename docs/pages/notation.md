@@ -26,9 +26,15 @@ A -> C : miss
 @orientation(selector=miss, directions=[below])
 ```
 
-> **Note.** A few words are reserved by the selector grammar, so avoid them as edge
-> labels: `yes`, `no`, `true`, `false`, `then`, `else`. Use a plain identifier
-> (`hit`, `pass`, `child`) instead.
+> **Note.** A label is a selector name: letters, digits and `_`, not starting with
+> a digit. A space, a hyphen or any punctuation is reported as an error on that
+> line (`-` is set difference in the query grammar, so `left-child` would read as
+> `left` minus `child`), and so is a name starting with `_`, which spytial-gdl
+> keeps for `_` and `_links`. The query grammar also reserves a few words of its
+> own (`no`, `in`, `some`, and others that vary by spytial-core release); an
+> annotation that names one is reported by the engine, on that annotation's line,
+> so there is no list here to go stale. The same rule applies to sorts and
+> classes.
 
 ## Nodes, labels, and ids
 
@@ -256,14 +262,19 @@ adding a second arrow on top of the labeled one.
 ### Collisions
 
 Labels, types, and classes all live in one selector namespace, so a name means
-whatever shares its spelling. Keep them distinct. If an edge label `team` and a
-class `team` coexist, `selector=team` is ambiguous and one shadows the other.
-Rename one of them, for instance edge label `member_of` against class `team`.
+whatever shares its spelling. If an edge label `team` and a class `team` coexist,
+`selector=team` can only reach one of them. The parser reports that as an error on
+the second one's line, and when a class is involved it drops the class, because
+hiding the class's relation by name would otherwise hide the edges too. Rename one
+of them, for instance edge label `member_of` against class `team`. A class line
+that names a node no line declares is reported the same way.
 
-> **Note.** A selector that doesn't resolve to anything comes back as a
-> `selectorError` rather than failing silently. In an embed, the **⚠ A selector
-> didn't resolve** panel names it; from the API it's the `selectorErrors` array on
-> the result. See [Errors and conflicts](annotations.md#selector-errors).
+> **Note.** A selector that doesn't resolve to what you meant is reported rather
+> than failing silently. One the engine cannot use (a sort where edges are needed,
+> a reserved word) is a selector error; one that matches nothing is a warning.
+> Both arrive on the result's `diagnostics` with the annotation's line, and in an
+> embed they appear in the **⚠ … in this source** band under the diagram. See
+> [What the engine reports](annotations.md#what-the-engine-reports).
 
 ### Advanced: comprehensions
 

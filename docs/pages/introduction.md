@@ -152,11 +152,6 @@ any config. `class="language-spytial-gdl"` and `<pre class="spytial-gdl">` are
 picked up too, so whatever markup you or a renderer emit gets caught. Indentation
 inside the `<div>` is fine, since each line is trimmed.
 
-> **Renaming note.** This project used to be called `spytial-graph`. The old
-> ` ```spytial-graph ` fence tag (and `spytial` for short) still renders, so pages
-> and embeds written before the rename keep working. New content should use
-> ` ```spytial-gdl `.
-
 > **Note.** The page has to be served by a static server rather than opened as
 > `file://`, because the tag is an ES module. See *Running locally* below.
 

@@ -576,21 +576,39 @@ c -> a : r3
             if (result.instance) graphEl.getDataInstance = () => result.instance;
             if (demo) demo.cancel(); else mountDemo();
 
+            // One list for everything that is not a clash: the parser's, the
+            // annotation compiler's, and the engine's (a selector it could not
+            // use, one that matched nothing, a rule it refused), each with its
+            // line. The status line shows the first and counts the rest; the
+            // whole list goes to the console.
+            const diagnostics = result.diagnostics || [];
+            const problems = diagnostics.filter((d) => d.severity !== 'warning');
+            const warnings = diagnostics.filter((d) => d.severity === 'warning');
+            const where = (d) => (d.line ? `line ${d.line}: ` : '');
+            const rest = (list) => (list.length > 1 ? ` (+${list.length - 1} more, listed in the console)` : '');
+            if (diagnostics.length) console.warn('[spytial-gdl] diagnostics:', diagnostics);
+
             if (result.reason) {
                 setStatus(result.reason, 'error');
-            } else if (result.annotationErrors && result.annotationErrors.length) {
-                const first = result.annotationErrors[0];
-                setStatus(`Annotation error (line ${first.line}): ${first.message} — "${first.text}"`, 'error');
-            } else if (result.selectorErrors && result.selectorErrors.length) {
-                window.showSelectorErrors && window.showSelectorErrors(result.selectorErrors);
-                document.getElementById('conflict-hint').style.display = 'inline-flex';
-                setStatus('Some selectors did not resolve — see the explanation.', 'error');
+            } else if (problems.length) {
+                setStatus(`${where(problems[0])}${problems[0].message}${rest(problems)}`, 'error');
+                // The engine's own explanation of a selector it could not use,
+                // beside the diagram it still drew under the other rules.
+                if (result.selectorErrors && result.selectorErrors.length) {
+                    window.showSelectorErrors && window.showSelectorErrors(result.selectorErrors);
+                    document.getElementById('conflict-hint').style.display = 'inline-flex';
+                }
             } else if (result.error) {
                 handleConflict(result.error);
                 document.getElementById('conflict-hint').style.display = 'inline-flex';
             } else {
                 const n = result.parsed.nodes.size, e = result.parsed.edges.length;
-                setStatus(`Rendered ${n} node${n !== 1 ? 's' : ''}, ${e} edge${e !== 1 ? 's' : ''}.`, 'success');
+                const drawn = `Rendered ${n} node${n !== 1 ? 's' : ''}, ${e} edge${e !== 1 ? 's' : ''}.`;
+                if (warnings.length) {
+                    setStatus(`${drawn} ${where(warnings[0])}${warnings[0].message}${rest(warnings)}`, 'info');
+                } else {
+                    setStatus(drawn, 'success');
+                }
             }
         }
         window.apply = apply;

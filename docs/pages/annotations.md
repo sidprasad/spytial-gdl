@@ -44,9 +44,7 @@ only in which bucket they compile to, and the value syntax is identical.
 | `hideAtom` | hide matching nodes |
 
 `size` and `hideAtom` read like styling but are constraints: both change what the
-layout has to solve for, rather than decorating a solved one. Core accepts them
-among the directives too, behind a deprecation warning, which is why they are
-sometimes written there.
+layout has to solve for, rather than decorating a solved one.
 
 ### orientation
 
@@ -240,10 +238,11 @@ Only the constraints listed with it take it; `size` and `hideAtom` accept the ke
 syntactically and ignore it, so writing it there would quietly mean the opposite
 of what it says, and spytial-gdl rejects it rather than emitting a no-op.
 
-Two forms are deprecated but still compile, since core still reads them:
-`@icon(selector, path, showLabels?)`, which `atomStyle`'s `iconStyle(…)` block
-replaces, and `@group(field, groupOn, addToGroup, selector?)`, which the binary
-selector form replaces. Both warn.
+The table above is the whole language. spytial-gdl accepts exactly what the
+current spytial-core schema marks current, so a form core has deprecated or
+removed — `icon`, `atomColor`, `edgeColor`, `inferredEdge`'s inline `color` and
+`style`, the old by-field `group` — is not a warning or a rewrite here; it is an
+unknown annotation or argument, reported on its line like any other.
 
 > The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
 > authoritative. `test/spec-tables.test.mjs` holds the table above to the same
@@ -296,26 +295,12 @@ everything is optional, so write only the parts you mean.
 > rendering. `fillStyle` paints the interior and is opt-in. If a diagram looks
 > unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
 
-### The older `atomColor` / `edgeColor`
-
-Both still compile, since they're rewritten to the blocks above, so existing
-diagrams keep working unchanged:
-
-| you wrote | it compiles to |
-|---|---|
-| `@atomColor(selector=S, value=V)` | `@atomStyle(selector=S, borderStyle(color=V))` |
-| `@edgeColor(field=F, value=V, style=P)` | `@edgeStyle(field=F, lineStyle(color=V, pattern=P))` |
-| `@inferredEdge(…, color=V, style=P)` | `@inferredEdge(…, lineStyle(color=V, pattern=P))` |
-
-`atomColor`'s `value` becomes the outline rather than the fill, which is what it
-has always drawn. Prefer the block forms in new diagrams.
-
-> **Breaking in spytial-core 3.0: style collisions are an error.** Two rules that
-> set the same style leaf to different values now fail with a
-> `StyleCollisionError` instead of one silently winning. Rules that touch different
-> leaves still compose freely, so `borderStyle(color=…)` from one rule and
-> `textStyle(size=…)` from another is fine. This is checked when the diagram is
-> drawn, so it surfaces in the browser rather than as an annotation error.
+> **Style collisions are an error.** Two rules that set the same style leaf to
+> different values fail with a `StyleCollisionError` instead of one silently
+> winning. Rules that touch different leaves still compose freely, so
+> `borderStyle(color=…)` from one rule and `textStyle(size=…)` from another is
+> fine. This is checked when the diagram is drawn, so it surfaces in the browser
+> rather than as an annotation error.
 
 ## Mermaid-safe annotations
 
@@ -331,10 +316,12 @@ The bare `@…` and the guarded `%% @…` forms compile identically.
 
 ## Errors and conflicts
 
-Failures are reported separately by kind. Source problems are caught before layout
-runs, and selectors that name nothing are reported apart from layouts that can't
-hold. The diagram renders best-effort at every stage, and an embed surfaces each
-kind in its own panel.
+Failures are reported by kind, and none of them is silent. Problems in the source
+are caught before layout runs. Problems the engine finds — a name it cannot read
+back, a rule it refuses, a selector it cannot use or that matches nothing — are
+collected from the solve and reported beside the diagram, with the line of the
+annotation they concern. Rules that cannot all hold are explained as a conflict.
+The diagram renders best-effort at every stage.
 
 ### Parse and annotation errors
 
@@ -351,33 +338,59 @@ line it couldn't read, like a broken edge or junk; `'warning'` is a
 tolerated-but-ignored Mermaid construct, like a `graph`/`flowchart` header or
 `classDef`.
 
+The parser also refuses a name that could never work as a selector — an edge
+label with a space in it, a hyphenated sort, a class spelled the same as an edge
+label, a class line naming a node no line declares — and says which line and why,
+rather than handing the engine a name it will read as something else. See
+[Names](notation.md#edges) for the rule.
+
 Both are non-fatal. The diagram still renders best-effort, and an embed shows a
-**⚠ … in this source** band beneath it listing each problem by line. The four
-stages stay distinct, so you can tell them apart:
+**⚠ … in this source** band beneath it listing each problem by line. Every
+problem, whichever stage found it, is also on the result's `diagnostics` list in
+one shape, so a host can show them all at once:
 
 | stage | failure | result field | embed panel |
 |---|---|---|---|
-| parse graph | bad line / ignored Mermaid | `parseErrors` | ⚠ … in this source |
-| lift annotations | bad `@name` / args | `annotationErrors` | ⚠ … in this source |
-| resolve selectors | `selector=` matches nothing | `selectorErrors` | ⚠ A selector didn't resolve |
+| parse graph | bad line / ignored Mermaid / a name that cannot be a selector | `parseErrors`, `diagnostics` | ⚠ … in this source |
+| lift annotations | bad `@name` / args | `annotationErrors`, `diagnostics` | ⚠ … in this source |
+| solve | a selector the engine cannot use or that matches nothing; a spec it refuses | `diagnostics` (raw: `selectorErrors`, `warnings`) | ⚠ … in this source |
 | solve constraints | rules can't all hold | `error` (UNSAT core) | ⚠ These rules can't all hold |
 
-### Selector errors
+### What the engine reports
 
-A different failure: a `selector=` that doesn't resolve to anything in the model,
-such as a typo'd label or a class you never assigned. That isn't a layout conflict,
-since the spec itself is malformed, so it's reported separately as `selectorErrors`
-and the degenerate layout is not drawn:
+Selector problems are the engine's to find, and it finds two kinds.
+
+A selector the engine cannot use — a sort where `@orientation` needs edges, an
+edge label where `@atomStyle` needs nodes, a word its query grammar reserves
+(`no`, `in`, `some`, and whichever others the installed release has) — is a
+*selector error*. The engine skips that one rule, solves the rest, and the diagram
+is drawn under the rules it could use, with the error beside it. There is no list
+of reserved words in spytial-gdl: the grammar that reserves them reports them.
+
+A selector that matches nothing at all — a typo'd label, a class you never
+assigned — is a *warning*. The rule constrains nothing and the diagram draws as if
+it were not there, which is the quietest way a diagram can be wrong; it is
+reported so that it is not.
+
+Both arrive on `diagnostics`, each with the line of the annotation it concerns,
+and in an embed they share the **⚠ … in this source** band with the parse and
+annotation errors. `selectorErrors` and `warnings` carry the engine's own records
+for anyone who wants them raw.
+
+A spec the engine's parser refuses outright is reported the same way, and the
+diagram is drawn under no rules rather than not at all. The annotation compiler
+catches the cases it knows from the schema first, so this is rare.
 
 ```js
 const r = await renderSpytialGdl(graph, source);
-if (r.selectorErrors.length) {
-  // e.g. selector 'lft' didn't match any edges or nodes
+for (const d of r.diagnostics) {
+  // { severity: 'error' | 'warning', message, line?, source: 'parse' | 'annotation' | 'engine' }
+  console.warn(`${d.line ? `line ${d.line}: ` : ''}${d.message}`);
 }
 ```
 
-In an embed this is the **⚠ A selector didn't resolve** panel. Fix the selector to
-one of the [five forms](notation.md#the-built-in-selectors) and it resolves.
+Fix the selector to one of the [built-in forms](notation.md#the-built-in-selectors)
+and it resolves.
 
 ### When constraints conflict
 
@@ -418,6 +431,12 @@ spot.
 The report is rendered by spytial-core's own IIS component, the same one the
 [playground](../playground/) mounts. It's lazy-loaded the first time a clash
 appears, so conflict-free pages never load it.
+
+Every rule spytial-gdl hands the engine carries the annotation it came from, as
+written and with its line (`source`, a block spytial-core accepts from 5.4.0).
+The engine cites that in place of its own rendering of the rule, so the conflict
+report names `@orientation(selector=left, directions=[left]) (line 4)` rather
+than a reconstruction of it. Older cores parse and ignore the block.
 
 ### Reading it from the API
 

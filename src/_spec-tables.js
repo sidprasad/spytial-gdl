@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT BY HAND.
 //
 //   Source:   vendor/spytial-spec.schema.json
-//   Language: 2026-07-29 (spytial-core 5.0.1)
+//   Language: 2026-08-25 (spytial-core 5.4.0)
 //   Regenerate with: node scripts/generate-spec-tables.mjs
 //
 // Everything here is derived from the JSON Schema spytial-core publishes, so a
@@ -15,8 +15,8 @@
 // The schema this was generated from. LANGUAGE_VERSION only moves when the spec
 // language itself changes, so an unchanged value across a spytial-core bump
 // means nothing here needed revisiting.
-export const LANGUAGE_VERSION = "2026-07-29";
-export const CORE_VERSION = "5.0.1";
+export const LANGUAGE_VERSION = "2026-08-25";
+export const CORE_VERSION = "5.4.0";
 
 
 // ── Vocabularies ────────────────────────────────────────────────────────────
@@ -42,20 +42,7 @@ export const ORIENTATION_DIRECTIONS = ["above", "below", "left", "right", "direc
 
 export const CONSTRAINT_NAMES = new Set(["orientation", "cyclic", "align", "group", "size", "hideAtom"]);
 
-export const DIRECTIVE_NAMES = new Set(["flag", "atomStyle", "edgeStyle", "attribute", "tag", "hideField", "inferredEdge", "icon", "atomColor", "edgeColor"]);
-
-// Placements core still accepts behind a deprecation warning. spytial-gdl never
-// emits one; this records that the tolerance exists.
-export const DEPRECATED_PLACEMENTS = {
-  size: {
-    tolerated: "directives",
-    home: "constraints",
-  },
-  hideAtom: {
-    tolerated: "directives",
-    home: "constraints",
-  },
-};
+export const DIRECTIVE_NAMES = new Set(["flag", "atomStyle", "edgeStyle", "attribute", "tag", "hideField", "inferredEdge"]);
 
 
 // ── Style blocks ────────────────────────────────────────────────────────────
@@ -151,13 +138,13 @@ export const STYLE_BLOCKS = {
 // ── Items ───────────────────────────────────────────────────────────────────
 //
 // Every annotation, by name: which section it belongs to and which fields it
-// takes. `alternatives` is a list because two forms may share one name — the
-// current `group` and its deprecated by-field spelling — and the one an
-// annotation is checked against is the first whose required fields are present.
-// `scalarKeyword` marks an item whose yaml value is a bare scalar rather than a
-// mapping (`- flag: hideDisconnected`), naming the keyword that carries it.
-// `requiredUnless` holds the fields core rejects the absence of even though the
-// schema lists them as optional, each with the field=value that excuses it.
+// takes. `alternatives` is a list because two forms may share one name, and the
+// one an annotation is checked against is the first whose required fields are
+// present. `scalarKeyword` marks an item whose yaml value is a bare scalar
+// rather than a mapping (`- flag: hideDisconnected`), naming the keyword that
+// carries it. `requiredUnless` holds the fields core rejects the absence of even
+// though the schema lists them as optional, each with the field=value that
+// excuses it. Nothing the schema marks deprecated is here.
 
 export const ITEMS = {
   orientation: {
@@ -279,9 +266,6 @@ export const ITEMS = {
             type: "enum-or-block",
             values: ["none", "togroup", "fromgroup"],
             block: "addEdge",
-            legacyValues: {
-              true: "togroup",
-            },
           },
           textStyle: {
             type: "block",
@@ -297,33 +281,6 @@ export const ITEMS = {
             field: "hold",
             equals: "never",
           },
-        },
-      },
-      {
-        yamlKey: "group",
-        required: ["field", "groupOn", "addToGroup"],
-        fields: {
-          field: {
-            type: "string",
-            minLength: 1,
-          },
-          groupOn: {
-            type: "integer",
-          },
-          addToGroup: {
-            type: "integer",
-          },
-          selector: {
-            type: "string",
-          },
-          hold: {
-            type: "enum",
-            values: ["always", "never"],
-          },
-        },
-        deprecated: {
-          replacedBy: "group(selector=…)",
-          desugars: false,
         },
       },
     ],
@@ -549,146 +506,8 @@ export const ITEMS = {
             type: "block",
             block: "textStyle",
           },
-          color: {
-            type: "string",
-          },
-          style: {
-            type: "enum",
-            values: ["solid", "dashed", "dotted"],
-          },
-          weight: {
-            type: "number",
-            exclusiveMinimum: 0,
-          },
-          highlight: {
-            type: "string",
-          },
-        },
-        deprecatedFields: {
-          color: {
-            replacedBy: "inferredEdge.lineStyle.color",
-            desugars: true,
-          },
-          style: {
-            replacedBy: "inferredEdge.lineStyle.pattern",
-            desugars: true,
-          },
-          weight: {
-            replacedBy: "inferredEdge.lineStyle.weight",
-            desugars: true,
-          },
-          highlight: {
-            replacedBy: "inferredEdge.lineStyle.highlight",
-            desugars: true,
-          },
         },
       },
     ],
-  },
-  icon: {
-    section: "directives",
-    alternatives: [
-      {
-        yamlKey: "icon",
-        required: ["selector", "path"],
-        fields: {
-          selector: {
-            type: "string",
-            minLength: 1,
-          },
-          path: {
-            type: "string",
-            minLength: 1,
-          },
-          showLabels: {
-            type: "boolean",
-          },
-        },
-      },
-    ],
-  },
-  atomColor: {
-    section: "directives",
-    alternatives: [
-      {
-        yamlKey: "atomColor",
-        required: ["value", "selector"],
-        fields: {
-          value: {
-            type: "string",
-            minLength: 1,
-          },
-          selector: {
-            type: "string",
-            minLength: 1,
-          },
-        },
-      },
-    ],
-  },
-  edgeColor: {
-    section: "directives",
-    alternatives: [
-      {
-        yamlKey: "edgeColor",
-        required: ["field", "value"],
-        fields: {
-          field: {
-            type: "string",
-            minLength: 1,
-          },
-          value: {
-            type: "string",
-            minLength: 1,
-          },
-          selector: {
-            type: "string",
-          },
-          filter: {
-            type: "string",
-          },
-          style: {
-            type: "enum",
-            values: ["solid", "dashed", "dotted"],
-          },
-          weight: {
-            type: "number",
-            exclusiveMinimum: 0,
-          },
-          highlight: {
-            type: "string",
-          },
-          showLabel: {
-            type: "boolean",
-          },
-          hidden: {
-            type: "boolean",
-          },
-        },
-      },
-    ],
-  },
-};
-
-
-// ── Deprecations ────────────────────────────────────────────────────────────
-//
-// A deprecated form keeps parsing and keeps its meaning until a spytial-core
-// major. `desugars` marks the ones annotations.js rewrites onto their
-// replacement before emission, so the compiled spec uses the current spelling
-// even when the source does not.
-
-export const DEPRECATED_ITEMS = {
-  icon: {
-    replacedBy: "atomStyle",
-    desugars: false,
-  },
-  atomColor: {
-    replacedBy: "atomStyle",
-    desugars: true,
-  },
-  edgeColor: {
-    replacedBy: "edgeStyle",
-    desugars: true,
   },
 };

@@ -7,7 +7,7 @@
 // layout spec: every constraint and directive it reads, which section each
 // belongs in, which fields it takes, which of those are required, what each
 // closed vocabulary accepts, the numeric bounds, the shared style blocks, and
-// which forms have been deprecated. The schema is vendored at
+// which forms it has deprecated. The schema is vendored at
 // `vendor/spytial-spec.schema.json`, pinned to one spytial-core release.
 //
 // This turns that into the tables `src/annotations.js` validates against. They
@@ -19,12 +19,20 @@
 // rejected as unknown. None of those could be noticed from inside this repo,
 // because core's parser reports none of them.
 //
+// Deprecated forms are not in spytial-gdl's language. Whatever the schema
+// marks `deprecated` — a whole form, a field on one, a placement in a section,
+// a literal spelling of a value — is left out of the tables, so the compiler
+// reports it as unknown like anything else it has never heard of. There is no
+// rewrite path and no tombstone: nothing renders old diagrams because there
+// are none. Each skipped form is printed when the tables are written, so a
+// form core newly deprecates shows up in the run log and the diff, not only as
+// an annotation that stopped compiling.
+//
 // The generator refuses to emit output it cannot account for. Every section
-// entry, item, field, leaf type, vocabulary, and deprecation has to map onto
-// something below; one that does not raises SchemaDrift rather than being
-// dropped. That is the point of generating rather than transcribing: when core
-// grows or retires a form, the next `./update-spytial-core.sh` stops and names
-// it.
+// entry, item, field, leaf type, and vocabulary has to map onto something
+// below; one that does not raises SchemaDrift rather than being dropped. That
+// is the point of generating rather than transcribing: when core grows a form,
+// the next `./update-spytial-core.sh` stops and names it.
 //
 // Where spytial-gdl deliberately differs from the schema, the difference lives
 // in a policy table below with the reason it exists. Everything else is
@@ -50,34 +58,12 @@ export class SchemaDrift extends Error {
 
 // ── Policy: where spytial-gdl differs from the schema ────────────────────────
 
-// Every form the schema marks deprecated, mapped to the current form that
-// replaces it. The schema says *that* something is deprecated and names the
-// replacement only in prose, so this is the one fact the generator cannot read
-// out of it — and a newly deprecated form therefore stops here by name rather
-// than compiling on silently. `desugars` records whether annotations.js rewrites
-// the form onto its replacement before emission (so the compiled spec is
-// current even when the source is not) or merely warns.
-const REPLACEMENTS = {
-  atomColor: { replacedBy: 'atomStyle', desugars: true },
-  edgeColor: { replacedBy: 'edgeStyle', desugars: true },
-  // Warned about rather than rewritten. The other two rewrites are pure
-  // renames; `icon`'s is not — `showLabels` drove label visibility and icon
-  // geometry at once, so carrying it over means choosing an `iconStyle.placement`
-  // for each of its two values, and the schema states the split only in prose.
-  // core's language manifest documents the exact pairing; adopt it here
-  // deliberately, not as a side effect of a version bump.
-  icon: { replacedBy: 'atomStyle', desugars: false },
-  // Not an annotation of its own: the by-field form is selected by the presence
-  // of `field`, so it shares `group`'s yaml key. It stays in the tables as an
-  // alternative field set, which is how `@group(field=…, groupOn=0,
-  // addToGroup=1)` keeps validating. `replacedBy` names the other form rather
-  // than the annotation, since both are spelled `@group`.
-  group_byField: { replacedBy: 'group(selector=…)', desugars: false },
-  'inferredEdge.color': { replacedBy: 'inferredEdge.lineStyle.color', desugars: true },
-  'inferredEdge.style': { replacedBy: 'inferredEdge.lineStyle.pattern', desugars: true },
-  'inferredEdge.weight': { replacedBy: 'inferredEdge.lineStyle.weight', desugars: true },
-  'inferredEdge.highlight': { replacedBy: 'inferredEdge.lineStyle.highlight', desugars: true },
-};
+// What the schema marks deprecated and this run therefore left out, for the
+// log. Reset by build(); filled by the readers as they skip.
+const SKIPPED = [];
+function noteSkipped(kind, what) {
+  SKIPPED.push(`${kind} ${what}`);
+}
 
 // Items whose yaml value is a bare scalar rather than a mapping (`- flag:
 // hideDisconnected`), mapped to the keyword that carries it in the annotation
@@ -87,21 +73,23 @@ const SCALAR_KEYWORDS = {
   flag: 'name',
 };
 
-// Deprecated literal spellings of a field's value, and what each one means now.
-// The schema marks the branch deprecated and states the equivalence only in
-// prose, so — as with REPLACEMENTS — this is the fact the generator cannot read
-// out of it, and a new one stops here by name. Keyed by "<item>.<field>".
-const LEGACY_LITERALS = {
-  // `addEdge: true` was the original way to ask for a connector, before the
-  // direction became expressible.
-  'group.addEdge': { true: 'togroup' },
-};
+// Fields the schema describes as a generator's to write, not an author's. The
+// schema's own words for `source`: "For generators only — hand-written YAML
+// needs no `source`, because there the YAML is the author's text." spytial-gdl
+// is the generator: annotations.js stamps every compiled rule with the
+// annotation's text and line, and core cites that in its conflict reports. An
+// author has no business writing it, so it leaves the authorable vocabulary —
+// the item tables, the docs' argument reference, and the style-block list —
+// while still reaching the engine. Anchored below: a release that drops the
+// field stops the generator by name, since the stamp would then be an unknown
+// key to core.
+const GENERATOR_ONLY = new Set(['source']);
 
 // Fields the schema leaves out of `required` but core's parser rejects the
 // absence of, unless another field excuses it. JSON Schema can express this;
 // the group definition does not, saying it in `name`'s description instead
-// ("Required unless the constraint is negated"). So, like REPLACEMENTS, it is a
-// fact the generator has to be told rather than one it can read.
+// ("Required unless the constraint is negated"). So it is a fact the generator
+// has to be told rather than one it can read.
 //
 // This gap costs more than the usual prose gap. core throws out of
 // parseLayoutSpec rather than dropping the one constraint it cannot build, so a
@@ -112,11 +100,11 @@ const CONDITIONAL_REQUIRED = {
   'group.name': { field: 'hold', equals: 'never' },
 };
 
-// Vocabularies annotations.js refers to by name (the legacy desugar has to
-// normalize against the same list core does). Generating them from the schema
-// rather than restating them is what keeps the legacy path and the current path
-// agreeing about what a valid pattern is. Keyed by where the vocabulary lives:
-// "<block>.<field>" for a shared block, "item:<item>.<field>" for an item field.
+// Vocabularies exported by name, for anything outside the compiler that wants
+// the same list core uses (the docs, a host's own UI). Generated rather than
+// restated so they cannot disagree with the rules. Keyed by where the vocabulary
+// lives: "<block>.<field>" for a shared block, "item:<item>.<field>" for an item
+// field.
 const NAMED_VOCABULARIES = {
   LINE_PATTERNS: 'lineStyle.pattern',
   TEXT_SIZES: 'textStyle.size',
@@ -146,14 +134,13 @@ function refName(node, where) {
   return ref.slice('#/$defs/'.length);
 }
 
-// Which section each item def calls home, and which placements the schema
-// tolerates but has deprecated. `size` and `hideAtom` appear under both:
-// constraints is home, directives is the deprecated placement core still reads
-// behind a warning. Emitting the deprecated one is exactly the mistake this
+// Which section each item def calls home. A placement the schema marks
+// deprecated is skipped: `size` and `hideAtom` appear under both sections,
+// constraints being home and directives the placement core still reads behind
+// a warning, and emitting the deprecated one is exactly the mistake this
 // resolves.
 function readSections(schema) {
   const home = new Map();       // def name -> section
-  const deprecated = new Map(); // def name -> section it is tolerated in
 
   for (const section of SECTIONS) {
     const prop = schema.properties?.[section];
@@ -165,29 +152,18 @@ function readSections(schema) {
     for (const branch of branches) {
       const name = refName(branch, `${section}[]`);
       if (branch.deprecated) {
-        if (deprecated.has(name)) {
-          throw new SchemaDrift(`${name} is deprecated in more than one section.`);
-        }
-        deprecated.set(name, section);
-      } else {
-        if (home.has(name)) {
-          throw new SchemaDrift(
-            `${name} is listed as current in both sections; spytial-gdl compiles each form into exactly one.`
-          );
-        }
-        home.set(name, section);
+        noteSkipped('placement', `${name} under ${section}`);
+        continue;
       }
+      if (home.has(name)) {
+        throw new SchemaDrift(
+          `${name} is listed as current in both sections; spytial-gdl compiles each form into exactly one.`
+        );
+      }
+      home.set(name, section);
     }
   }
-
-  for (const name of deprecated.keys()) {
-    if (!home.has(name)) {
-      throw new SchemaDrift(
-        `${name} appears only as a deprecated placement, with no current section to compile it into.`
-      );
-    }
-  }
-  return { home, deprecated };
+  return { home };
 }
 
 // A validation rule for one field, from its subschema. Every branch here is a
@@ -213,22 +189,17 @@ function ruleFor(node, where, blocks) {
       throw new SchemaDrift(`${where} is a oneOf the generator does not recognize.`);
     }
     const rule = { type: 'enum-or-block', values: [...scalar.enum], block: where.split('.').pop() };
-    if (literals.length > 0) {
-      const policy = LEGACY_LITERALS[where] ?? {};
-      rule.legacyValues = {};
-      for (const branch of literals) {
-        const meaning = policy[String(branch.const)];
-        if (meaning === undefined) {
-          throw new SchemaDrift(
-            `${where} accepts the literal ${JSON.stringify(branch.const)} and spytial-gdl has no ` +
-            `policy for what it means. Add it to LEGACY_LITERALS.`
-          );
-        }
-        if (!rule.values.includes(meaning)) {
-          throw new SchemaDrift(`${where}: ${JSON.stringify(branch.const)} maps onto ${meaning}, which is not one of its values.`);
-        }
-        rule.legacyValues[String(branch.const)] = meaning;
+    // A literal spelling beside the vocabulary (`addEdge: true`) is a deprecated
+    // synonym for one of the words, and is left out like any other deprecation.
+    // A *current* one would be a spelling the compiler has no rule for.
+    for (const branch of literals) {
+      if (!branch.deprecated) {
+        throw new SchemaDrift(
+          `${where} accepts the literal ${JSON.stringify(branch.const)} as a current spelling, ` +
+          `which the generator has no rule for.`
+        );
       }
+      noteSkipped('literal', `${where}=${JSON.stringify(branch.const)}`);
     }
     return rule;
   }
@@ -378,7 +349,7 @@ function yamlKeyOf(def, name) {
 // One item's field table. Items sharing a yaml key (`group` and its deprecated
 // by-field form) become alternative field sets: the first whose required fields
 // are all present is the one the annotation is checked against.
-function readItem(schema, name, blocks) {
+function readItem(schema, name, blocks, generatorOnlySeen = new Set()) {
   const def = schema.$defs[name];
   const inner = innerOf(def, name);
   const yamlKey = yamlKeyOf(def, name);
@@ -406,33 +377,24 @@ function readItem(schema, name, blocks) {
 
   const known = new Set(Object.keys(blocks));
   const fields = {};
-  const deprecatedFields = [];
   for (const [field, node] of Object.entries(inner.properties)) {
+    // A generator's field, not an author's: noted (for the anchor in build)
+    // and left out of the table the compiler checks an annotation against.
+    if (GENERATOR_ONLY.has(field)) { generatorOnlySeen.add(field); continue; }
+    // A deprecated field is not in the language; the compiler will call it
+    // unknown, which is the intended message.
+    if (node.deprecated) { noteSkipped('field', `${yamlKey}.${field}`); continue; }
     fields[field] = ruleFor(node, `${name}.${field}`, known);
-    if (node.deprecated) deprecatedFields.push(field);
   }
 
-  const entry = { yamlKey, required: [...(inner.required ?? [])], fields };
-  if (deprecatedFields.length > 0) {
-    entry.deprecatedFields = {};
-    for (const field of deprecatedFields) {
-      const policy = REPLACEMENTS[`${yamlKey}.${field}`];
-      if (!policy) {
-        throw new SchemaDrift(
-          `${yamlKey}.${field} is deprecated upstream and spytial-gdl has no policy for it. ` +
-          `Add it to REPLACEMENTS, and teach desugarLegacy the rewrite if it desugars.`
-        );
-      }
-      entry.deprecatedFields[field] = policy;
-    }
-  }
-  return entry;
+  return { yamlKey, required: [...(inner.required ?? [])], fields };
 }
 
 // ── Assembling ───────────────────────────────────────────────────────────────
 
 function build(schema) {
-  const { home, deprecated } = readSections(schema);
+  SKIPPED.length = 0;
+  const { home } = readSections(schema);
   const itemDefs = new Set(home.keys());
 
   for (const name of itemDefs) {
@@ -441,27 +403,24 @@ function build(schema) {
 
   const blocks = readInlineBlocks(schema, itemDefs, readBlocks(schema, itemDefs));
 
+  // The block a generator-only field points at is not an authorable style
+  // block either (`source(text=…)` in an annotation is a mistake, not a
+  // style), so it leaves STYLE_BLOCKS along with the field. Removed here,
+  // before the items are read, so the orphan check below does not see it.
+  const generatorOnlySeen = new Set();
+  for (const name of GENERATOR_ONLY) {
+    if (blocks[name]) delete blocks[name];
+  }
+
   const sections = { constraints: [], directives: [] };
   const items = {};
-  const deprecatedItems = {};
 
   for (const [name, section] of home) {
-    const entry = readItem(schema, name, blocks);
-    const isDeprecated = Boolean(schema.$defs[name].deprecated);
-    if (isDeprecated) {
-      const policy = REPLACEMENTS[name];
-      if (!policy) {
-        throw new SchemaDrift(
-          `${name} is deprecated upstream and spytial-gdl has no policy for it. Add it to ` +
-          `REPLACEMENTS, and teach desugarLegacy the rewrite if it desugars.`
-        );
-      }
-      // The by-field group is not an annotation of its own — it shares `group`'s
-      // key, and is selected by which fields are written. Its deprecation
-      // therefore belongs to the alternative rather than to the name.
-      if (name !== entry.yamlKey) entry.deprecated = policy;
-      else deprecatedItems[entry.yamlKey] = policy;
-    }
+    // A deprecated form is not in the language. It stays in `home` so
+    // readBlocks knows it is an item rather than a style block; it just never
+    // becomes a table entry, and the compiler reports it as unknown.
+    if (schema.$defs[name].deprecated) { noteSkipped('form', name); continue; }
+    const entry = readItem(schema, name, blocks, generatorOnlySeen);
 
     if (items[entry.yamlKey]) {
       items[entry.yamlKey].alternatives.push(entry);
@@ -471,6 +430,19 @@ function build(schema) {
     }
     if (items[entry.yamlKey].section !== section) {
       throw new SchemaDrift(`${entry.yamlKey} is split across sections by its alternative forms.`);
+    }
+  }
+
+  // Anchor GENERATOR_ONLY against the schema. annotations.js stamps every rule
+  // with `source`; if no item in the schema takes it any more, that stamp has
+  // become an unknown key, and what core does with one is not something to
+  // find out from a diagram.
+  for (const name of GENERATOR_ONLY) {
+    if (!generatorOnlySeen.has(name)) {
+      throw new SchemaDrift(
+        `GENERATOR_ONLY names ${name}, but no item in the schema has that field — core has dropped ` +
+        `it. annotations.js still stamps it on every rule; decide what replaces it before regenerating.`
+      );
     }
   }
 
@@ -532,14 +504,6 @@ function build(schema) {
     }
   }
 
-  // A form the schema tolerates in the other section. Nothing here compiles it
-  // there — this is recorded so the fact stays visible in the generated file
-  // rather than living only in this comment.
-  const deprecatedPlacements = {};
-  for (const [name, section] of deprecated) {
-    deprecatedPlacements[yamlKeyOf(schema.$defs[name], name)] = { tolerated: section, home: home.get(name) };
-  }
-
   const vocabularies = {};
   for (const [constant, source] of Object.entries(NAMED_VOCABULARIES)) {
     const rule = source.startsWith('item:')
@@ -560,9 +524,8 @@ function build(schema) {
     sections,
     items,
     blocks,
-    deprecatedItems,
-    deprecatedPlacements,
     vocabularies,
+    skipped: [...SKIPPED],
   };
 }
 
@@ -657,10 +620,6 @@ export function render(schema = loadSchema(), t = build(schema)) {
     '',
     `export const DIRECTIVE_NAMES = new Set(${lit(t.sections.directives)});`,
     '',
-    '// Placements core still accepts behind a deprecation warning. spytial-gdl never',
-    '// emits one; this records that the tolerance exists.',
-    `export const DEPRECATED_PLACEMENTS = ${lit(t.deprecatedPlacements)};`,
-    '',
     '',
     '// ── Style blocks ────────────────────────────────────────────────────────────',
     '//',
@@ -675,25 +634,15 @@ export function render(schema = loadSchema(), t = build(schema)) {
     '// ── Items ───────────────────────────────────────────────────────────────────',
     '//',
     '// Every annotation, by name: which section it belongs to and which fields it',
-    '// takes. `alternatives` is a list because two forms may share one name — the',
-    '// current `group` and its deprecated by-field spelling — and the one an',
-    '// annotation is checked against is the first whose required fields are present.',
-    '// `scalarKeyword` marks an item whose yaml value is a bare scalar rather than a',
-    '// mapping (`- flag: hideDisconnected`), naming the keyword that carries it.',
-    '// `requiredUnless` holds the fields core rejects the absence of even though the',
-    '// schema lists them as optional, each with the field=value that excuses it.',
+    '// takes. `alternatives` is a list because two forms may share one name, and the',
+    '// one an annotation is checked against is the first whose required fields are',
+    '// present. `scalarKeyword` marks an item whose yaml value is a bare scalar',
+    '// rather than a mapping (`- flag: hideDisconnected`), naming the keyword that',
+    '// carries it. `requiredUnless` holds the fields core rejects the absence of even',
+    '// though the schema lists them as optional, each with the field=value that',
+    '// excuses it. Nothing the schema marks deprecated is here.',
     '',
     `export const ITEMS = ${lit(t.items)};`,
-    '',
-    '',
-    '// ── Deprecations ────────────────────────────────────────────────────────────',
-    '//',
-    '// A deprecated form keeps parsing and keeps its meaning until a spytial-core',
-    '// major. `desugars` marks the ones annotations.js rewrites onto their',
-    '// replacement before emission, so the compiled spec uses the current spelling',
-    '// even when the source does not.',
-    '',
-    `export const DEPRECATED_ITEMS = ${lit(t.deprecatedItems)};`,
     ''
   );
 
@@ -708,6 +657,9 @@ function main() {
     `Wrote src/_spec-tables.js (spec language ${schema['x-spytial-language-version']}, ` +
     `spytial-core ${schema['x-spytial-core-version']}, ${Object.keys(tables.items).length} items).`
   );
+  if (tables.skipped.length > 0) {
+    console.log(`Left out as deprecated upstream: ${tables.skipped.join(', ')}.`);
+  }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main();

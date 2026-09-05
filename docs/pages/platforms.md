@@ -187,6 +187,12 @@ The drop-in tag pulls d3, WebCola and spytial-core from jsDelivr. If your CSP
 forbids that, host the three yourself and name them in `deps` — see
 [Self-hosting the engine](embedding.md#self-hosting-the-engine).
 
+When the engine cannot load at all — a blocked CDN, an offline page — every
+block stays as the code the author wrote, and a one-line notice is placed above
+each saying that a render was attempted and why it did not happen. The same goes
+to the console. Nothing is rendered wrong; the reader is told why nothing is
+rendered.
+
 ### Where it can't work
 
 GitHub, GitLab, and npm render README Markdown without running JavaScript, so a
