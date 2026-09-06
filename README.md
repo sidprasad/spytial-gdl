@@ -50,6 +50,7 @@ await renderSpytialGdl(graph, 'A -> B\n@orientation(selector=_links, directions=
 | [Embedding & API](docs/pages/embedding.md) | `autoRender`, options, editable mode, full API |
 | [Platforms](docs/pages/platforms.md) | MkDocs, Jekyll, Hugo, Docusaurus, Pollen, and the rest |
 | [Architecture](docs/pages/architecture.md) | the render pipeline and dependencies |
+| [CHANGELOG.md](CHANGELOG.md) | what each release changed |
 
 The [playground](playground/) and [examples](examples/) are runnable.
 
