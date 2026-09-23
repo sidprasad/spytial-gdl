@@ -1,6 +1,16 @@
-# The notation
+# Syntax reference
 
 How to write the graph: nodes, edges, labels, types, classes.
+
+For agents and tools, the [language manifest](../spytial-gdl-language.json)
+exports the basic authoring forms and the annotation arguments, style blocks,
+and allowed values used by the compiler. It also links to the upstream selector
+manifest. The annotation tables are generated from spytial-core's schema;
+the graph examples are checked against this parser. This is an authoring
+reference, not a complete machine grammar.
+
+The same file is published as the package export `spytial-gdl/language.json`.
+Run `npm run manifest` to regenerate it; `npm test` checks that it is current.
 
 The notation is a small text syntax. You write the graph and Spytial lays it out.
 There is no required header and no `TD`/`LR` direction, since spatial operations
@@ -43,11 +53,11 @@ without one, the id is shown. The id stays the stable identity that edges
 reference, which helps when the ids are generated:
 
 ```spytial-gdl
-u1[Alice] -> u2[Bob]
-u1 -> u3[Carol]
+cs2[CS 2] -> algorithms[Algorithms]
+cs2 -> systems[Systems]
 ```
 
-`u1` is written once with its label and then referenced bare, and both edges attach
+`cs2` is written once with its label and then referenced bare, and both edges attach
 to the same node. You can also declare a node on its own line, with no edge:
 
 ```spytial-gdl
@@ -56,22 +66,22 @@ solo[Just here]
 
 ## Sorts (types)
 
-A `:::Sort` tag gives a node a type, so `selector: Person` then matches every node
+A `:::Sort` tag gives a node a type, so `selector: Course` then matches every node
 of that type. A plain node is untyped: with no sort it carries no type name, so no
 named `selector` matches it. Only `univ`, the universal set, reaches every node
 regardless of type:
 
 ```spytial-gdl
-alice[Alice]:::Person -> acme[Acme]:::Company
-bob[Bob]:::Person     -> acme
+algorithms[Algorithms]:::Course -> fall[Fall term]:::Term
+systems[Systems]:::Course      -> fall
 
-@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
-@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
+@atomStyle(selector=Course, borderStyle(color='#1f4396'))
+@atomStyle(selector=Term, borderStyle(color='#cd3b26'))
 ```
 
 So each part of a node does one job: the id is the identity edges reference, the
 label is what's drawn, and the sort is what selectors match. A node takes one sort
-for now. A chain like `:::Person:::Employee` (a linear sort hierarchy) is reserved
+for now. A chain like `:::Course:::Seminar` (a linear sort hierarchy) is reserved
 for later; today the most specific segment, the last one, wins.
 
 ## Classes
@@ -117,7 +127,7 @@ Existing flowcharts paste in. These are all accepted and normalized:
 | leading `graph TD` / `flowchart LR` | ignored (no layout direction here) |
 | `A --> B`, `A -.-> B`, `A ==> B`, `A --- B` | an edge (arrow style is not significant) |
 | `A -->\|left\| B` | a labeled edge, label `left` |
-| `A[Alice]`, `A(Alice)`, `A{Alice}`, `A((Alice))` | a node with display label `Alice` |
+| `cs[Algorithms]`, `cs(Algorithms)`, `cs{Algorithms}`, `cs((Algorithms))` | a node with display label `Algorithms` |
 | `classDef …` | ignored (CSS styling is not this notation's domain) |
 
 So the canonical arrow is `->` but `-->` works, and the canonical label is
@@ -159,7 +169,7 @@ write a layout instruction per node.
 | `<label>` | edges carrying that label. `A -> B : left` gives `left` |
 | `_` | the unlabeled edges (plain `A -> B`) |
 | `_links` | every edge, labeled or not |
-| `<type>` | nodes of that sort. `A:::Person` gives `Person`; a plain node is untyped |
+| `<type>` | nodes of that sort. `cs:::Course` gives `Course`; a plain node is untyped |
 | `<class>` | nodes carrying that class. `class A,B team` gives `team` |
 | `univ` | every node, whatever its type. The universal set |
 

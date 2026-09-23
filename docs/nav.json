@@ -1,6 +1,6 @@
 [
   { "title": "Introduction", "slug": "introduction" },
-  { "title": "The notation", "slug": "notation" },
+  { "title": "Syntax reference", "slug": "notation" },
   { "title": "Annotations", "slug": "annotations" },
   { "title": "Embedding & API", "slug": "embedding" },
   { "title": "Platforms", "slug": "platforms" },

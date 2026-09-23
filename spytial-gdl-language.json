@@ -1,0 +1,625 @@
+{
+  "formatVersion": 1,
+  "package": "spytial-gdl",
+  "packageVersion": "0.6.0",
+  "scope": "Graph authoring forms and annotation vocabulary. This is not a complete parser grammar or a JSON Schema for GDL text.",
+  "upstream": {
+    "coreVersion": "5.4.0",
+    "layoutLanguageVersion": "2026-08-25",
+    "layoutManifest": "https://cdn.jsdelivr.net/npm/spytial-core@5/docs/spytial-language.json",
+    "selectorManifest": "https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json",
+    "note": "Upstream URLs follow their package majors. The annotation vocabulary below is generated from the vendored schema at coreVersion. Selector support follows the engine loaded by the host."
+  },
+  "syntax": {
+    "note": "These canonical authoring forms are documented here and checked against the parser. They do not enumerate every accepted Mermaid spelling.",
+    "forms": [
+      {
+        "name": "node",
+        "syntax": "id",
+        "example": "capstone"
+      },
+      {
+        "name": "label",
+        "syntax": "id[Display label]",
+        "example": "cs1[CS 1]"
+      },
+      {
+        "name": "type",
+        "syntax": "id[Display label]:::Type",
+        "example": "cs1[CS 1]:::Course"
+      },
+      {
+        "name": "edge",
+        "syntax": "source -> target",
+        "example": "cs1 -> cs2"
+      },
+      {
+        "name": "relation",
+        "syntax": "source -> target : relation",
+        "example": "cs1 -> cs2 : prereq"
+      },
+      {
+        "name": "class",
+        "syntax": "class id1,id2 ClassName",
+        "example": "cs1\ncs2\nclass cs1,cs2 foundation"
+      },
+      {
+        "name": "comment",
+        "syntax": "%% comment",
+        "example": "cs1 %% first course"
+      }
+    ],
+    "annotations": {
+      "syntax": "@name(key=value, key=[value, value])",
+      "styleBlock": "@name(key=value, blockName(key=value))",
+      "example": "cs1 -> cs2 : prereq\n@orientation(selector=prereq, directions=[right])",
+      "note": "Selectors can be quoted expressions. See the upstream selector manifest for expression syntax."
+    }
+  },
+  "selectors": {
+    "allEdges": "_links",
+    "unlabeledEdges": "_",
+    "allNodes": "univ",
+    "note": "Relation names select edges. Types and classes select nodes. Relation, type, and class names share a namespace. Author names cannot start with an underscore; query keywords are checked by the engine."
+  },
+  "constraints": [
+    "orientation",
+    "cyclic",
+    "align",
+    "group",
+    "size",
+    "hideAtom"
+  ],
+  "directives": [
+    "flag",
+    "atomStyle",
+    "edgeStyle",
+    "attribute",
+    "tag",
+    "hideField",
+    "inferredEdge"
+  ],
+  "annotations": {
+    "orientation": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "orientation",
+          "required": [
+            "selector",
+            "directions"
+          ],
+          "fields": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "directions": {
+              "type": "enum-list",
+              "values": [
+                "above",
+                "below",
+                "left",
+                "right",
+                "directlyAbove",
+                "directlyBelow",
+                "directlyLeft",
+                "directlyRight"
+              ],
+              "minItems": 1,
+              "listRules": [
+                {
+                  "kind": "exclusive",
+                  "values": [
+                    "above",
+                    "below"
+                  ]
+                },
+                {
+                  "kind": "exclusive",
+                  "values": [
+                    "left",
+                    "right"
+                  ]
+                },
+                {
+                  "kind": "requires",
+                  "when": "directlyAbove",
+                  "allowed": [
+                    "above",
+                    "directlyAbove"
+                  ]
+                },
+                {
+                  "kind": "requires",
+                  "when": "directlyBelow",
+                  "allowed": [
+                    "below",
+                    "directlyBelow"
+                  ]
+                },
+                {
+                  "kind": "requires",
+                  "when": "directlyLeft",
+                  "allowed": [
+                    "left",
+                    "directlyLeft"
+                  ]
+                },
+                {
+                  "kind": "requires",
+                  "when": "directlyRight",
+                  "allowed": [
+                    "right",
+                    "directlyRight"
+                  ]
+                }
+              ]
+            },
+            "hold": {
+              "type": "enum",
+              "values": [
+                "always",
+                "never"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "cyclic": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "cyclic",
+          "required": [
+            "selector"
+          ],
+          "fields": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "enum",
+              "values": [
+                "clockwise",
+                "counterclockwise"
+              ]
+            },
+            "hold": {
+              "type": "enum",
+              "values": [
+                "always",
+                "never"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "align": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "align",
+          "required": [
+            "selector",
+            "direction"
+          ],
+          "fields": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "enum",
+              "values": [
+                "horizontal",
+                "vertical"
+              ]
+            },
+            "hold": {
+              "type": "enum",
+              "values": [
+                "always",
+                "never"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "group": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "group",
+          "required": [
+            "selector"
+          ],
+          "fields": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "addEdge": {
+              "type": "enum-or-block",
+              "values": [
+                "none",
+                "togroup",
+                "fromgroup"
+              ],
+              "block": "addEdge"
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            },
+            "hold": {
+              "type": "enum",
+              "values": [
+                "always",
+                "never"
+              ]
+            }
+          },
+          "requiredUnless": {
+            "name": {
+              "field": "hold",
+              "equals": "never"
+            }
+          }
+        }
+      ]
+    },
+    "size": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "size",
+          "required": [
+            "width",
+            "height"
+          ],
+          "fields": {
+            "width": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "height": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "selector": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "hideAtom": {
+      "section": "constraints",
+      "alternatives": [
+        {
+          "yamlKey": "hideAtom",
+          "required": [
+            "selector"
+          ],
+          "fields": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "flag": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "flag",
+          "scalarKeyword": "name",
+          "required": [
+            "name"
+          ],
+          "fields": {
+            "name": {
+              "type": "enum",
+              "values": [
+                "hideDisconnected",
+                "hideDisconnectedBuiltIns"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "atomStyle": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "atomStyle",
+          "required": [],
+          "fields": {
+            "selector": {
+              "type": "string"
+            },
+            "fillStyle": {
+              "type": "block",
+              "block": "fillStyle"
+            },
+            "borderStyle": {
+              "type": "block",
+              "block": "borderStyle"
+            },
+            "iconStyle": {
+              "type": "block",
+              "block": "iconStyle"
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            },
+            "showLabel": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "edgeStyle": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "edgeStyle",
+          "required": [
+            "field"
+          ],
+          "fields": {
+            "field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "string"
+            },
+            "lineStyle": {
+              "type": "block",
+              "block": "lineStyle"
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            },
+            "showLabel": {
+              "type": "boolean"
+            },
+            "hidden": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "attribute": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "attribute",
+          "required": [
+            "field"
+          ],
+          "fields": {
+            "field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "string"
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            }
+          }
+        }
+      ]
+    },
+    "tag": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "tag",
+          "required": [
+            "toTag",
+            "name",
+            "value"
+          ],
+          "fields": {
+            "toTag": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            }
+          }
+        }
+      ]
+    },
+    "hideField": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "hideField",
+          "required": [
+            "field"
+          ],
+          "fields": {
+            "field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "inferredEdge": {
+      "section": "directives",
+      "alternatives": [
+        {
+          "yamlKey": "inferredEdge",
+          "required": [
+            "name",
+            "selector"
+          ],
+          "fields": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "draw": {
+              "type": "string",
+              "pattern": "^\\s*[^\\s](?:(?!->)[\\s\\S])*->(?:(?!->)[\\s\\S])*[^\\s]\\s*$"
+            },
+            "lineStyle": {
+              "type": "block",
+              "block": "lineStyle"
+            },
+            "textStyle": {
+              "type": "block",
+              "block": "textStyle"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "styleBlocks": {
+    "textStyle": {
+      "fields": {
+        "size": {
+          "type": "enum",
+          "values": [
+            "small",
+            "normal",
+            "large"
+          ]
+        },
+        "color": {
+          "type": "string"
+        }
+      }
+    },
+    "lineStyle": {
+      "fields": {
+        "color": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "enum",
+          "values": [
+            "solid",
+            "dashed",
+            "dotted"
+          ]
+        },
+        "weight": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "highlight": {
+          "type": "string"
+        }
+      }
+    },
+    "fillStyle": {
+      "fields": {
+        "color": {
+          "type": "string"
+        }
+      }
+    },
+    "borderStyle": {
+      "fields": {
+        "color": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "iconStyle": {
+      "fields": {
+        "path": {
+          "type": "string"
+        },
+        "placement": {
+          "type": "enum",
+          "values": [
+            "full",
+            "badge"
+          ]
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "addEdge": {
+      "fields": {
+        "points": {
+          "type": "enum",
+          "values": [
+            "none",
+            "togroup",
+            "fromgroup"
+          ]
+        },
+        "lineStyle": {
+          "type": "block",
+          "block": "lineStyle"
+        },
+        "textStyle": {
+          "type": "block",
+          "block": "textStyle"
+        }
+      }
+    }
+  }
+}

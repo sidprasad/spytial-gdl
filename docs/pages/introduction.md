@@ -1,217 +1,165 @@
-# Introduction
+# Lightweight Interactive Diagrams in the Browser (with Semantics!)
 
-What spytial-gdl is, and how to get a diagram onto a page.
+Technical diagrams were once largely hand-maintained artifacts: drawing files or
+exported images kept alongside, but separate from, the prose and systems they
+explained. Text-based graph description languages changed that relationship.
+A DOT graph or Mermaid block can be checked into a repository, embedded in
+technical prose, and regenerated as part of a build or browser render pipeline.
+All authors have to write is a lightweight description of graph structure; the
+graph description language deals with drawing and layout. The result is portable,
+version-controlled, easy to revise, and cheap to keep synchronized with
+surrounding text and code.
 
-**spytial-gdl** is a small graph description language: a text notation for a graph
-with its layout written inline. You write nodes, edges, and spatial operations as
-`@annotations`, then Spytial solves the layout and draws a live, draggable diagram.
-Drop a fenced ` ```spytial-gdl ` block into Markdown and it renders client-side the
-way a ` ```mermaid ` block does, with no build step and no server beyond static
-hosting.
-
-```spytial-gdl
-A -> B : left
-A -> C : right
-B -> D : left
-B -> E : right
-C -> F : left
-C -> G : right
-
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])
-```
-
-That block is the whole input. Spytial will lay out any graph without help; the
-`@annotations` are how you say what the arrangement should mean. Orientation,
-alignment, grouping, and cycles are all annotations, and none of them ask you to
-change the graph. Drag a node and the constraints re-settle around it.
-
-## Why not just a flowchart?
-
-A flowchart language draws a picture of a graph. It doesn't record what the graph
-means: that these edges are "left child" and "right child", that the layout should
-follow from that, that a node is a `Person` rather than a `Company`. Here is the
-same binary tree in Mermaid. It reads fine, but the left-right arrangement comes
-out of `TD` and the order the lines happen to be in, not out of anything the source
-says.
+Effective diagrams, however, use space to make structure perceptible. That space
+often carries semantic weight. Consider a parse tree for the arithmetic
+expression `(6 ÷ 2) × 3`:
 
 ```mermaid
 flowchart TD
-  A --> B
-  A --> C
-  B --> D
-  B --> E
-  C --> F
-  C --> G
+  mul[×] -->|lhs| div[÷]
+  mul -->|rhs| three[3]
+  div -->|rhs| two[2]
+  div -->|lhs| six[6]
 ```
 
-In spytial-gdl the edge label is the relation name, and the relation is what a
-layout rule targets. `@orientation(selector=left, directions=[left])` says that
-every `left` edge puts its child on the left, which is a claim about the model
-rather than about this drawing, so it survives a change to the data. The essay
-[Your diagram doesn't know it's a family
-tree](../examples/md-viewer.html?doc=your-diagram-doesnt-know.md) works through a
-longer version of the same argument.
+In an expression tree, `lhs` and `rhs` are not just edge labels. They determine
+which operand comes first in a non-commutative operation such as division.
+Mermaid preserves those labels as text, but its graph layout has no notion of
+their expression-tree meaning. A right operand can appear to the left of a left
+operand. The picture can then suggest `2 ÷ 6`, despite its labels saying
+`6 ÷ 2`.
 
-## Scope
+Diagram authors employ a variety of tricks to steer layout: invisible edges,
+ranks, subgraphs, and changes to the order of the source. But these techniques
+are often specific to the exact graph being laid out and must be reworked when
+the underlying graph changes. The description now contains not only the
+structure of the actual graph, but also graph elements that exist only to
+influence layout.
 
-The notation covers graphs only: nodes, edges, labels, types, and classes. There is
-no syntax for sequence, state, Gantt, or pie diagrams. An edge label is a relation
-name rather than free text.
+spytial-gdl pairs the node-and-edge description with spatial requirements.
+When spatial arrangement is incidental, write only the graph. When a spatial
+relationship matters, add the requirements needed to express it. Readers can
+then drag elements into positions that continue to satisfy those requirements.
 
-## Types and classes
+## Drawing an expression
 
-A node carries an id, an optional type, and any number of classes. All three can be
-named by a selector, so a rule applies to whatever matches it instead of to nodes
-you picked out by hand:
+Here is the same arithmetic expression in spytial-gdl. The program pairs the
+graph description with two requirements: every `lhs` child should sit below-left
+of its parent and every `rhs` child below-right.
 
 ```spytial-gdl
-alice[Alice]:::Person -> acme[Acme]:::Company
-bob[Bob]:::Person     -> acme
-carol[Carol]:::Person -> acme
+mul[×] -> div[÷] : lhs
+mul -> three[3] : rhs
+div -> six[6] : lhs
+div -> two[2] : rhs
 
-@orientation(selector=_links, directions=[left])
-@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
-@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
-@group(selector=Person, name='People')
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
 ```
 
-## When constraints conflict
+Try dragging an operator or a number. Open **Source** to see the program that
+produced this diagram.
 
-You can over-constrain a layout. When the rules can't all hold, Spytial draws the
-closest feasible diagram and reports the smallest set of rules that are in conflict
-(the UNSAT core). Nothing is dropped quietly. The block below asks two edges of a
-2-cycle to both point right, which is impossible:
+Each requirement has three parts. The type of requirement, here
+`@orientation`, says how the spatial relationship is constrained. The selector
+says which graph elements it applies to, here every edge labeled `lhs` or
+`rhs`. The directions say where the selected child should appear relative to
+its parent.
+
+The author does not specify coordinates or distances. The requirements describe
+a set of acceptable layouts rather than one fixed drawing. Readers can drag
+nodes within that set, with Spytial preserving the relationships the requirements
+describe.
+
+Reordering the graph edges, reordering the requirements, or adding a new operator
+does not change their meaning. As long as the graph contains `lhs` and `rhs`
+edges, the same requirements govern them.
+
+The [spatial vocabulary](annotations.md) also includes alignment, grouping, and
+cyclic arrangements. You can place related elements along an axis, enclose them
+in a box, or arrange them around a cycle.
+
+## When requirements conflict
+
+Suppose the graph also has an edge from `div` back to `mul`, so multiplication
+and division are each an operand of the other. The graph is no longer a
+well-formed expression tree. A graph renderer can draw it anyway; the reader
+must notice that the picture is not a tree, and in a larger diagram they may not.
 
 ```spytial-gdl
-A -> B : x
-B -> A : y
+mul[×] -> div[÷] : lhs
+mul -> three[3] : rhs
+div -> six[6] : lhs
+div -> two[2] : rhs
+div -> mul : rhs
 
-@orientation(selector=x, directions=[right])
-@orientation(selector=y, directions=[right])
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
 ```
 
-[Errors and conflicts](annotations.md#errors-and-conflicts) explains how to read
-that panel.
+The orientation rules require multiplication to be both above and below
+division, which cannot hold. Spytial reports the implicated diagram elements
+and requirements. The displayed layout relaxes requirements so you can inspect
+the graph. Such a drawing helps explain the conflict; it does not satisfy the
+original requirements.
 
-## Adding it to a page
+## Editing the expression
 
-Add one line to whatever renders your Markdown, or to a hand-written HTML page.
-Everything loads from a CDN, so there is no `npm install` and no build step:
+A rendered diagram can also be an editable view of its graph description.
+This version lets you change the graph directly:
+
+```spytial-gdl-editable
+mul[×] -> div[÷] : lhs
+mul -> three[3] : rhs
+div -> six[6] : lhs
+div -> two[2] : rhs
+eleven[11]
+
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
+```
+
+Move the end of division's `lhs` edge from `6` to `11`. The source updates,
+and the layout places `11` below-left of division. The old operand remains in
+the graph, now disconnected.
+
+The requirements continue to guide the drawing as you edit. If an edit makes
+them impossible to satisfy, Spytial reports the conflict. You can also edit the
+source and press **Run** to update the diagram.
+
+## Beyond the drawing
+
+Because the graph and requirements remain available in the browser, Spytial can
+distinguish relationships required by the source from those that merely appear
+in the current drawing.
+
+That distinction matters for other ways of accessing a diagram. A description
+of the current picture answers where an operand is now. It does not necessarily
+answer whether that operand must stay on the left, or which requirement puts it
+there. The graph and requirements provide a basis for textual, assistive, and
+query-based views. A complete assistive interface is still future work.
+
+## Use it in your page
+
+Add this script once to your HTML page or Markdown site's template:
 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
-Then write a fenced block the way you'd write `mermaid`:
+Put the source in a `spytial-gdl` Markdown fence, or inside
+`<div class="spytial-gdl">` in HTML. For the editable version, use
+`spytial-gdl-editable`. The script loads the engine and renders the blocks in
+the browser. Serve the page over HTTP; this module setup cannot run from a
+`file://` URL. GitHub README pages display the source only.
 
-````markdown
-```spytial-gdl
-A -> B
-B -> C
-@orientation(selector=_links, directions=[right])
-```
-````
+[Open the playground](../playground/), [copy an HTML example](../examples/drop-in.html),
+or follow the [setup for your docs site](platforms.md).
+If you already have a Mermaid flowchart, give it to your agent with
+[the conversion guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md).
 
-Every `spytial-gdl` block on the page becomes a live diagram. The script pulls in
-the renderer (d3, WebCola, spytial-core) if the page doesn't already load it. The
-result:
+For the language itself, see the [syntax reference](notation.md),
+[annotations](annotations.md), and [embedding API](embedding.md).
 
-```spytial-gdl
-A -> B
-B -> C
-@orientation(selector=_links, directions=[right])
-```
-
-## Without a Markdown renderer
-
-You don't need Markdown at all. In a hand-written page, put the notation in a
-`<div class="spytial-gdl">` and add the same tag, the way you'd drop in a
-`<div class="mermaid">`. A complete, runnable page:
-
-```html
-<!DOCTYPE html>
-<meta charset="utf-8" />
-<style>.spytial-gdl { height: 340px; }</style>
-
-<div class="spytial-gdl">
-  A -> B : left
-  A -> C : right
-
-  @orientation(selector=_links, directions=[below])
-  @orientation(selector=left,  directions=[left])
-  @orientation(selector=right, directions=[right])
-</div>
-
-<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
-```
-
-Every block becomes a live diagram on load. You don't call an init function or pass
-any config. `class="language-spytial-gdl"` and `<pre class="spytial-gdl">` are
-picked up too, so whatever markup you or a renderer emit gets caught. Indentation
-inside the `<div>` is fine, since each line is trimmed.
-
-> **Note.** The page has to be served by a static server rather than opened as
-> `file://`, because the tag is an ES module. See *Running locally* below.
-
-## Calling autoRender yourself
-
-To control timing, height, or theme, import `autoRender` instead of using the
-drop-in tag:
-
-```html
-<script type="module">
-  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
-  autoRender({ height: 420, theme: 'dark' });
-</script>
-```
-
-You can also render one subtree after injecting HTML yourself. See
-[Markdown & HTML embedding](embedding.md) for the full surface.
-
-## Give each block a height
-
-The diagram fills its container, so a block needs a height:
-
-```css
-.spytial-gdl, .spytial-gdl-editable { height: 340px; }
-```
-
-A single block overrides that with `data-height` (a number of pixels or any CSS
-length), and `autoRender({ height })` sets a default for the page.
-
-## Running locally
-
-Clone the repo and start the zero-dependency static server:
-
-```bash
-npm run serve   # serves the repo on http://localhost:8100
-```
-
-Then open:
-
-| URL | what it is |
-|---|---|
-| `/docs/` | this documentation site |
-| `/playground/` | live editor (View ⇄ Edit) |
-| `/examples/` | every embedding mode, runnable |
-
-Any static server works. One is needed only because the pages load ES modules.
-
-## Pinning versions for production
-
-The CDN URLs above always fetch the latest published `spytial-gdl`, and through it
-a pinned `spytial-core`. For a reproducible deploy, vendor the three engine scripts
-locally (d3 v4, `webcola@3.4.0`, `spytial-core`) and point the tag at your own copy.
-[Architecture](architecture.md#dependencies) lists the exact set and load order.
-
-## Next
-
-- [The notation](notation.md): nodes, edges, labels, types, classes.
-- [Annotations](annotations.md): the `@` operations that produce the layout.
-- [Embedding & API](embedding.md): putting a diagram in a page, or driving it from JavaScript.
-
-> **Note.** Every diagram on this site is live. Each example is the exact notation
-> you'd write, rendered by the engine you'd embed. Open a block's **Source** panel
-> to see it.
+*Adapted from “Lightweight Interactive Diagrams in the Browser (with Semantics!)”
+by Siddhartha Prasad, Tim Nelson, and Shriram Krishnamurthi.*

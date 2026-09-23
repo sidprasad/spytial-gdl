@@ -1,0 +1,28 @@
+:root { --page-w: 1120px; }
+main { max-width: var(--page-w); margin: 0 auto; padding: 0 28px 64px; }
+.intro { padding: 56px 0 32px; max-width: 780px; }
+.intro h1 { font-size: clamp(36px, 5vw, 56px); margin-bottom: 24px; }
+.intro > p { font-size: 21px; line-height: 1.45; }
+.intro .context { font-size: 16px; color: var(--ink-2); max-width: 66ch; }
+.case-index { display: flex; flex-wrap: wrap; gap: 12px 28px; padding-bottom: 28px; font-size: 14px; }
+.case { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); gap: 36px; border-top: var(--bar) solid var(--ink); padding: 36px 0 44px; scroll-margin-top: 24px; }
+.case-copy h2 { font-size: 28px; line-height: 1.12; }
+.case-number { margin: 0 0 16px; color: var(--red); font: 500 12px/1.4 var(--display); text-transform: uppercase; letter-spacing: 0.1em; }
+.provenance { font-size: 13px; color: var(--ink-2); }
+.source-link { font-size: 14px; }
+.case-demo { min-width: 0; }
+.case-demo > .spytial-gdl { min-height: 360px; white-space: pre-wrap; overflow: auto; font: 12px/1.5 var(--mono); }
+.demo-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px 24px; margin-top: 12px; font-size: 13px; }
+.demo-footer span { color: var(--ink-2); }
+.notes { border-top: var(--bar) solid var(--ink); padding-top: 28px; }
+.notes p { max-width: 75ch; font-size: 14px; color: var(--ink-2); }
+@media (max-width: 780px) {
+  .case { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .case-copy { max-width: 65ch; }
+}
+@media (max-width: 480px) {
+  main { padding: 0 22px 40px; }
+  .intro { padding-top: 32px; }
+  .intro > p { font-size: 19px; }
+  .case-index { gap: 12px 20px; }
+}

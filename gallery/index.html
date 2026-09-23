@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gallery · Spytial GDL</title>
+  <meta name="description" content="Interactive graphs adapted from real Mermaid and Graphviz layout questions. Keep words in order, partners together, and peers aligned." />
+  <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/gallery/" />
+  <link rel="stylesheet" href="../assets/site.css" />
+  <link rel="stylesheet" href="./gallery.css" />
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="../">Spytial GDL</a>
+      <nav aria-label="Main navigation">
+        <a href="../docs/">Documents</a>
+        <a href="../playground/">Playground</a>
+        <a href="../AGENTS.md">Agent guide</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <header class="intro">
+      <h1>Graphs with requirements.</h1>
+      <p>Words have an order. Partners belong together. A connection need not put one node below another.</p>
+      <p class="context">These live examples are adapted from real Mermaid and Graphviz layout questions. Each links to the original discussion. Drag a node to try the requirements, or open the source to see how they are written.</p>
+    </header>
+    <nav class="case-index" aria-label="Gallery examples">
+      <a href="#word-order">01 Word order</a>
+      <a href="#family">02 Family relationships</a>
+      <a href="#subsystem">03 Subsystem direction</a>
+      <a href="#peers">04 Peer alignment</a>
+    </nav>
+
+    <article class="case" id="word-order" aria-labelledby="word-order-title">
+      <div class="case-copy">
+        <p class="case-number">01 / Order</p>
+        <h2 id="word-order-title">Keep the words in order.</h2>
+        <p>A Mermaid user drawing the grammatical structure of an Indonesian sentence needed its words to stay in sequence.</p>
+        <p>Here, a short English sentence illustrates the same requirement. Its words stay on one line, in reading order, while the phrases sit above their parts.</p>
+        <p class="provenance">Adapted example, not a translation of the original sentence.</p>
+        <a class="source-link" href="https://github.com/mermaid-js/mermaid/issues/815">Original discussion: Mermaid #815 ↗</a>
+      </div>
+      <div class="case-demo" role="group" aria-label="Interactive sentence structure">
+        <div class="spytial-gdl" id="words-graph" data-height="360">
+sentence[Sentence]:::Phrase -> subject[Noun phrase]:::Phrase : part
+sentence -> predicate[Verb phrase]:::Phrase : part
+subject -> determiner[The]:::Word : part
+subject -> noun[compiler]:::Word : part
+predicate -> verb[checks]:::Word : part
+predicate -> object[types]:::Word : part
+
+%% Reading order is separate from the grammatical edges.
+determiner -> noun : nextWord
+noun -> verb : nextWord
+verb -> object : nextWord
+
+@orientation(selector=part, directions=[below])
+@orientation(selector=nextWord, directions=[right])
+@align(selector=nextWord, direction=horizontal)
+@hideField(field=nextWord)
+@edgeStyle(field=part, showLabel=false)
+@atomStyle(selector=univ, textStyle(size=large))
+@atomStyle(selector=Word, fillStyle(color='#edb211'), textStyle(color='#16130f'))
+@atomStyle(selector=Phrase, fillStyle(color='#1f4396'), textStyle(color=white))
+        </div>
+        <div class="demo-footer"><span>Word order + phrase structure</span><a href="../playground/" data-playground-source="words-graph">Open in playground →</a></div>
+      </div>
+    </article>
+
+    <article class="case" id="family" aria-labelledby="family-title">
+      <div class="case-copy">
+        <p class="case-number">02 / Grouping</p>
+        <h2 id="family-title">Keep partners together.</h2>
+        <p>Adding another generation to a DOT family tree placed one partner between members of a different couple. Reordering the declarations did not give the author the arrangement they wanted.</p>
+        <p>In this smaller family, partners share a row and a group. Children stay below their parents. John and Jane share a row too.</p>
+        <p class="provenance">A subset of the family in the discussion, with shorter labels. The boxes identify couples; arrows run from parent to child.</p>
+        <a class="source-link" href="https://forum.graphviz.org/t/problems-positioning-nodes-in-a-family-tree-with-dot/3328">Original discussion: Graphviz ↗</a>
+      </div>
+      <div class="case-demo" role="group" aria-label="Interactive family relationships">
+        <div class="spytial-gdl" id="family-graph" data-height="400">
+henry[Henry]:::Person -> mary[Mary]:::Person : child
+abigail[Abigail]:::Person -> mary : child
+adam[Adam]:::Person -> john[John]:::Person : child
+adam -> jane[Jane]:::Person : child
+mary -> john : child
+mary -> jane : child
+
+henry -> abigail : partner
+adam -> mary : partner
+john -> jane : sibling
+class henry,abigail grandparents
+class adam,mary parents
+
+@orientation(selector=child, directions=[below])
+@align(selector=partner, direction=horizontal)
+@align(selector=sibling, direction=horizontal)
+@group(selector=grandparents, name='Henry and Abigail')
+@group(selector=parents, name='Adam and Mary')
+@hideField(field=partner)
+@hideField(field=sibling)
+@edgeStyle(field=child, showLabel=false)
+@atomStyle(selector=univ, textStyle(size=large))
+@atomStyle(selector=Person, fillStyle(color='#edb211'), textStyle(color='#16130f'))
+        </div>
+        <div class="demo-footer"><span>Partners together; children below</span><a href="../playground/" data-playground-source="family-graph">Open in playground →</a></div>
+      </div>
+    </article>
+
+    <article class="case" id="subsystem" aria-labelledby="subsystem-title">
+      <div class="case-copy">
+        <p class="case-number">03 / Orientation</p>
+        <h2 id="subsystem-title">Connect it without turning it.</h2>
+        <p>A Mermaid user specified a left-to-right subgraph. Connecting one of its nodes to the outside changed its direction.</p>
+        <p>This compiler pipeline has its own left-to-right order. Source enters from above and a program leaves below, without changing that internal order.</p>
+        <p class="provenance">An illustrative pipeline based on the reported layout problem, not the original graph. Mermaid documents this <a href="https://mermaid.js.org/syntax/flowchart.html#direction-in-subgraphs">subgraph limitation</a>.</p>
+        <a class="source-link" href="https://github.com/mermaid-js/mermaid/issues/4738">Original discussion: Mermaid #4738 ↗</a>
+      </div>
+      <div class="case-demo" role="group" aria-label="Interactive compiler pipeline">
+        <div class="spytial-gdl" id="subsystem-graph" data-height="360">
+source[Source]:::Artifact -> parse[Parse]:::Stage : enters
+parse -> check[Check types]:::Stage : stage
+check -> generate[Generate code]:::Stage : stage
+generate -> program[Program]:::Artifact : leaves
+class parse,check,generate compiler
+
+@group(selector=compiler, name='Compiler')
+@orientation(selector=stage, directions=[right])
+@align(selector=stage, direction=horizontal)
+@orientation(selector=enters, directions=[directlyBelow])
+@orientation(selector=leaves, directions=[directlyBelow])
+@edgeStyle(field=stage, showLabel=false)
+@edgeStyle(field=enters, showLabel=false)
+@edgeStyle(field=leaves, showLabel=false)
+@atomStyle(selector=univ, textStyle(size=large))
+@atomStyle(selector=Stage, fillStyle(color='#1f4396'), textStyle(color=white))
+@atomStyle(selector=Artifact, fillStyle(color='#edb211'), textStyle(color='#16130f'))
+        </div>
+        <div class="demo-footer"><span>Local direction + external connections</span><a href="../playground/" data-playground-source="subsystem-graph">Open in playground →</a></div>
+      </div>
+    </article>
+
+    <article class="case" id="peers" aria-labelledby="peers-title">
+      <div class="case-copy">
+        <p class="case-number">04 / Alignment</p>
+        <h2 id="peers-title">A connection is not a hierarchy.</h2>
+        <p>A Mermaid user needed two connected nodes on the same level. Their cross-connections instead put them at different heights.</p>
+        <p>Here, two replicas exchange updates as peers. Their connection keeps them aligned, while each store sits below its replica.</p>
+        <p class="provenance">The issue's five-node topology with illustrative system labels. This is a layout example, not a replication protocol. The original request notes DOT's <code>rank=same</code> alternative.</p>
+        <a class="source-link" href="https://github.com/mermaid-js/mermaid/issues/3723">Original discussion: Mermaid #3723 ↗</a>
+      </div>
+      <div class="case-demo" role="group" aria-label="Interactive peer replicas">
+        <div class="spytial-gdl" id="peers-graph" data-height="360">
+router[Router]:::Router -> east[East replica]:::Replica : routes
+router -> west[West replica]:::Replica : routes
+east -> eastStore[East store]:::Store : stores
+west -> westStore[West store]:::Store : stores
+east -> west : sync
+west -> east : sync
+
+@orientation(selector=routes, directions=[below])
+@orientation(selector=stores, directions=[directlyBelow])
+@align(selector=sync, direction=horizontal)
+@edgeStyle(field=routes, showLabel=false)
+@edgeStyle(field=stores, showLabel=false)
+@edgeStyle(field=sync, lineStyle(color='#cd3b26'))
+@atomStyle(selector=univ, textStyle(size=large))
+@atomStyle(selector=Router, fillStyle(color='#edb211'), textStyle(color='#16130f'))
+@atomStyle(selector=Replica, fillStyle(color='#1f4396'), textStyle(color=white))
+@atomStyle(selector=Store, fillStyle(color='#edb211'), textStyle(color='#16130f'))
+        </div>
+        <div class="demo-footer"><span>Peers aligned; storage below</span><a href="../playground/" data-playground-source="peers-graph">Open in playground →</a></div>
+      </div>
+    </article>
+
+    <footer class="notes">
+      <h2>About these examples</h2>
+      <p>The discussions document their authors' needs at the time. Some include workarounds; they are not claims about what every current renderer can do. These are our adaptations, not endorsements by the original authors.</p>
+      <p>SPytial preserves the spatial requirements you write. It does not establish that the graph is a correct account of a sentence, family, or system.</p>
+      <a href="../AGENTS.md">Want to use this in your documents? Start with the agent guide →</a>
+    </footer>
+  </main>
+  <script type="module" src="../assets/landing.js"></script>
+  <script type="module" src="../src/auto.js"></script>
+</body>
+</html>

@@ -21,7 +21,26 @@
 // rejects that — a disagreement conformance.test.mjs pins directly rather than
 // papering over here.
 
+import { readFileSync } from 'node:fs';
+
+// Test the source shipped on the homepage, not a separate copy of the drawing.
+const homepage = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const expression = homepage.match(/id="expression-graph"[^>]*>([\s\S]*?)<\/div>/);
+if (!expression) throw new Error('The homepage must contain its live expression graph.');
+
 export const CASES = [
+  {
+    name: 'the homepage expression preserves operand order',
+    gdl: expression[1],
+    assertions: [
+      { query: 'nodes()', count: 5 },
+      { query: 'must.below(mul)', equals: ['div', 'three', 'six', 'two'] },
+      { query: 'must.leftOf(div)', contains: ['six'] },
+      { query: 'must.rightOf(div)', contains: ['two'] },
+      { query: 'must.leftOf(mul)', contains: ['div'] },
+      { query: 'must.rightOf(mul)', contains: ['three'] },
+    ],
+  },
   {
     name: 'a labeled chain runs left to right, all the way down',
     gdl: `
