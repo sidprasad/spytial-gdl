@@ -3,77 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>spytial-gdl</title>
-  <meta name="description" content="Lightweight interactive graphs with semantics. Describe nodes, edges, and spatial relationships, then embed the graph in your documents. Write a graph or convert Mermaid and Graphviz with your agent." />
+  <title>Spytial GDL · Lightweight interactive graphs (with semantics!)</title>
+  <meta name="description" content="Spytial GDL pairs a simple graph description language with spatial requirements. Create interactive graphs whose layouts preserve the relationships you specify." />
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    :root { --page-w: 880px; }
-    main { max-width: var(--page-w); margin: 0 auto; padding: 0 28px 64px; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; align-items: start; padding: 64px 0 48px; }
-    .hero h1 { margin-bottom: 24px; font-size: clamp(38px, 5vw, 52px); }
-    .hero h1 span { display: block; color: var(--blue); font-size: 0.7em; margin-top: 12px; }
-    .lede { font-size: 20px; line-height: 1.45; color: var(--ink-2); max-width: 34ch; margin: 0 0 24px; }
-    .lede code { background: var(--yellow); color: #16130f; }
-    .composition { min-width: 0; margin: 0; }
-    .composition figcaption { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
-    .composition > .spytial-gdl { height: 360px; overflow: auto; white-space: pre-wrap; font: 12px/1.5 var(--mono); }
-    .composition figcaption strong { display: block; color: var(--ink); font-weight: 500; }
-    details { margin-top: 20px; }
-    summary { cursor: pointer; color: var(--accent); }
-    .start { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 20px; border-top: var(--bar) solid var(--ink); padding: 26px 0; }
-    .number { color: var(--red); font: 14px/1.5 var(--mono); padding-top: 4px; }
-    h2 { font-size: 26px; }
-    p { margin: 12px 0; }
-    .start p { color: var(--ink-2); }
-    pre { margin: 16px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-    pre code { font-size: 14px; }
-    .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
-    .btn { font-size: 14px; }
-    [hidden] { display: none !important; }
-    .note, .status { font-size: 14px; }
-    .status { color: var(--ink-2); }
-    .status:empty { display: none; }
-    footer { border-top: var(--bar) solid var(--ink); padding-top: 20px; display: flex; flex-wrap: wrap; gap: 12px 24px; }
-    footer a { color: var(--ink-2); }
-    @media (max-width: 720px) {
-      .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 40px; }
-      .composition { width: 100%; max-width: 400px; }
-      .hero h1 { font-size: clamp(32px, 6vw, 48px); }
-    }
+    main { max-width: 880px; margin: 0 auto; padding: 48px 28px 64px; }
+    .name { margin: 0 0 24px; font: 18px/1.4 var(--display); }
+    h1 { font-size: clamp(36px, 5vw, 58px); line-height: 1.05; margin: 0 0 36px; }
+    h1 span { display: block; color: var(--blue); font-size: 0.75em; margin-top: 8px; }
+    .demo { min-width: 0; margin: 0 0 36px; }
+    .demo > .spytial-gdl { height: 360px; overflow: auto; white-space: pre-wrap; font: 12px/1.5 var(--mono); }
+    .explanation { font-size: 18px; line-height: 1.65; }
+    .explanation p { margin: 0 0 24px; }
+    .actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 20px 32px; border-top: var(--bar) solid var(--ink); margin-top: 32px; padding-top: 24px; }
+    .agent-link { flex: 1 1 300px; }
+    .agent-link span { display: block; }
     @media (max-width: 480px) {
-      main { padding-left: 22px; padding-right: 22px; }
-      .start { grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+      main { padding: 28px 22px 40px; }
+      h1 { margin-bottom: 28px; }
+      .explanation { font-size: 17px; }
     }
   </style>
 </head>
 <body>
-  <header class="masthead">
-    <div class="masthead-inner">
-      <a class="wordmark" href="./">
-        spytial-gdl
-      </a>
-      <nav aria-label="Primary">
-        <a href="./docs/">Docs</a>
-        <a href="./playground/">Playground</a>
-        <a href="./examples/">Examples</a>
-        <a href="https://github.com/sidprasad/spytial-gdl">GitHub</a>
-      </nav>
-    </div>
-  </header>
-
   <main>
-    <section class="hero">
-      <div>
-        <h1>Lightweight interactive graphs <span>(with semantics!)</span></h1>
-        <p class="lede">Describe nodes, edges, and the spatial relationships that matter. Embed the graph in your documents. Readers can move it while those relationships stay intact.</p>
-        <div class="actions">
-          <a class="btn btn-solid" href="#agents">Use with your agent</a>
-          <a href="./docs/#/introduction">Read the introduction</a>
-        </div>
-      </div>
-      <figure class="composition" aria-label="Interactive expression tree for (6 divided by 2) times 3">
-        <div class="spytial-gdl" id="expression-graph" data-height="360">
+    <p class="name">Spytial GDL</p>
+    <h1>Lightweight interactive graphs <span>(with semantics!)</span></h1>
+
+    <section class="demo" aria-label="Interactive expression tree for (6 divided by 2) times 3">
+      <div class="spytial-gdl" id="expression-graph" data-height="360">
 mul[×]:::Operator -> div[÷]:::Operator : lhs
 mul -> three[3]:::Number : rhs
 div -> six[6]:::Number : lhs
@@ -86,69 +45,21 @@ div -> two[2]:::Number : rhs
 @atomStyle(selector=Number, fillStyle(color='#edb211'), textStyle(size=large, color='#16130f'))
 @edgeStyle(field=lhs, lineStyle(color='#cd3b26'))
         </div>
-        <figcaption><strong>Layout is part of the explanation.</strong>This is (6 ÷ 2) × 3. Six belongs to the left of division; two belongs to the right. Try dragging them. Open Source to see the rules.</figcaption>
-        <p class="note"><a href="./playground/" data-playground-source="expression-graph">Edit this graph</a></p>
-      </figure>
     </section>
 
-    <section class="start" id="agents" aria-labelledby="agent-title">
-      <span class="number" aria-hidden="true">01</span>
-      <div>
-        <h2 id="agent-title">Have your agent use it.</h2>
-        <p>A graph description language for your documents. Give your agent this prompt, or add it to your project's agent instructions:</p>
-        <pre><code id="agent-prompt">Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
-Use spytial-gdl when a graph would help explain the documents you write. Describe the nodes and edges, and add spatial rules where position carries meaning. Set up the renderer for this project and check the result in a browser. If the document cannot run it, link to a live diagram instead.</code></pre>
-        <div class="actions">
-          <button class="btn" type="button" data-copy-target="agent-prompt" aria-describedby="agent-status" hidden>Copy prompt</button>
-          <a href="./AGENTS.md">Read the agent guide</a>
-        </div>
-        <p class="status" id="agent-status" role="status"></p>
-        <details id="mermaid">
-          <summary>Already using Mermaid or Graphviz?</summary>
-          <p>Give your agent the existing graph and this prompt:</p>
-          <pre><code id="convert-prompt">Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
-Convert this Mermaid flowchart or Graphviz DOT graph to spytial-gdl. Preserve its nodes, edges, and labels where supported, and explain any differences. Add the spatial rules that matter, embed it in this project, and check that it renders.</code></pre>
-          <button class="btn" type="button" data-copy-target="convert-prompt" aria-describedby="convert-status" hidden>Copy conversion prompt</button>
-          <p class="status" id="convert-status" role="status"></p>
-          <p class="note">Conversion, not a drop-in replacement. DOT needs translation; Mermaid sequence diagrams, Gantt charts, and other non-graph formats need a different renderer.</p>
-        </details>
-      </div>
-    </section>
+    <div class="explanation">
+      <p>Traditional graph description languages let you write a diagram as lightweight source and delegate its layout to a renderer. That delegation becomes a problem when spatial arrangement itself carries meaning, because the renderer can place elements in ways that contradict it. Spytial GDL pairs a simple graph description language with spatial <em>requirements</em>.</p>
 
-    <section class="start" id="embed" aria-labelledby="embed-title">
-      <span class="number" aria-hidden="true">02</span>
-      <div>
-        <h2 id="embed-title">Put a graph in your documents.</h2>
-        <p>Paste this into an HTML page served by your site or local server:</p>
-        <pre><code id="html-example">&lt;div class="spytial-gdl"&gt;
-mul[×] -> div[÷] : lhs
-mul -> three[3] : rhs
-div -> six[6] : lhs
-div -> two[2] : rhs
+      <p>Describe the graph, then state relationships, such as orientation and grouping, that every valid layout must preserve.</p>
 
-@orientation(selector=lhs, directions=[below, left])
-@orientation(selector=rhs, directions=[below, right])
-&lt;/div&gt;
+      <p>Explicit requirements on layout enable interaction beyond rendering: constrained rearrangement, explanations for contradictory requirements, and direct manipulation that edits the underlying graph while preserving the diagram's spatial meaning.</p>
+    </div>
 
-&lt;script type="module"
-  src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"&gt;&lt;/script&gt;</code></pre>
-        <div class="actions">
-          <button class="btn" type="button" data-copy-target="html-example" aria-describedby="embed-status" hidden>Copy HTML</button>
-          <a href="./docs/#/introduction/drawing-an-expression">See it running</a>
-          <a href="./docs/#/platforms">Set up your docs site</a>
-        </div>
-        <p class="status" id="embed-status" role="status"></p>
-        <p class="note">For Markdown, add the same script to your site template and use a <code>spytial-gdl</code> code fence. GitHub README files and PR descriptions do not run the renderer. Link to the live graph or include an exported image there.</p>
-      </div>
-    </section>
-
-    <footer>
-      <a href="./docs/#/notation">Notation</a>
-      <a href="./docs/#/annotations">Layout rules</a>
-      <a href="./examples/">Examples</a>
-      <a href="https://www.npmjs.com/package/spytial-gdl">npm</a>
-      <a href="./LICENSE">MIT license</a>
-    </footer>
+    <nav class="actions" aria-label="Next steps">
+      <a href="./docs/#/introduction">Learn more</a>
+      <a href="./playground/" data-playground-source="expression-graph">Playground</a>
+      <a class="agent-link" href="./AGENTS.md">Already using Mermaid or DOT?<span>Teach your agent to use Spytial GDL.</span></a>
+    </nav>
   </main>
   <script type="module" src="./assets/landing.js"></script>
   <script type="module" src="./src/auto.js"></script>

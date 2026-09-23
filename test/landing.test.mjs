@@ -25,11 +25,10 @@ assert.deepEqual(compiled.parseErrors, []);
 assert.ok(html.indexOf('src="./assets/landing.js"') < html.indexOf('src="./src/auto.js"'),
   'Capture the graph source before the renderer replaces it');
 
-// The copyable minimal embed must also be valid, independent of hero styling.
-const embed = html.match(/id="html-example">([\s\S]*?)<\/code>/)[1];
-const embedSource = embed.match(/&lt;div[^\n]*\n([\s\S]*?)&lt;\/div&gt;/)[1];
-const minimal = compileSpytialGdl(embedSource);
-assert.equal(minimal.ok, true);
-assert.deepEqual(minimal.annotationErrors, []);
-assert.deepEqual(minimal.parseErrors, []);
-console.log('Landing page edit link round-trips, and both example sources compile.');
+const actions = html.match(/<nav class="actions"[\s\S]*?<\/nav>/)[0];
+assert.equal([...actions.matchAll(/<a\s/g)].length, 3);
+assert.ok(actions.includes('href="./docs/#/introduction"'));
+assert.ok(actions.includes('href="./AGENTS.md"'));
+assert.ok(!html.includes('<figcaption'));
+assert.ok(!html.includes('data-copy-target'));
+console.log('Landing graph compiles, playground link round-trips, and the three entry points are present.');

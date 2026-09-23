@@ -30,7 +30,7 @@ if (!expression) throw new Error('The homepage must contain its live expression 
 
 export const CASES = [
   {
-    name: 'the homepage expression keeps the operand order its caption promises',
+    name: 'the homepage expression preserves operand order',
     gdl: expression[1],
     assertions: [
       { query: 'nodes()', count: 5 },
