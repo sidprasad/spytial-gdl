@@ -7,6 +7,7 @@ A graph description language with spatial semantics.
 
 [Website](https://www.siddharthaprasad.com/spytial-gdl/) ·
 [Playground](https://www.siddharthaprasad.com/spytial-gdl/playground/) ·
+[Gallery](https://www.siddharthaprasad.com/spytial-gdl/gallery/) ·
 [Documentation](https://www.siddharthaprasad.com/spytial-gdl/docs/) ·
 [Agent guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md)
 

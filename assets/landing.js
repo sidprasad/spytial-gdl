@@ -4,5 +4,5 @@ for (const link of document.querySelectorAll('[data-playground-source]')) {
   if (!source) continue;
   const bytes = new TextEncoder().encode(JSON.stringify({ m: source.textContent.trim() }));
   const payload = btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''));
-  link.href = `./playground/#g=${payload}`;
+  link.href = `${link.href.split('#')[0]}#g=${payload}`;
 }
