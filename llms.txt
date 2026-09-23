@@ -1,0 +1,27 @@
+# spytial-gdl
+
+> A small graph description language for live, draggable diagrams with explicit spatial requirements.
+
+Use spytial-gdl for graph-shaped diagrams where relationships, types, classes,
+and spatial rules should remain available as source—not merely as pixels.
+
+## Start here
+
+- Agent instructions: https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
+- Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction
+- Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation
+- Annotations: https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations
+- Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding
+- Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/#/platforms
+- Playground: https://www.siddharthaprasad.com/spytial-gdl/playground/
+- Examples: https://www.siddharthaprasad.com/spytial-gdl/examples/
+- Source: https://github.com/sidprasad/spytial-gdl
+
+## Minimal integration
+
+Add this script to the page that renders Markdown:
+
+    <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
+
+Then use fenced blocks with the `spytial-gdl` language identifier. The complete
+authoring and migration guidance is in AGENTS.md.

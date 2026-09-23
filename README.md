@@ -2,6 +2,10 @@
 
 A small graph description language with its layout written inline.
 
+**[Website](https://www.siddharthaprasad.com/spytial-gdl/)** ·
+**[Playground](https://www.siddharthaprasad.com/spytial-gdl/playground/)** ·
+**[Point an agent at AGENTS.md](AGENTS.md)**
+
 [![CI](https://github.com/sidprasad/spytial-gdl/actions/workflows/ci.yml/badge.svg)](https://github.com/sidprasad/spytial-gdl/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/spytial-gdl.svg)](https://www.npmjs.com/package/spytial-gdl)
 
@@ -29,6 +33,11 @@ engine (d3, WebCola, spytial-core) from a CDN if the page does not already have 
 ```html
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
+
+Already using Mermaid? Change the fence to `spytial-gdl`, keep the graph's real
+relationships as edge names, and express layout with `@annotations`. The
+[landing page](https://www.siddharthaprasad.com/spytial-gdl/#mermaid) shows the
+smallest before/after.
 
 From JavaScript:
 
