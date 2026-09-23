@@ -1,11 +1,12 @@
-# Annotations
+# Requirements
 
-How to write the layout: the `@` operations and the arguments they take.
+State the spatial relationships every valid layout must preserve.
 
-There is no `TD`/`LR` keyword in spytial-gdl. Every layout and styling decision is
-an `@annotation`, a one-line operation that targets a
-[selector](notation.md#selectors) and applies a constraint or a directive. One
-block of text describes both the graph and how it should be drawn.
+There is no `TD`/`LR` keyword in spytial-gdl. Write requirements with `@` operations
+that target a [selector](notation.md#selectors), such as keeping children below
+their parents or cells in the same row. Styling directives use the same syntax
+but change appearance rather than impose spatial requirements. One block of text
+describes both the graph and how it should be drawn.
 
 ## Anatomy
 
@@ -13,9 +14,9 @@ block of text describes both the graph and how it should be drawn.
 @name(arg=value, arg2=[a, b], …)
 ```
 
-One annotation per statement, anywhere in the block, though the convention is to
-put them after the graph. An annotation usually fits on one line, but the arguments
-may wrap up to the closing `)`, which helps with long lists:
+Write one requirement or styling directive per statement, anywhere in the block.
+The convention is to put them after the graph. A statement usually fits on one
+line, but its arguments may wrap up to the closing `)`, which helps with long lists:
 
 ```text
 @orientation(

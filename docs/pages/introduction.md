@@ -159,7 +159,7 @@ If you already have a Mermaid flowchart, give it to your agent with
 [the conversion guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md).
 
 For the language itself, see the [syntax reference](notation.md),
-[annotations](annotations.md), and [embedding API](embedding.md).
+[requirements](annotations.md), and [embedding API](embedding.md).
 
 *Adapted from “Lightweight Interactive Diagrams in the Browser (with Semantics!)”
 by Siddhartha Prasad, Tim Nelson, and Shriram Krishnamurthi.*

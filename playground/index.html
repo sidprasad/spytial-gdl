@@ -29,7 +29,7 @@
 
         /* ─── Header ────────────────────────────────────────────────────── */
         header.topbar {
-            flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+            flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
             padding: 11px 18px; background: var(--paper);
             border-bottom: var(--bar) solid var(--ink); z-index: 20;
         }
@@ -191,6 +191,10 @@
             <h1>spytial&#8209;gdl</h1>
         </a>
         <div class="spacer"></div>
+        <nav class="site-nav" aria-label="Main navigation">
+            <a href="./" aria-current="page">Playground</a>
+            <a href="../docs/">Documentation</a>
+        </nav>
         <select id="example-select" title="Load an example" aria-label="Load an example">
             <option value="" disabled selected>Examples…</option>
             <option value="flowchart">Flowchart (faithful default)</option>
