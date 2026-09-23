@@ -116,7 +116,7 @@ B -> C
 
 There is also a `%%@name(...)` form, which guards an annotation so a block still
 degrades gracefully if it gets pasted into a vanilla Mermaid renderer. See
-[Annotations](annotations.md#mermaid-safe-annotations).
+[Requirements](annotations.md#mermaid-safe-annotations).
 
 ## Mermaid compatibility
 
@@ -300,5 +300,5 @@ For everyday diagrams the named forms above are all you need.
 
 ## Next
 
-- [Annotations](annotations.md): turning these selectors into layout and style.
+- [Requirements](annotations.md): turning these selectors into layout and style.
 - [Embedding & API](embedding.md): rendering the notation in a page or from JavaScript.

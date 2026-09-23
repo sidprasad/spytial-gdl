@@ -225,8 +225,10 @@ html { scroll-behavior: smooth; }
   .toc { display: none; }
 }
 @media (max-width: 820px) {
+  :root { --topbar-h: 104px; }
+  .topbar { flex-wrap: wrap; gap: 8px 12px; padding: 10px 18px; }
   .nav-toggle { display: inline-block; }
-  .topbar-links { display: none; }
+  .topbar-links { order: 5; flex-basis: 100%; justify-content: center; padding-bottom: 4px; }
   .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar {
     position: fixed; top: var(--topbar-h); left: 0; z-index: 30; width: 86%; max-width: 320px;

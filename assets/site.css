@@ -130,6 +130,9 @@ hr { border: none; border-top: var(--bar) solid var(--ink); margin: 40px 0; }
 /* ── Masthead ───────────────────────────────────────────────────────────
    A full-bleed rule, with the wordmark and nav sitting on the page's text
    grid. Set --page-w on the page to match its content column. */
+.site-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font: 16px/1.4 var(--display); }
+.site-nav a { white-space: nowrap; }
+.site-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 28px; }
 .masthead { border-bottom: var(--bar) solid var(--ink); }
 .masthead-inner {
   display: flex; align-items: center; justify-content: space-between; gap: 16px 24px;

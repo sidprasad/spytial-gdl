@@ -6,6 +6,7 @@
   <title>Markdown viewer · spytial-gdl</title>
   <link rel="stylesheet" href="../assets/site.css" />
   <style>
+    .site-header { max-width: 880px; margin: 0 auto; padding: 24px; }
     #doc { max-width: 680px; margin: 0 auto; padding: 40px 24px 120px; }
     #doc h1 { font-size: clamp(36px, 6vw, 52px); margin: 0 0 16px; }
     /* The dek: marked renders the leading *italic* line as a normal <em> in a <p>;
@@ -42,6 +43,13 @@
   </style>
 </head>
 <body>
+  <header class="site-header">
+    <a class="wordmark" href="../">Spytial GDL</a>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="../playground/">Playground</a>
+      <a href="../docs/">Documentation</a>
+    </nav>
+  </header>
   <div id="status">loading…</div>
   <article id="doc"></article>
 

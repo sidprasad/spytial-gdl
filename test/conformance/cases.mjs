@@ -25,20 +25,36 @@ import { readFileSync } from 'node:fs';
 
 // Test the source shipped on the homepage, not a separate copy of the drawing.
 const homepage = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-const expression = homepage.match(/id="expression-graph"[^>]*>([\s\S]*?)<\/div>/);
-if (!expression) throw new Error('The homepage must contain its live expression graph.');
+const board = homepage.match(/id="board-graph"[^>]*>([\s\S]*?)<\/div>/);
+if (!board) throw new Error('The homepage must contain its live tic-tac-toe graph.');
 
 export const CASES = [
   {
-    name: 'the homepage expression preserves operand order',
-    gdl: expression[1],
+    name: 'the homepage board preserves rows and columns',
+    gdl: board[1],
     assertions: [
-      { query: 'nodes()', count: 5 },
-      { query: 'must.below(mul)', equals: ['div', 'three', 'six', 'two'] },
-      { query: 'must.leftOf(div)', contains: ['six'] },
-      { query: 'must.rightOf(div)', contains: ['two'] },
-      { query: 'must.leftOf(mul)', contains: ['div'] },
-      { query: 'must.rightOf(mul)', contains: ['three'] },
+      { query: 'nodes()', count: 9 },
+      { query: 'must.rightOf(a)', contains: ['b', 'c'] },
+      { query: 'must.below(a)', contains: ['d', 'g'] },
+      { query: 'must.leftOf(e)', contains: ['d'] },
+      { query: 'must.rightOf(e)', contains: ['f'] },
+      { query: 'must.above(e)', contains: ['b'] },
+      { query: 'must.below(e)', contains: ['h'] },
+      { query: 'must.aligned.y(a)', contains: ['b', 'c'] },
+      { query: 'must.aligned.y(d)', contains: ['e', 'f'] },
+      { query: 'must.aligned.y(g)', contains: ['h', 'i'] },
+      { query: 'must.aligned.x(a)', contains: ['d', 'g'] },
+      { query: 'must.aligned.x(b)', contains: ['e', 'h'] },
+      { query: 'must.aligned.x(c)', contains: ['f', 'i'] },
+    ],
+  },
+  {
+    name: 'right and below labels alone do not constrain the homepage layout',
+    gdl: board[1].replace(/^@orientation.*$/gm, ''),
+    assertions: [
+      { query: 'nodes()', count: 9 },
+      { query: 'must.rightOf(a)', empty: true },
+      { query: 'must.below(a)', empty: true },
     ],
   },
   {

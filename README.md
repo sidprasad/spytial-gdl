@@ -24,7 +24,7 @@ conflict, the renderer identifies the affected requirements and graph elements.
 ## An example
 
 In the expression `(6 ÷ 2) × 3`, left and right distinguish the operands.
-The graph describes the expression; two annotations keep each operand below
+The graph describes the expression; two requirements keep each operand below
 and on the appropriate side of its operator.
 
 ```spytial-gdl
@@ -117,7 +117,7 @@ and selector manifests. It is also exported as `spytial-gdl/language.json`.
 | --- | --- |
 | [Introduction](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction) | A live walkthrough of graph structure, spatial rules, conflicts, and editing |
 | [Syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation) | Nodes, edges, labels, types, classes, and Mermaid compatibility |
-| [Annotations](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial constraints, selectors, and styling |
+| [Requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial constraints, selectors, and styling |
 | [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding) | Renderer setup, JavaScript APIs, and editable diagrams |
 | [Examples](https://www.siddharthaprasad.com/spytial-gdl/examples/) | Runnable integrations with source you can reuse |
 | [Changelog](https://github.com/sidprasad/spytial-gdl/blob/main/CHANGELOG.md) | Release history |
