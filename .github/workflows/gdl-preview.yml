@@ -1,0 +1,44 @@
+name: Check GDL PR previews
+
+# This job only reads PR code and uploads a short-lived artifact. Authors can
+# commit the PNG and paste the linked image into their PR description.
+on:
+  pull_request:
+    paths:
+      - '**/*.gdl'
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python -m pip install playwright==1.58.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Render changed GDL files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: >-
+          python scripts/render-gdl-previews.py
+          --changed-from "$BASE_SHA"
+          --pr "$PR_NUMBER"
+          --sha "$HEAD_SHA"
+          --output gdl-preview-artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdl-preview
+          path: gdl-preview-artifact/
+          if-no-files-found: error
+          retention-days: 3

@@ -201,6 +201,32 @@ a failure: the notation is meant to be legible as source, and a reader who wants
 the picture can open the same file through
 [`examples/md-viewer.html`](../examples/md-viewer.html).
 
+### GitHub PR previews
+
+For a diagram you want reviewers to see in a PR, save its source as a `.gdl`
+file. Install [Playwright for Python](https://playwright.dev/python/docs/intro)
+and Chromium, then render a PNG:
+
+```sh
+python -m pip install playwright==1.58.0
+python -m playwright install chromium
+python scripts/render-gdl-previews.py \
+  --files examples/pr-preview.gdl \
+  --output /tmp/gdl-previews \
+  --image-url-prefix https://raw.githubusercontent.com/OWNER/REPO/BRANCH/examples
+```
+
+The command prints Markdown with an image linked to the interactive playground.
+Copy the PNG from `/tmp/gdl-previews` to the path in `--image-url-prefix`, commit
+it, and paste the Markdown in the PR description. The image URL must be reachable
+by GitHub; a workflow artifact download URL is not a durable image URL. The
+playground link contains the complete source, so use this for public diagrams.
+
+The read-only [PR preview check](../../.github/workflows/gdl-preview.yml) also
+renders changed `.gdl` files and uploads its PNGs and manifest as a short-lived
+Actions artifact. It verifies the diagram but does not post or publish the
+artifact. The PR author controls the image and description that reviewers see.
+
 ## Something else?
 
 The list above is not a whitelist — it is the set whose output has been checked.
