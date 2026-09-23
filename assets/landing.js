@@ -13,25 +13,34 @@ function fallbackCopy(text) {
 
 async function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // A denied clipboard permission can still allow a user-initiated copy.
+    }
   }
   fallbackCopy(text);
 }
 
-for (const button of document.querySelectorAll('[data-copy]')) {
+for (const button of document.querySelectorAll('[data-copy-target]')) {
+  const source = document.getElementById(button.dataset.copyTarget);
+  const status = document.getElementById(button.getAttribute('aria-describedby'));
+  if (!source || !status) continue;
+  button.hidden = false;
+  let reset;
   button.addEventListener('click', async () => {
-    const status = button.parentElement.parentElement.querySelector('.copy-status') ||
-      button.parentElement.querySelector('.copy-status');
-    const original = button.textContent;
+    const original = button.dataset.label || button.textContent;
+    button.dataset.label = original;
+    window.clearTimeout(reset);
     try {
-      await copyText(button.dataset.copy);
+      await copyText(source.textContent);
       button.textContent = 'Copied';
-      if (status) status.textContent = 'Copied to clipboard.';
+      status.textContent = 'Copied to clipboard.';
     } catch {
-      button.textContent = 'Select text above';
-      if (status) status.textContent = 'Clipboard access was blocked; select the text above.';
+      status.textContent = 'Select and copy the text above.';
     }
-    window.setTimeout(() => { button.textContent = original; }, 1800);
+    button.focus({ preventScroll: true });
+    reset = window.setTimeout(() => { button.textContent = original; }, 1800);
   });
 }

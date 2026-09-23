@@ -34,10 +34,15 @@ engine (d3, WebCola, spytial-core) from a CDN if the page does not already have 
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
-Already using Mermaid? Change the fence to `spytial-gdl`, keep the graph's real
-relationships as edge names, and express layout with `@annotations`. The
-[landing page](https://www.siddharthaprasad.com/spytial-gdl/#mermaid) shows the
-smallest before/after.
+Already have a Mermaid graph? Give your agent the graph and this prompt:
+
+```text
+Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
+Convert my Mermaid graph to spytial-gdl and embed it in this project. Preserve its nodes, edges, and labels. Check that it renders.
+```
+
+The guide covers flowchart conversion, renderer setup, and verification.
+Mermaid's other diagram types need their own renderer.
 
 From JavaScript:
 
@@ -54,7 +59,8 @@ await renderSpytialGdl(graph, 'A -> B\n@orientation(selector=_links, directions=
 |---|---|
 | [GUIDE.md](GUIDE.md) | the notation and how to embed it |
 | [Introduction](docs/pages/introduction.md) | what the notation is for, and its scope |
-| [The notation](docs/pages/notation.md) | edges, ids, sorts, classes, selectors |
+| [Syntax reference](docs/pages/notation.md) | edges, ids, sorts, classes, selectors |
+| [Language manifest](spytial-gdl-language.json) | machine-readable authoring forms and annotation vocabulary; also exported as `spytial-gdl/language.json` |
 | [Annotations](docs/pages/annotations.md) | constraints, directives, style blocks, conflicts |
 | [Embedding & API](docs/pages/embedding.md) | `autoRender`, options, editable mode, full API |
 | [Platforms](docs/pages/platforms.md) | MkDocs, Jekyll, Hugo, Docusaurus, Pollen, and the rest |
@@ -65,8 +71,8 @@ The [playground](playground/) and [examples](examples/) are runnable.
 
 ## Local development
 
-The pages need no `npm install` — the engine loads from a CDN — but a static
-server is required, because they are ES modules.
+The pages need no `npm install` because the engine loads from a CDN. A static
+server is required for ES modules.
 
 ```bash
 npm run serve

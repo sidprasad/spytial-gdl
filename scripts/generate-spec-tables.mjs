@@ -44,6 +44,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const SCHEMA_PATH = join(ROOT, 'vendor', 'spytial-spec.schema.json');
@@ -392,7 +393,7 @@ function readItem(schema, name, blocks, generatorOnlySeen = new Set()) {
 
 // ── Assembling ───────────────────────────────────────────────────────────────
 
-function build(schema) {
+export function build(schema) {
   SKIPPED.length = 0;
   const { home } = readSections(schema);
   const itemDefs = new Set(home.keys());
@@ -653,6 +654,7 @@ function main() {
   const schema = loadSchema();
   const tables = build(schema);
   writeFileSync(OUTPUT_PATH, render(schema, tables), 'utf8');
+  execFileSync(process.execPath, [join(ROOT, 'scripts', 'generate-language-manifest.mjs')], { stdio: 'inherit' });
   console.log(
     `Wrote src/_spec-tables.js (spec language ${schema['x-spytial-language-version']}, ` +
     `spytial-core ${schema['x-spytial-core-version']}, ${Object.keys(tables.items).length} items).`

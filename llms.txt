@@ -2,17 +2,19 @@
 
 > A small graph description language for live, draggable diagrams with explicit spatial requirements.
 
-Use spytial-gdl for graph-shaped diagrams where relationships, types, classes,
-and spatial rules should remain available as source—not merely as pixels.
+Create graph diagrams or convert Mermaid flowcharts, then embed them in
+Markdown or HTML. Start with the agent guide for conversion and setup.
 
 ## Start here
 
 - Agent instructions: https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
-- Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction
-- Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation
-- Annotations: https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations
-- Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding
-- Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/#/platforms
+- GDL language manifest: https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json
+- Selector language manifest: https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json
+- Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/introduction.md
+- Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md
+- Annotations: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md
+- Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md
+- Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/platforms.md
 - Playground: https://www.siddharthaprasad.com/spytial-gdl/playground/
 - Examples: https://www.siddharthaprasad.com/spytial-gdl/examples/
 - Source: https://github.com/sidprasad/spytial-gdl

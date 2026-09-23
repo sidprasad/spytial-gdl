@@ -3,138 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>spytial-gdl — diagrams with spatial semantics</title>
-  <meta name="description" content="A small graph language for live, draggable diagrams whose spatial rules stay true. Drop it into Markdown or HTML." />
-  <meta name="theme-color" content="#f2efe6" />
+  <title>spytial-gdl</title>
+  <meta name="description" content="Interactive graph diagrams for Markdown and HTML. Write nodes, edges, and spatial rules, or give your agent the guide to convert a Mermaid graph." />
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f2efe6'/%3E%3Cpath d='M5 16h22' stroke='%2316130f' stroke-width='2'/%3E%3Crect x='3' y='11' width='8' height='10' fill='%231f4396'/%3E%3Crect x='13' y='9' width='9' height='14' fill='%23cd3b26'/%3E%3Crect x='24' y='12' width='6' height='8' fill='%23edb211'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    :root { --page-w: 1120px; }
-    body { min-height: 100vh; }
-    main { width: 100%; max-width: var(--page-w); margin: 0 auto; padding: 0 28px 96px; }
-
-    .hero {
-      display: grid; grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr);
-      gap: 64px; align-items: center; padding: 76px 0 72px;
+    :root { --page-w: 880px; }
+    main { max-width: var(--page-w); margin: 0 auto; padding: 0 28px 64px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 40px; align-items: start; padding: 64px 0 48px; }
+    .hero h1 { margin-bottom: 24px; }
+    .lede { font-size: 20px; line-height: 1.45; color: var(--ink-2); max-width: 34ch; margin: 0 0 24px; }
+    .lede code { background: var(--yellow); color: #16130f; }
+    .composition { display: block; width: 200px; height: 200px; }
+    .start { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 20px; border-top: var(--bar) solid var(--ink); padding: 26px 0; }
+    .number { color: var(--red); font: 14px/1.5 var(--mono); padding-top: 4px; }
+    h2 { font-size: 26px; }
+    p { margin: 12px 0; }
+    .start p { color: var(--ink-2); }
+    pre { margin: 16px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre code { font-size: 14px; }
+    .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; }
+    .btn { font-size: 14px; }
+    [hidden] { display: none !important; }
+    .note, .status { font-size: 14px; }
+    .status { color: var(--ink-2); }
+    .status:empty { display: none; }
+    footer { border-top: var(--bar) solid var(--ink); padding-top: 20px; display: flex; flex-wrap: wrap; gap: 12px 24px; }
+    footer a { color: var(--ink-2); }
+    @media (max-width: 720px) {
+      .hero { grid-template-columns: minmax(0, 1fr) 110px; gap: 20px; padding-top: 40px; }
+      .composition { width: 110px; height: 110px; }
+      .hero h1 { font-size: clamp(32px, 6vw, 48px); }
     }
-    .eyebrow { margin: 0 0 18px; color: var(--red); }
-    .hero h1 { max-width: 10ch; font-size: clamp(48px, 7.2vw, 82px); }
-    .lede { max-width: 31em; margin: 28px 0 0; color: var(--ink-2); font-size: 20px; line-height: 1.5; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
-    .hero-note { margin: 15px 0 0; color: var(--ink-3); font: 13px/1.5 var(--mono); }
-
-    .live-proof { min-width: 0; }
-    .proof-head {
-      display: flex; justify-content: space-between; gap: 16px; align-items: center;
-      margin-bottom: 10px;
-    }
-    .proof-head .hint { color: var(--ink-3); font: 12px/1.4 var(--mono); text-align: right; }
-    .hero-diagram { min-height: 360px; background: var(--raised); border: var(--bar) solid var(--ink); }
-    .hero-diagram.spytial-gdl { white-space: pre-wrap; padding: 24px; font: 13px/1.65 var(--mono); }
-    .live-proof .spytial-gdl-device { margin: 0 !important; }
-
-    .trust-strip {
-      display: grid; grid-template-columns: repeat(4, 1fr); border: var(--bar) solid var(--ink);
-      border-left: 0; border-right: 0;
-    }
-    .trust-strip div { padding: 16px 18px; border-right: 1px solid var(--hair); }
-    .trust-strip div:last-child { border-right: 0; }
-    .trust-strip strong { display: block; font: 500 15px/1.2 var(--display); }
-    .trust-strip span { display: block; color: var(--ink-3); font-size: 13px; margin-top: 4px; }
-
-    .section { padding: 88px 0 0; }
-    .section-head { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; margin-bottom: 30px; }
-    .section-head h2 { font-size: clamp(32px, 5vw, 48px); max-width: 14ch; }
-    .section-head p { max-width: 53ch; margin: 5px 0 0; color: var(--ink-2); font-size: 18px; }
-
-    .migration {
-      display: grid; grid-template-columns: minmax(0, 1fr) 74px minmax(0, 1fr);
-      border: var(--bar) solid var(--ink); background: var(--raised);
-    }
-    .code-card { min-width: 0; padding: 22px; }
-    .code-card h3 { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
-    .code-card h3 span { font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .15em; color: var(--ink-3); }
-    .code-card pre { min-height: 212px; margin: 0; border: 0; font-size: 13px; line-height: 1.65; }
-    .migration-arrow {
-      display: grid; place-items: center; background: var(--yellow); color: #16130f;
-      border-left: var(--bar) solid var(--ink); border-right: var(--bar) solid var(--ink);
-      font: 34px/1 var(--display);
-    }
-    .drop-in {
-      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center;
-      border: var(--bar) solid var(--ink); border-top: 0; padding: 20px 22px; background: var(--sunken);
-    }
-    .drop-in p { margin: 0; color: var(--ink-2); }
-    .drop-in code { display: inline-block; margin-top: 7px; word-break: break-all; }
-
-    .agent-card {
-      display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .72fr);
-      border: var(--bar) solid var(--ink);
-    }
-    .agent-copy { padding: clamp(28px, 5vw, 54px); background: var(--blue); color: #fff; }
-    .agent-copy .label { color: rgba(255,255,255,.68); }
-    .agent-copy h2 { margin-top: 18px; font-size: clamp(36px, 6vw, 60px); max-width: 12ch; }
-    .agent-copy p { max-width: 35em; margin: 24px 0 0; color: rgba(255,255,255,.78); font-size: 18px; }
-    .agent-action { padding: clamp(28px, 4vw, 46px); background: var(--raised); display: flex; flex-direction: column; justify-content: center; }
-    .agent-action pre { margin: 0 0 18px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-    .agent-action .btn { align-self: flex-start; }
-    .agent-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; font-size: 14px; }
-
-    .reasons { display: grid; grid-template-columns: repeat(3, 1fr); border-top: var(--bar) solid var(--ink); }
-    .reason { padding: 26px 22px 10px 0; border-right: 1px solid var(--hair); }
-    .reason + .reason { padding-left: 22px; }
-    .reason:last-child { border-right: 0; }
-    .reason-num { color: var(--red); font: 12px/1 var(--mono); }
-    .reason h3 { margin: 16px 0 9px; font-size: 22px; }
-    .reason p { color: var(--ink-2); margin: 0; }
-
-    .endcap {
-      display: flex; justify-content: space-between; align-items: end; gap: 28px;
-      margin-top: 88px; padding: 36px 0; border-top: var(--bar) solid var(--ink); border-bottom: var(--bar) solid var(--ink);
-    }
-    .endcap h2 { font-size: clamp(32px, 5vw, 52px); max-width: 15ch; }
-    .endcap-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
-
-    footer { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 22px; padding-top: 22px; }
-    footer .spacer { flex: 1; }
-    footer a, footer span { font-size: 14px; color: var(--ink-2); }
-    .copy-status { min-height: 1.5em; margin: 10px 0 0; color: var(--ink-3); font: 12px/1.5 var(--mono); }
-
-    @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; gap: 46px; padding-top: 56px; }
-      .hero h1 { max-width: 12ch; }
-      .trust-strip { grid-template-columns: repeat(2, 1fr); }
-      .trust-strip div:nth-child(2) { border-right: 0; }
-      .trust-strip div:nth-child(-n+2) { border-bottom: 1px solid var(--hair); }
-      .agent-card { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 680px) {
-      main { padding: 0 20px 72px; }
-      .hero { padding: 44px 0 50px; }
-      .hero h1 { font-size: clamp(44px, 14vw, 62px); }
-      .hero-diagram { min-height: 320px; }
-      .section { padding-top: 68px; }
-      .section-head { grid-template-columns: 1fr; gap: 14px; }
-      .migration { grid-template-columns: 1fr; }
-      .migration-arrow { min-height: 58px; border: 0; border-top: var(--bar) solid var(--ink); border-bottom: var(--bar) solid var(--ink); }
-      .migration-arrow span { transform: rotate(90deg); }
-      .drop-in { grid-template-columns: 1fr; }
-      .drop-in .btn { justify-self: start; }
-      .reasons { grid-template-columns: 1fr; }
-      .reason, .reason + .reason { border-right: 0; border-bottom: 1px solid var(--hair); padding: 24px 0; }
-      .reason:last-child { border-bottom: 0; }
-      .endcap { display: block; }
-      .endcap-actions { justify-content: flex-start; margin-top: 24px; }
-      footer .spacer { display: none; }
+    @media (max-width: 480px) {
+      main { padding-left: 22px; padding-right: 22px; }
+      .hero { grid-template-columns: 1fr; }
+      .composition { display: none; }
+      .start { grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
     }
   </style>
 </head>
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <a class="wordmark" href="./" aria-label="spytial-gdl home">
+      <a class="wordmark" href="./">
         <svg class="mark" viewBox="0 0 62 24" aria-hidden="true">
           <path class="axis" d="M4 12 H58" />
           <rect class="n-blue" x="2" y="6" width="14" height="12" />
@@ -144,159 +56,85 @@
         spytial-gdl
       </a>
       <nav aria-label="Primary">
-        <a href="#mermaid">For Mermaid users</a>
-        <a href="#agents">For agents</a>
         <a href="./docs/">Docs</a>
         <a href="./playground/">Playground</a>
-        <a href="https://github.com/sidprasad/spytial-gdl">GitHub ↗</a>
+        <a href="./examples/">Examples</a>
+        <a href="https://github.com/sidprasad/spytial-gdl">GitHub</a>
       </nav>
     </div>
   </header>
 
   <main>
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero">
       <div>
-        <p class="label eyebrow">Graph description language</p>
-        <h1 id="hero-title">Diagrams that keep their meaning.</h1>
-        <p class="lede">Write a graph and the spatial rules it must obey. Get a live, draggable diagram you can drop into Markdown or HTML.</p>
-        <div class="hero-actions">
-          <a class="btn btn-solid" href="./playground/">Try the playground →</a>
-          <a class="btn" href="#mermaid">Replace Mermaid</a>
-        </div>
-        <p class="hero-note">MIT · zero build step · works from one script tag</p>
+        <h1>Lightweight<br />interactive diagrams<br />in the browser.</h1>
+        <p class="lede">Write nodes, edges, and spatial <code>@annotations</code>. Drag the diagram and its layout rules still apply. Embeds in Markdown and HTML.</p>
+        <a class="btn btn-solid" href="./playground/">Try the playground</a>
       </div>
+      <svg class="composition" viewBox="0 0 200 200" aria-hidden="true">
+        <rect width="200" height="200" fill="var(--raised)" />
+        <g stroke="var(--ink)" stroke-width="3">
+          <path d="M100 76 L54 128" />
+          <path d="M100 76 L146 128" />
+        </g>
+        <rect x="62" y="34" width="76" height="42" fill="var(--blue)" />
+        <rect x="18" y="128" width="72" height="42" fill="var(--red)" />
+        <rect x="110" y="128" width="72" height="42" fill="var(--yellow)" />
+        <rect x="2" y="2" width="196" height="196" fill="none" stroke="var(--ink)" stroke-width="4" />
+      </svg>
+    </section>
 
-      <div class="live-proof">
-        <div class="proof-head">
-          <span class="label">This is live</span>
-          <span class="hint">Drag a node. The rules still hold.</span>
+    <section class="start" id="mermaid" aria-labelledby="agent-title">
+      <span class="number" aria-hidden="true">01</span>
+      <div>
+        <h2 id="agent-title">Use this instead of Mermaid</h2>
+        <p>Give your agent a graph and this prompt:</p>
+        <pre><code id="agent-prompt">Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
+Convert my Mermaid graph to spytial-gdl and embed it in this project. Preserve its nodes, edges, and labels. Check that it renders.</code></pre>
+        <div class="actions">
+          <button class="btn" type="button" data-copy-target="agent-prompt" aria-describedby="agent-status" hidden>Copy prompt</button>
+          <a href="./AGENTS.md">Read the agent guide</a>
         </div>
-        <div class="spytial-gdl hero-diagram" data-height="360">
-          client[Client]:::Edge -> api[API]:::Service : calls
-          api -> cache[Cache]:::Store : reads
-          api -> db[Database]:::Store : writes
-
-          @orientation(selector=calls, directions=[right])
-          @orientation(selector=reads, directions=[right])
-          @orientation(selector=writes, directions=[below])
-          @atomStyle(selector=Service, fillStyle(color='#edb211'))
-          @atomStyle(selector=Store, fillStyle(color='#dce7ff'))
-        </div>
+        <p class="status" id="agent-status" role="status"></p>
+        <p class="note">For graphs and flowcharts. Sequence diagrams, Gantt charts, and other Mermaid diagram types need a different renderer.</p>
       </div>
     </section>
 
-    <div class="trust-strip" aria-label="Project highlights">
-      <div><strong>Text in</strong><span>nodes, edges, classes</span></div>
-      <div><strong>Rules inline</strong><span>orientation, groups, cycles</span></div>
-      <div><strong>Live out</strong><span>drag, edit, serialize</span></div>
-      <div><strong>Honest failures</strong><span>conflicts are reported</span></div>
-    </div>
+    <section class="start" id="embed" aria-labelledby="embed-title">
+      <span class="number" aria-hidden="true">02</span>
+      <div>
+        <h2 id="embed-title">Add it to a page</h2>
+        <p>Paste this into an HTML page served by your site or local server:</p>
+        <pre><code id="html-example">&lt;div class="spytial-gdl"&gt;
+mul[×] -> div[÷] : lhs
+mul -> three[3] : rhs
+div -> six[6] : lhs
+div -> two[2] : rhs
 
-    <section class="section" id="mermaid" aria-labelledby="mermaid-title">
-      <div class="section-head">
-        <p class="label">Already use Mermaid?</p>
-        <div>
-          <h2 id="mermaid-title">Keep the fence. Add the semantics.</h2>
-          <p>Change the language name, describe relationships instead of drawing order, and add rules for what the layout must preserve.</p>
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
+&lt;/div&gt;
+
+&lt;script type="module"
+  src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"&gt;&lt;/script&gt;</code></pre>
+        <div class="actions">
+          <button class="btn" type="button" data-copy-target="html-example" aria-describedby="embed-status" hidden>Copy HTML</button>
+          <a href="./docs/#/introduction/drawing-an-expression">See it running</a>
+          <a href="./docs/#/platforms">Set up your docs site</a>
         </div>
-      </div>
-
-      <div class="migration">
-        <article class="code-card">
-          <h3>Before <span>Mermaid</span></h3>
-          <pre><code>```mermaid
-flowchart LR
-  Client -- calls --> API
-  API -- reads --> Cache
-  API -- reads --> Database
-```</code></pre>
-        </article>
-        <div class="migration-arrow" aria-hidden="true"><span>→</span></div>
-        <article class="code-card">
-          <h3>After <span>spytial-gdl</span></h3>
-          <pre><code>```spytial-gdl
-client[Client] -> api[API] : calls
-api -> cache[Cache] : reads
-api -> db[Database] : reads
-
-@orientation(selector=_links,
-  directions=[right])
-```</code></pre>
-        </article>
-      </div>
-      <div class="drop-in">
-        <p>Add this once to the page that renders your Markdown:<br /><code>&lt;script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"&gt;&lt;/script&gt;</code></p>
-        <button class="btn" type="button" data-copy="&lt;script type=&quot;module&quot; src=&quot;https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js&quot;&gt;&lt;/script&gt;">Copy script</button>
-      </div>
-      <p class="copy-status" aria-live="polite"></p>
-    </section>
-
-    <section class="section" id="agents" aria-labelledby="agents-title">
-      <div class="agent-card">
-        <div class="agent-copy">
-          <p class="label">For coding agents</p>
-          <h2 id="agents-title">Point your agent at one file.</h2>
-          <p><code>AGENTS.md</code> tells an agent when to choose spytial-gdl, how to author it, how to migrate a Mermaid graph, and what not to invent.</p>
-        </div>
-        <div class="agent-action">
-          <pre><code>Read https://raw.githubusercontent.com/sidprasad/spytial-gdl/main/AGENTS.md and use spytial-gdl for diagrams in this project.</code></pre>
-          <button class="btn btn-solid" type="button" data-copy="Read https://raw.githubusercontent.com/sidprasad/spytial-gdl/main/AGENTS.md and use spytial-gdl for diagrams in this project.">Copy agent prompt</button>
-          <div class="agent-links">
-            <a href="https://github.com/sidprasad/spytial-gdl/blob/main/AGENTS.md">Read AGENTS.md →</a>
-            <a href="./llms.txt">llms.txt →</a>
-          </div>
-          <p class="copy-status" aria-live="polite"></p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" aria-labelledby="why-title">
-      <div class="section-head">
-        <p class="label">Why this exists</p>
-        <div>
-          <h2 id="why-title">The graph is data. The layout is a claim.</h2>
-          <p>A useful diagram should say why things are positioned—not just remember where a renderer happened to put them.</p>
-        </div>
-      </div>
-      <div class="reasons">
-        <article class="reason">
-          <span class="reason-num">01</span>
-          <h3>Rules target meaning</h3>
-          <p>Apply layout to relations, types, and classes instead of individual shapes.</p>
-        </article>
-        <article class="reason">
-          <span class="reason-num">02</span>
-          <h3>Interaction stays valid</h3>
-          <p>Drag nodes and the constraint solver settles the graph without discarding its rules.</p>
-        </article>
-        <article class="reason">
-          <span class="reason-num">03</span>
-          <h3>Conflicts stay visible</h3>
-          <p>When requirements cannot all hold, the diagram reports the conflicting rules.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="endcap" aria-labelledby="endcap-title">
-      <h2 id="endcap-title">Start with a graph. Add only the rules you mean.</h2>
-      <div class="endcap-actions">
-        <a class="btn btn-solid" href="./playground/">Open playground →</a>
-        <a class="btn" href="./docs/">Read the docs</a>
-        <a class="btn" href="./examples/">Browse examples</a>
+        <p class="status" id="embed-status" role="status"></p>
+        <p class="note">For Markdown, add the same script to your site template and use a <code>spytial-gdl</code> code fence. GitHub README files display the source only.</p>
       </div>
     </section>
 
     <footer>
-      <span class="label">spytial-gdl</span>
-      <a href="./GUIDE.md">Guide</a>
+      <a href="./docs/#/notation">Notation</a>
+      <a href="./docs/#/annotations">Layout rules</a>
+      <a href="./examples/">Examples</a>
       <a href="https://www.npmjs.com/package/spytial-gdl">npm</a>
-      <a href="https://github.com/sidprasad/spytial-gdl">Source</a>
-      <span class="spacer"></span>
-      <span>MIT licensed</span>
+      <a href="./LICENSE">MIT license</a>
     </footer>
   </main>
-
-  <script type="module" src="./src/auto.js"></script>
   <script type="module" src="./assets/landing.js"></script>
 </body>
 </html>
