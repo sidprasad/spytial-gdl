@@ -34,15 +34,16 @@ engine (d3, WebCola, spytial-core) from a CDN if the page does not already have 
 <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 ```
 
-Already have a Mermaid graph? Give your agent the graph and this prompt:
+Have your agent use it when writing documents:
 
 ```text
 Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
-Convert my Mermaid graph to spytial-gdl and embed it in this project. Preserve its nodes, edges, and labels. Check that it renders.
+Use spytial-gdl when a graph would help explain the documents you write. Describe the nodes and edges, and add spatial rules where position carries meaning. Set up the renderer for this project and check the result in a browser. If the document cannot run it, link to a live diagram instead.
 ```
 
-The guide covers flowchart conversion, renderer setup, and verification.
-Mermaid's other diagram types need their own renderer.
+The guide also covers translating Mermaid flowcharts and Graphviz DOT graphs,
+renderer setup, and verification. Conversion is not a drop-in replacement:
+DOT needs translation, and Mermaid's non-graph diagram types need their own renderer.
 
 From JavaScript:
 

@@ -1,12 +1,31 @@
 # Using spytial-gdl
 
-Use this guide to create a graph diagram or convert a Mermaid flowchart and
-embed it in a project. Read the existing graph and the project's page or docs
+Use this guide to create a graph diagram or convert a Mermaid flowchart or
+Graphviz DOT graph and embed it in a project. Read the existing graph and the project's page or docs
 setup before making changes.
 
 spytial-gdl renders nodes and edges with explicit spatial rules. It supports
 trees, dependencies, architecture graphs, and relationship diagrams. It does
 not implement Mermaid's sequence, Gantt, pie, or state-diagram syntax.
+DOT is not accepted as input; translate it before rendering.
+
+## Write a graph for a document
+
+1. Read the relevant prose or code first. Use a graph when it makes a relationship
+   easier to understand, not to decorate every section.
+2. Identify the actual nodes and edges. Use the names in the document. Do not
+   invent dependencies or relationships to make a more complete-looking picture.
+3. Add spatial rules where position communicates meaning: operand order in a
+   tree, for example. Distinguish those rules from optional presentation choices.
+   If the intended relationship is unclear, ask rather than guessing.
+4. Embed the graph using the project's existing document tooling. Check both
+   the source's fidelity to the document and the rendered spatial relationships.
+   Satisfiable layout rules do not establish that the graph accurately describes
+   the system.
+5. For a GitHub README or PR description, provide a hosted live link or an
+   exported image with a live link. GitHub does not run the Spytial renderer.
+   The playground's Share button copies a URL containing the graph source;
+   do not put private graph content in a public document or link.
 
 ## Convert a Mermaid flowchart
 
@@ -54,6 +73,33 @@ api -> db[Database]
 A direction rule applies to every selected edge. If the graph contains a cycle,
 a single direction on all its edges is impossible. Retain the cycle and choose
 rules for specific relations, or use a cyclic layout when that is appropriate.
+
+## Convert a Graphviz DOT graph
+
+This is a source translation, not a compatible renderer for DOT. Read the
+[DOT language reference](https://graphviz.org/doc/info/lang.html) when needed.
+
+- For a directed graph, turn each `a -> b` edge into a GDL edge on its own line.
+  Preserve isolated nodes too. Expand chains and subgraph edge shorthand into
+  their actual edges before translating.
+- Translate node `label` attributes to `id[Display label]`. Remap identifiers
+  that GDL cannot represent to stable valid IDs and keep a mapping. HTML-like
+  labels, record fields, ports, and arbitrary quoted labels are not equivalent
+  to GDL labels; explain losses and ask if exact preservation is required.
+- Translate simple edge labels into relation names only when they are valid
+  identifiers. Apply the label restrictions in the Mermaid instructions above.
+- Treat `rankdir` as a global layout preference, not proof of a semantic ordering.
+  Add an orientation rule only if that ordering is intended and consistent with
+  the graph. Do not force every edge of a cycle in the same direction.
+- Recreate meaningful clusters with classes and `@group`. Translate supported
+  styles explicitly. Do not assume that ranks, ports, coordinates, shapes,
+  nested clusters, or Graphviz layout algorithms carry over.
+- Undirected edges and parallel edges need particular care. Do not invent a
+  semantic direction for `--` or collapse distinct edges without explaining
+  the change. Report unsupported cases before presenting the conversion as
+  equivalent.
+
+After conversion, use the embedding and verification steps below.
 
 ## Embed it
 

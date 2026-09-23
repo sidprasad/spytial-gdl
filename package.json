@@ -40,7 +40,7 @@
   "scripts": {
     "manifest": "node scripts/generate-language-manifest.mjs",
     "test:manifest": "node test/language-manifest.test.mjs",
-    "pretest": "npm run test:manifest",
+    "pretest": "npm run test:manifest && node test/landing.test.mjs",
     "prepack": "node scripts/generate-language-manifest.mjs --check",
     "serve": "node scripts/preview-server.mjs",
     "update-core": "./scripts/update-spytial-core.sh",

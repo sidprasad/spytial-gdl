@@ -2,7 +2,7 @@
 
 > A small graph description language for live, draggable diagrams with explicit spatial requirements.
 
-Create graph diagrams or convert Mermaid flowcharts, then embed them in
+Create graph diagrams or translate Mermaid flowcharts and Graphviz DOT graphs, then embed them in
 Markdown or HTML. Start with the agent guide for conversion and setup.
 
 ## Start here
