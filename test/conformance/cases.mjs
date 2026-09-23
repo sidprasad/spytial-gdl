@@ -21,7 +21,24 @@
 // rejects that — a disagreement conformance.test.mjs pins directly rather than
 // papering over here.
 
+import { readFileSync } from 'node:fs';
+
+// Test the source shipped on the homepage, not a separate copy of the drawing.
+const homepage = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const bauhaus = homepage.match(/id="bauhaus-graph"[^>]*>([\s\S]*?)<\/div>/);
+if (!bauhaus) throw new Error('The homepage must contain its live Bauhaus graph.');
+
 export const CASES = [
+  {
+    name: 'the homepage composition keeps the relationships its caption promises',
+    gdl: bauhaus[1],
+    assertions: [
+      { query: 'nodes()', count: 3 },
+      { query: 'must.below(blue)', equals: ['red', 'yellow'] },
+      { query: 'must.leftOf(blue)', equals: ['red'] },
+      { query: 'must.rightOf(blue)', equals: ['yellow'] },
+    ],
+  },
   {
     name: 'a labeled chain runs left to right, all the way down',
     gdl: `
