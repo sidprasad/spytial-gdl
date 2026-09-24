@@ -151,9 +151,10 @@ Put the source in a `spytial-gdl` Markdown fence, or inside
 `<div class="spytial-gdl">` in HTML. For the editable version, use
 `spytial-gdl-editable`. The script loads spytial-core's complete browser bundle
 and renders each block in a 360px frame with compact graph controls. Set
-`data-height` on a block to adjust its frame. Serve the page over HTTP; this
-module setup cannot run from a
-`file://` URL. GitHub README pages display the source only.
+`data-height` on a block to adjust its frame, or follow the
+[author's appearance guide](embedding.md#choose-how-your-diagrams-appear) to
+choose a theme and controls. Serve the page over HTTP; this module setup cannot
+run from a `file://` URL. GitHub README pages display the source only.
 
 [Open the playground](../playground/), [copy an HTML example](../examples/drop-in.html),
 or follow the [setup for your docs site](platforms.md).

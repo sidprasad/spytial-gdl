@@ -6,6 +6,58 @@ The embedding layer scans already-rendered HTML for the code blocks a Markdown
 renderer produces and swaps each one for a live diagram. It's the same path the
 ` ```spytial-gdl ` blocks on this site go through.
 
+## Choose how your diagrams appear
+
+Start with a `spytial-gdl` Markdown fence and add the [drop-in script](platforms.md#where-the-script-tag-goes)
+once to your site's template. Each diagram gets a 360px frame and compact graph
+controls by default. Readers can still zoom, fit the graph, and open its Source
+panel. Editable diagrams also keep their editing controls.
+
+To match a dark page, put `data-theme="dark"` on a parent element such as your
+site's `<body>`. All diagrams inside it then use the dark graph and frame theme:
+
+```html
+<body data-theme="dark">
+  <!-- Your Markdown content is rendered here. -->
+</body>
+```
+
+If your site already sets CSS `color-scheme: dark`, the embed picks that up too.
+For a single diagram with its own theme or height, use a hand-authored HTML block
+in the page:
+
+```html
+<div class="spytial-gdl" data-theme="light" data-height="420">
+A[Author] -> B[Reader]
+</div>
+```
+
+`data-theme` overrides the page theme for that block; `data-height` sets its
+frame height in pixels. Some Markdown processors let you put these attributes
+on a fenced code block instead. If yours allows raw HTML, use the HTML block
+without needing special fence syntax. Add `data-editable` to make that block
+editable.
+
+To change controls or the default height for every diagram, replace the drop-in
+`auto.js` tag with this module script in your template (include only one of them):
+
+```html
+<script type="module">
+  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
+
+  autoRender({
+    height: 420,
+    viewOptions: { toolbar: 'full' },
+  });
+</script>
+```
+
+Core also accepts `toolbar: 'compact'` or `'none'`, and individual switches such
+as `controls: { export: false, routing: false }`. These affect the graph toolbar;
+the embed's Source panel stays available. A block's `data-height` takes
+precedence over the page-wide `height` option. See the [options table](#options)
+for the full embedding API.
+
 ## What gets detected
 
 A block is recognized from any of the markup that the common renderers, and
@@ -76,11 +128,7 @@ import {
 await renderSpytialGdls(document.getElementById('panel'), { theme: 'dark', height: 420 });
 ```
 
-For one hand-authored block, use `<div class="spytial-gdl" data-theme="dark"
-data-height="420">…</div>`. A code element can also carry `data-theme` and
-`data-height` when your Markdown renderer supports attributes. The theme is sent
-to core's graph element; built-in `light` and `dark` themes also color the frame.
-The full core toolbar remains available with `viewOptions: { toolbar: 'full' }`.
+For a copyable page example, see [Choose how your diagrams appear](#choose-how-your-diagrams-appear).
 
 ## The results array
 
