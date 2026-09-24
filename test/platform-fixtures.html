@@ -142,7 +142,9 @@ import { renderSpytialGdls } from '/src/markdown.js';
 // the file as an edge label — so the label check is the one that matters.
 const WANT = ['A', 'B', 'C', 'left', 'right'];
 
-await renderSpytialGdls(document);
+await renderSpytialGdls(document, {
+  deps: ['/node_modules/spytial-core/dist/browser/spytial-core-complete.global.js'],
+});
 await new Promise((r) => setTimeout(r, 1200));
 
 const tbody = document.querySelector('#report tbody');
@@ -164,7 +166,9 @@ for (const section of document.querySelectorAll('section[data-platform]')) {
     else if (longest.length > 25) why = `a label swallowed the block: ${JSON.stringify(longest.slice(0, 60))}`;
     else if (name.startsWith('markdown-it') && graph.getAttribute('theme') !== 'dark') why = 'data-theme on code was lost';
     else if (name.startsWith('markdown-it') && section.querySelector('.spytial-gdl-device > div').style.height !== '420px') why = 'data-height on code was lost';
-    else if (root.querySelector('#graph-toolbar')?.dataset.presentation !== 'compact') why = 'compact toolbar was not applied';
+    else if (root.querySelector('#graph-toolbar')?.dataset.presentation !== 'compact') why = 'compact core controls were not applied';
+    else if (!root.querySelector('#zoom-in') || !root.querySelector('#zoom-out') || !root.querySelector('#zoom-fit')) why = 'core zoom and fit controls missing';
+    else if (!root.querySelector('#graph-toolbar .spytial-gdl-source-toggle')) why = 'source control was not placed beside core controls';
   }
 
   const ok = !why;

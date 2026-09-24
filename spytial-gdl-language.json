@@ -4,7 +4,7 @@
   "packageVersion": "0.6.0",
   "scope": "Graph authoring forms and annotation vocabulary. This is not a complete parser grammar or a JSON Schema for GDL text.",
   "upstream": {
-    "coreVersion": "6.3.0",
+    "coreVersion": "6.3.1",
     "layoutLanguageVersion": "2026-09-18",
     "layoutManifest": "https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/docs/spytial-language.json",
     "selectorManifest": "https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json",

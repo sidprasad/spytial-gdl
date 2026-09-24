@@ -3,7 +3,7 @@
 // GENERATED FILE — DO NOT EDIT BY HAND.
 //
 //   Source:   vendor/spytial-spec.schema.json
-//   Language: 2026-09-18 (spytial-core 6.3.0)
+//   Language: 2026-09-18 (spytial-core 6.3.1)
 //   Regenerate with: node scripts/generate-spec-tables.mjs
 //
 // Everything here is derived from the JSON Schema spytial-core publishes, so a
@@ -16,7 +16,7 @@
 // language itself changes, so an unchanged value across a spytial-core bump
 // means nothing here needed revisiting.
 export const LANGUAGE_VERSION = "2026-09-18";
-export const CORE_VERSION = "6.3.0";
+export const CORE_VERSION = "6.3.1";
 
 
 // ── Vocabularies ────────────────────────────────────────────────────────────

@@ -7,10 +7,14 @@ is a fix.
 
 ## Unreleased
 
+- Refresh the vendored spytial-core schema and language manifest from 6.3.1;
+  the layout language version remains 2026-09-18.
 - Require spytial-core 6.3.0 or newer. Browser embeds now load its complete
   bundle, and the vendored annotation schema includes `@group(showLabel=…)`.
-- Give Markdown diagrams compact graph controls while keeping editing actions
-  in editable blocks. `viewOptions` can restore or customize core's toolbar.
+- Float core's own zoom and fit buttons beside View source in read-only embeds,
+  without a toolbar strip. The source panel opens below the diagram; editable
+  blocks keep their graph actions and source editor. `viewOptions` can restore
+  or customize core's normal toolbar.
 - Let each block override its theme and height; otherwise the graph follows the
   page's declared light or dark theme. Fix dark source-panel contrast.
 
