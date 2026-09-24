@@ -44,6 +44,7 @@ const LANGS = ['spytial-gdl', 'spytial'];
 // attribute on the host (hand-authored HTML) works too, as does opts.editable.
 const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable'];
 const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS];
+let nextSourceId = 0;
 
 // CSS selectors covering how a fenced block comes out the other side of the
 // common documentation pipelines. Every shape below was read off a real
@@ -210,9 +211,9 @@ function themeForBlock(doc, host, blockTheme, opts) {
   return 'light';
 }
 
-// Markdown embeds give the drawing most of the space. Authors can restore or
-// customize core's full toolbar with opts.viewOptions. Editable blocks keep
-// their graph-editing actions even in compact mode.
+// Keep core's own zoom and fit controls, but present them without a full-width
+// toolbar in read-only embeds. Editable embeds also keep their graph actions.
+// Authors can customize core's toolbar with viewOptions.
 function embedViewOptions(editable, overrides = {}) {
   return {
     toolbar: 'compact',
@@ -226,6 +227,17 @@ async function configureEmbedGraph(graphEl, editable, overrides) {
     throw new Error('Markdown embeds require spytial-core 6.3.0 or newer');
   }
   await graphEl.setViewOptions(embedViewOptions(editable, overrides || {}));
+  // Core's editor group normally follows other toolbar groups, so it draws a
+  // leading divider. It is the first group in a quiet editable embed.
+  if (editable && graphEl.shadowRoot) {
+    const style = graphEl.ownerDocument.createElement('style');
+    style.textContent = '#graph-toolbar[data-presentation="none"]' +
+      ' { padding: 4px 8px; margin-bottom: 0; background: transparent;' +
+      ' border: 0; box-shadow: none; backdrop-filter: none; }' +
+      '#graph-toolbar[data-presentation="none"] .si-toolbar-group' +
+      ' { margin-left: 0; padding-left: 0; border-left: 0; }';
+    graphEl.shadowRoot.appendChild(style);
+  }
 }
 
 // Is the spytial-core engine (+ the custom element) ready on the page?
@@ -295,26 +307,23 @@ export async function ensureEngineLoaded(opts = {}) {
   await whenEngineReady(opts.timeoutMs);
 }
 
-// Build the framed "device" that wraps one diagram: a collapsible Source panel
-// on the left, sitting *beside* the diagram (not behind a tab), and — when a
-// clash occurs — an attached, collapsible conflict panel inside the same border,
-// so the UNSAT report obviously belongs to the diagram and not the page prose.
+// Build the framed diagram with a source disclosure below it. Source stays out
+// of the drawing's width, and an editable block opens its editor by default.
+// Conflicts and diagnostics remain attached beneath the drawing.
 //
-// The split is "live": the Source panel mirrors the current notation, so editing
-// the diagram (in the editable variant) updates the text on the spot. Read-only
-// embeds open with the source collapsed (a clean diagram); editable embeds open
-// expanded, since two-way editing is the point.
+// The source mirrors the current notation, so editing the diagram (in the
+// editable variant) updates the text on the spot.
 //
-// `editable` makes the Source panel a real <textarea> with a Run ▸ button — text →
-// diagram is an *explicit* apply (Run ▸ / ⌘⏎ re-renders), not continuous binding,
+// `editable` makes the source a real <textarea> with an Update diagram button — text →
+// diagram is an *explicit* apply (button / ⌘⏎ re-renders), not continuous binding,
 // which would fight the normalizing serializer (caret jumps, dropped %% comments,
 // lost node positions mid-type). Diagram → text stays live.
 //
 // Returns refs + hooks:
 //   graphHost            — mount the graph element into this
 //   conflict             — the conflict region (passed to showCoreConflict)
+//   attachCoreToolbar(el) — place core's read-only controls over the diagram
 //   setSourceProvider(fn)— fn() returns the current notation shown in the panel
-//   setRefit(fn)         — called when the diagram's area resizes (collapse/apply)
 //   setApply(fn)         — fn(text) re-renders the diagram from edited text;
 //                          resolves to { ok, message? } (editable only)
 //   setSourceText(t,f)   — push diagram→text into the panel (won't clobber unsaved
@@ -336,7 +345,6 @@ function buildDevice(doc, opts, height, editable) {
         warnBg: '#f8d7da', warnInk: '#842029', warnBorder: '#f1aeb5', warnAccent: '#dc3545', warnSlot: '#fffafa' };
   const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
   const MONO = '"SF Mono","JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace';
-  const BREAK = 520;   // below this device width, stack the source above the diagram
 
   const mkBtn = (label, title) => {
     const b = doc.createElement('button');
@@ -353,45 +361,60 @@ function buildDevice(doc, opts, height, editable) {
   device.style.cssText =
     `margin: 12px 0; border: 1px solid ${C.border}; border-radius: 8px; overflow: hidden; background: ${C.bg};`;
 
-  // ── frame: [ source (LHS, collapsible) | diagram ] ──
+  // ── diagram, full width ──
   const frame = doc.createElement('div');
-  frame.style.cssText = `display: flex; width: 100%; height: ${hCss}; align-items: stretch;`;
+  frame.style.cssText = `width: 100%; height: ${hCss};`;
   device.appendChild(frame);
 
-  // ── source column (collapsible) ──
+  // ── source disclosure beneath the diagram ──
   const sourceCol = doc.createElement('div');
   sourceCol.className = 'spytial-gdl-source';
-  sourceCol.style.cssText = `flex: 0 0 auto; display: flex; min-width: 0; overflow: hidden; background: ${C.chrome};`;
-  frame.appendChild(sourceCol);
+  sourceCol.id = `spytial-gdl-source-${++nextSourceId}`;
+  sourceCol.setAttribute('role', 'region');
+  sourceCol.setAttribute('aria-label', editable ? 'Diagram source editor' : 'Diagram source');
+  sourceCol.style.cssText = `min-width: 0; border-top: 1px solid ${C.border}; background: ${C.chrome};`;
+  device.appendChild(sourceCol);
+
+  const viewOptions = opts.viewOptions || {};
+  const floatCoreControls = !editable && !Object.prototype.hasOwnProperty.call(viewOptions, 'toolbar');
+  const viewControls = doc.createElement('div');
+  viewControls.className = 'spytial-gdl-view-controls';
+  viewControls.style.cssText =
+    `position: absolute; right: 10px; bottom: 10px; display: flex; align-items: stretch;` +
+    ` border: 1px solid ${C.border}; border-radius: 6px; overflow: hidden;` +
+    ` background: ${C.chrome}; box-shadow: 0 1px 4px rgba(0,0,0,.08);`;
+  const sourceToggle = mkBtn('View source', 'Show diagram source');
+  sourceToggle.className = 'spytial-gdl-source-toggle';
+  sourceToggle.setAttribute('aria-controls', sourceCol.id);
+  sourceToggle.setAttribute('aria-expanded', editable ? 'true' : 'false');
+  sourceToggle.style.cssText =
+    `appearance: none; cursor: pointer; border: 0; background: transparent;` +
+    ` color: ${C.ink}; font: 500 12px/1 ${SANS}; padding: 7px 9px;`;
+  viewControls.appendChild(sourceToggle);
 
   // expanded: header (title + actions) over the source body
   const panelExpanded = doc.createElement('div');
   panelExpanded.style.cssText = 'display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; min-width: 0;';
   const srcHeader = doc.createElement('div');
   srcHeader.style.cssText =
-    `flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 8px;` +
+    `flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px;` +
     ` border-bottom: 1px solid ${C.border}; background: ${C.chrome};`;
-  const collapseBtn = doc.createElement('button');
-  collapseBtn.type = 'button'; collapseBtn.textContent = '◂'; collapseBtn.title = 'Hide source';
-  collapseBtn.style.cssText =
-    `appearance: none; border: none; background: transparent; cursor: pointer; color: ${C.soft}; font: 13px/1 ${SANS}; padding: 2px 4px;`;
   const srcTitle = doc.createElement('span');
-  srcTitle.textContent = 'Source';
-  srcTitle.style.cssText = `font: 600 10.5px/1 ${SANS}; letter-spacing: .06em; text-transform: uppercase; color: ${C.soft};`;
+  srcTitle.textContent = editable ? 'Edit source' : 'Source';
+  srcTitle.style.cssText = `font: 600 12px/1 ${SANS}; color: ${C.ink};`;
   const srcStatus = doc.createElement('span');
   srcStatus.style.cssText = `flex: 0 1 auto; min-width: 0; font: 11px/1.2 ${SANS}; color: ${C.warnAccent}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`;
   const srcSpacer = doc.createElement('span');
   srcSpacer.style.cssText = 'flex: 1 1 6px; min-width: 6px;';
-  srcHeader.appendChild(collapseBtn);
   srcHeader.appendChild(srcTitle);
   srcHeader.appendChild(srcStatus);
   srcHeader.appendChild(srcSpacer);
   let runBtn = null;
   if (editable) {
-    runBtn = mkBtn('Run ▸', 'Apply the notation to the diagram (⌘⏎)');
+    runBtn = mkBtn('Update diagram', 'Apply the notation to the diagram (⌘⏎)');
     srcHeader.appendChild(runBtn);
   }
-  const copyBtn = mkBtn('⧉ Copy', 'Copy the notation');
+  const copyBtn = mkBtn('Copy source', 'Copy the notation');
   srcHeader.appendChild(copyBtn);
 
   // the source body: an editable <textarea> (editable) or a read-only <pre>.
@@ -404,19 +427,18 @@ function buildDevice(doc, opts, height, editable) {
     `position: absolute; inset: 0; margin: 0; box-sizing: border-box; border: none;` +
     ` padding: 12px 14px; tab-size: 2; white-space: pre; font: 12.5px/1.6 ${MONO};`;
   const srcBody = doc.createElement('div');
-  srcBody.style.cssText = `flex: 1 1 0; min-height: 0; overflow: auto; background: ${C.bg};`;
+  srcBody.style.cssText = `min-height: 0; overflow: auto; background: ${C.bg};`;
   let srcPre = null, srcTextarea = null, srcGhost = null;
   if (editable) {
-    srcBody.style.display = 'flex';
-    srcBody.style.flexDirection = 'column';
+    srcBody.style.height = '210px';
     const codeWrap = doc.createElement('div');
-    codeWrap.style.cssText = `position: relative; flex: 1 1 auto; min-height: 0; background: ${C.bg};`;
+    codeWrap.style.cssText = `position: relative; height: 100%; min-height: 0; background: ${C.bg};`;
     srcGhost = doc.createElement('pre');
     srcGhost.setAttribute('aria-hidden', 'true');
     srcGhost.style.cssText = CODE_LAYER + ` overflow: hidden; pointer-events: none; background: ${C.bg}; color: ${C.ink};`;
     srcTextarea = doc.createElement('textarea');
     srcTextarea.spellcheck = false;
-    srcTextarea.setAttribute('aria-label', 'Diagram source — edit, then Run (⌘⏎)');
+    srcTextarea.setAttribute('aria-label', 'Diagram source — edit, then Update diagram (⌘⏎)');
     srcTextarea.style.cssText = CODE_LAYER +
       ` width: 100%; height: 100%; resize: none; outline: none; overflow: auto;` +
       ` background: transparent; color: transparent; caret-color: ${C.ink};`;
@@ -424,6 +446,7 @@ function buildDevice(doc, opts, height, editable) {
     codeWrap.appendChild(srcTextarea);
     srcBody.appendChild(codeWrap);
   } else {
+    srcBody.style.maxHeight = '300px';
     srcPre = doc.createElement('pre');
     srcPre.style.cssText =
       `margin: 0; padding: 12px 14px; white-space: pre; tab-size: 2; background: ${C.bg}; color: ${C.ink}; font: 12.5px/1.6 ${MONO};`;
@@ -443,29 +466,17 @@ function buildDevice(doc, opts, height, editable) {
   panelExpanded.appendChild(srcBody);
   sourceCol.appendChild(panelExpanded);
 
-  // collapsed: a thin rail that re-opens the source on click
-  const panelRail = doc.createElement('button');
-  panelRail.type = 'button'; panelRail.title = 'Show source';
-  panelRail.style.cssText =
-    `display: none; align-items: center; justify-content: center; gap: 7px; cursor: pointer; appearance: none;` +
-    ` border: none; background: ${C.chrome}; color: ${C.soft}; width: 100%; height: 100%;` +
-    ` font: 600 10.5px/1 ${SANS}; letter-spacing: .08em; text-transform: uppercase;`;
-  const railChev = doc.createElement('span'); railChev.textContent = '▸';
-  railChev.style.cssText = 'writing-mode: horizontal-tb;';   // keep the arrow upright in a vertical rail
-  const railLabel = doc.createElement('span'); railLabel.textContent = 'Source';
-  panelRail.appendChild(railChev); panelRail.appendChild(railLabel);
-  sourceCol.appendChild(panelRail);
-
   // ── diagram stage ──
   // overflow:hidden keeps the graph clipped to its frame so it can't spill over
   // the conflict panel below (the editable element doesn't clip its own canvas).
   const graphStage = doc.createElement('div');
-  graphStage.style.cssText = `flex: 1 1 0; position: relative; min-width: 0; overflow: hidden; height: ${hCss};`;
+  graphStage.style.cssText = `position: relative; width: 100%; overflow: hidden; height: ${hCss};`;
   const graphHost = doc.createElement('div');
   graphHost.className = 'spytial-gdl-rendered';
   graphHost.dataset.spytialProcessed = '1';
   graphHost.style.cssText = 'position: absolute; inset: 0;';
   graphStage.appendChild(graphHost);
+  graphStage.appendChild(viewControls);
   frame.appendChild(graphStage);
 
   // ── demonstration slot ──
@@ -550,14 +561,10 @@ function buildDevice(doc, opts, height, editable) {
   // ── behaviors ──
   let collapsed = !editable;     // editable opens expanded; read-only opens collapsed
   let dirty = false;             // unsaved edits in the textarea (editable only)
-  let lastNarrow = null;
   let getSource = () => '';
-  let refit = () => {};
   let applyFn = null;
 
-  const isNarrow = () => device.clientWidth > 0 && device.clientWidth < BREAK;
-
-  // Emphasize Run when there are unsaved text edits to apply.
+  // Emphasize Update diagram when there are unsaved text edits to apply.
   const styleRun = () => {
     if (!runBtn) return;
     const on = dirty;
@@ -566,41 +573,13 @@ function buildDevice(doc, opts, height, editable) {
     runBtn.style.borderColor = on ? C.accent : C.border;
   };
 
-  // Lay the source/diagram out for the current collapsed + width state. Row by
-  // default (source on the left); below BREAK, stack the source on top.
+  // The source disclosure never shrinks the diagram or changes its viewport.
   function relayout() {
-    const narrow = isNarrow();
-    frame.style.flexDirection = narrow ? 'column' : 'row';
-    frame.style.height = narrow ? 'auto' : hCss;
-    graphStage.style.height = hCss;
-    graphStage.style.flex = narrow ? '0 0 auto' : '1 1 0';
-
-    panelExpanded.style.display = collapsed ? 'none' : 'flex';
-    panelRail.style.display = collapsed ? 'flex' : 'none';
-
-    // separate source from diagram along whichever axis they're stacked on
-    sourceCol.style.borderRight = !narrow ? `1px solid ${C.border}` : 'none';
-    sourceCol.style.borderBottom = narrow ? `1px solid ${C.border}` : 'none';
-
-    if (collapsed) {
-      if (narrow) {
-        sourceCol.style.width = '100%'; sourceCol.style.height = 'auto';
-        panelRail.style.writingMode = 'horizontal-tb'; panelRail.style.padding = '8px 12px';
-        railChev.textContent = '▾';
-      } else {
-        sourceCol.style.width = '30px'; sourceCol.style.height = '';
-        panelRail.style.writingMode = 'vertical-rl'; panelRail.style.padding = '12px 0';
-        railChev.textContent = '▸';
-      }
-    } else if (narrow) {
-      sourceCol.style.width = '100%'; sourceCol.style.height = '170px';
-    } else {
-      sourceCol.style.width = 'clamp(200px, 38%, 380px)'; sourceCol.style.height = '';
-    }
-
-    // a reflow between row/column changes the diagram's box — re-fit once
-    if (lastNarrow !== null && lastNarrow !== narrow) setTimeout(refit, 0);
-    lastNarrow = narrow;
+    sourceCol.style.display = collapsed ? 'none' : 'block';
+    sourceToggle.setAttribute('aria-expanded', String(!collapsed));
+    sourceToggle.textContent = collapsed ? 'View source' : 'Hide source';
+    sourceToggle.setAttribute('aria-label', collapsed ? 'View source' : 'Hide source');
+    sourceToggle.title = collapsed ? 'Show diagram source' : 'Hide diagram source';
   }
 
   // Push notation into the panel. In editable mode, don't yank text out from
@@ -617,31 +596,30 @@ function buildDevice(doc, opts, height, editable) {
   };
   const refreshSource = (force) => setSourceText(getSource(), force);
 
-  const expand = () => { collapsed = false; relayout(); refreshSource(); setTimeout(refit, 0); };
-  const collapse = () => { collapsed = true; relayout(); setTimeout(refit, 0); };
-  collapseBtn.addEventListener('click', collapse);
-  panelRail.addEventListener('click', expand);
+  const expand = () => { collapsed = false; relayout(); refreshSource(); };
+  const collapse = () => { collapsed = true; relayout(); sourceToggle.focus(); };
+  sourceToggle.addEventListener('click', () => { if (collapsed) expand(); else collapse(); });
 
   copyBtn.addEventListener('click', async () => {
-    const text = getSource();
+    const text = srcTextarea ? srcTextarea.value : getSource();
     try {
       await navigator.clipboard.writeText(text);
-      const prev = copyBtn.textContent; copyBtn.textContent = '✓ Copied';
+      const prev = copyBtn.textContent; copyBtn.textContent = 'Copied';
       setTimeout(() => { copyBtn.textContent = prev; }, 1200);
     } catch (_) { window.prompt('spytial-gdl notation:', text); }
   });
 
-  // text → diagram: explicit apply (Run ▸ / ⌘⏎). Re-render, then snap the panel
+  // text → diagram: explicit apply (button / ⌘⏎). Re-render, then snap the panel
   // to the canonical round-trip so what's shown matches the diagram exactly.
   async function doApply() {
     if (!applyFn || !srcTextarea) return;
     const prev = runBtn ? runBtn.textContent : '';
-    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Running…'; }
+    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Updating…'; }
     srcStatus.textContent = '';
     let res;
     try { res = await applyFn(srcTextarea.value); }
     catch (err) { res = { ok: false, message: err && err.message ? err.message : String(err) }; }
-    if (runBtn) { runBtn.disabled = false; runBtn.textContent = prev || 'Run ▸'; }
+    if (runBtn) { runBtn.disabled = false; runBtn.textContent = prev || 'Update diagram'; }
     if (res && res.ok) {
       refreshSource(true);
     } else {
@@ -686,24 +664,29 @@ function buildDevice(doc, opts, height, editable) {
 
   relayout();
   styleRun();
-  // Re-flow on width changes (row ⇄ column stacking at BREAK). A ResizeObserver
-  // catches container-only changes (e.g. a sidebar toggle); a window-resize
-  // listener is the broadly-compatible fallback for viewport changes. Keep the
-  // observer referenced on the element — an unreferenced ResizeObserver can be
-  // GC'd, which silently stops it firing.
-  if (typeof ResizeObserver !== 'undefined') {
-    const ro = new ResizeObserver(() => relayout());
-    ro.observe(device);
-    device._spytialResizeObserver = ro;
-  }
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('resize', relayout);
-  }
-
   return {
     device, graphHost, conflict, diagnostics, demoSlot,
+    attachCoreToolbar: (el) => {
+      if (!floatCoreControls || !el.shadowRoot || typeof el.addToolbarControl !== 'function') return;
+      // Core owns the actual +, −, and Fit buttons and their enabled states.
+      // Adding Source to that same control group keeps its behavior native.
+      sourceToggle.style.cssText = '';
+      sourceToggle.removeAttribute('aria-controls'); // the source region is outside the shadow root
+      el.addToolbarControl(sourceToggle);
+      viewControls.remove();
+      const style = doc.createElement('style');
+      style.textContent =
+        '#graph-shell { position: relative; }' +
+        '#graph-toolbar[data-presentation="compact"] {' +
+        ' position: absolute; right: 10px; bottom: 10px; z-index: 2;' +
+        ' flex-wrap: nowrap; padding: 0; margin: 0; background: transparent;' +
+        ' border: 0; box-shadow: none; backdrop-filter: none; }' +
+        '#zoom-controls { gap: 4px; }' +
+        '#graph-toolbar .spytial-gdl-source-toggle {' +
+        ' margin-left: 4px; font-size: 11px; padding: 0 8px; }';
+      el.shadowRoot.appendChild(style);
+    },
     setSourceProvider: (fn) => { getSource = fn; },
-    setRefit: (fn) => { refit = fn; },
     setApply: (fn) => { applyFn = fn; },
     setSourceText,
     refreshSource,
@@ -729,7 +712,7 @@ function renderError(doc, host, message) {
 //   opts.height   — diagram height (number px or CSS string). Default 360.
 //                   A block can override with a data-height attribute.
 //   opts.theme    — core theme name; defaults to the surrounding page theme.
-//   opts.viewOptions — core presentation options; compact toolbar by default.
+//   opts.viewOptions — core presentation options; compact controls by default.
 //   opts.injectEngine — inject the CDN engine scripts if absent (default true).
 export async function renderSpytialGdls(root = document, opts = {}) {
   const doc = root.ownerDocument || (root.nodeType === 9 ? root : document);
@@ -759,7 +742,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
       if (editable) {
         const graphEl = mountInputGraph(ui.graphHost, { theme });
         await configureEmbedGraph(graphEl, true, opts.viewOptions);
-        ui.setRefit(() => refit(graphEl));
+        ui.attachCoreToolbar(graphEl);
 
         // Surface the UNSAT core, attached below the graph, and keep it live:
         // every edit re-reads the element's constraint error, so resolving the
@@ -819,7 +802,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           onApply: (annotation) => ui.appendAnnotation(annotation),
         });
 
-        // text → diagram: explicit Run ▸ / ⌘⏎ re-renders onto the same element.
+        // text → diagram: explicit apply / ⌘⏎ re-renders onto the same element.
         ui.setApply(async (text) => {
           applying = true;
           let h;
@@ -850,8 +833,8 @@ export async function renderSpytialGdls(root = document, opts = {}) {
       } else {
         const graphEl = mountGraph(ui.graphHost, { theme });
         await configureEmbedGraph(graphEl, false, opts.viewOptions);
+        ui.attachCoreToolbar(graphEl);
         const result = await renderSpytialGdl(graphEl, source);
-        ui.setRefit(() => refit(graphEl));
         refit(graphEl);
         ui.setSourceProvider(() => source);
         ui.refreshSource(true);

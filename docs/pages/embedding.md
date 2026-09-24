@@ -9,9 +9,11 @@ renderer produces and swaps each one for a live diagram. It's the same path the
 ## Choose how your diagrams appear
 
 Start with a `spytial-gdl` Markdown fence and add the [drop-in script](platforms.md#where-the-script-tag-goes)
-once to your site's template. Each diagram gets a 360px frame and compact graph
-controls by default. Readers can still zoom, fit the graph, and open its Source
-panel. Editable diagrams also keep their editing controls.
+once to your site's template. Each diagram gets a 360px frame with the drawing
+front and center. Spytial-core's zoom and fit buttons float at the bottom right
+beside **View source**, without a full-width toolbar. Editable diagrams keep
+their graph editing controls and open their
+source editor by default.
 
 To match a dark page, put `data-theme="dark"` on a parent element such as your
 site's `<body>`. All diagrams inside it then use the dark graph and frame theme:
@@ -53,8 +55,9 @@ To change controls or the default height for every diagram, replace the drop-in
 ```
 
 Core also accepts `toolbar: 'compact'` or `'none'`, and individual switches such
-as `controls: { export: false, routing: false }`. These affect the graph toolbar;
-the embed's Source panel stays available. A block's `data-height` takes
+as `controls: { zoom: false, fit: false }`. An explicit `toolbar` setting uses
+Core's normal toolbar placement; **View source** stays
+available. A block's `data-height` takes
 precedence over the page-wide `height` option. See the [options table](#options)
 for the full embedding API.
 
@@ -116,7 +119,7 @@ import {
 |---|---|---|
 | `height` | `360` | diagram height: a number of pixels, or any CSS length. A block overrides it with `data-height`. |
 | `theme` | page theme, otherwise `'light'` | Core theme name. `data-theme` on a block takes precedence; the nearest page `data-theme="light"` or `"dark"` is used when no theme is passed. |
-| `viewOptions` | compact toolbar | Core's presentation options. Read-only embeds show zoom and fit; editable embeds also show editing controls. Pass `{ toolbar: 'full' }` to show every control. |
+| `viewOptions` | core zoom and fit buttons floated beside Source; editing controls on editable blocks | Core's presentation options. Pass `{ toolbar: 'none' }` to hide zoom and fit, `{ toolbar: 'compact' }` for Core's usual compact toolbar, or `{ toolbar: 'full' }` for every Core control. |
 | `editable` | `false` | render every block as the editor (see [Editable diagrams](#editable-diagrams)). |
 | `observe` | `true` | (`autoRender` only) keep watching for blocks added after the first pass, so client-side navigation renders too. |
 | `injectEngine` | `true` | inject the CDN engine scripts if absent. Set it to `false` if you load spytial-core yourself. |
@@ -143,13 +146,14 @@ const failed = results.filter((r) => r.error);
 `result` is the full [`renderSpytialGdl`](#renderspytialgdl) return for a read-only
 block, and `handle` is the [editable handle](#the-handle) for an editable one.
 
-## The Source panel
+## View and edit source
 
-Every embed frames the diagram beside a collapsible Source panel that mirrors the
-live notation. Read-only blocks open with the panel collapsed to a thin rail: click
-it to reveal the notation, then **⧉ Copy** to lift it out. Editable blocks open with
-the panel expanded as a text editor, so you can drag the graph or edit the text and
-**Run ▸** (⌘⏎) it back in, with the two staying in sync.
+Every embed can show its live notation below the full-width diagram. In a read-only
+block, click **View source** beside the zoom and fit controls to reveal the highlighted
+notation, then **Copy source** to lift it out. Editable blocks open with the source editor
+visible below the drawing: drag the graph or edit the text and **Update diagram** (⌘⏎) it
+back in, with the two staying in sync. The same control becomes **Hide source**
+while the panel is open.
 
 When constraints clash, a collapsible conflict panel appears inside the same
 border, so the UNSAT report belongs to the diagram rather than to the page prose.
@@ -183,7 +187,7 @@ A read-only block draws the notation. An editable block renders the same graph o
 Spytial's `<structured-input-graph>` editor instead, so readers can add and delete
 nodes, drag to connect edges, and rename relations, with constraints re-solving as
 they go. They can re-get the notation at any point. Try it, either by dragging the
-picture or by editing the text and pressing **Run ▸** (⌘⏎):
+picture or by editing the text and pressing **Update diagram** (⌘⏎):
 
 ```spytial-gdl-editable
 A -> B : left
@@ -194,9 +198,9 @@ A -> C : right
 @orientation(selector=_links, directions=[below])
 ```
 
-The Source panel beside the diagram is live in both directions: edit the graph and
-the text re-derives, edit the text and **Run ▸** pushes it back into the diagram.
-**⧉ Copy** lifts the result out, `@annotations` and all. Your spatial annotations
+The source editor below the diagram is live in both directions: edit the graph and
+the text re-derives, edit the text and **Update diagram** pushes it back into the diagram.
+**Copy source** lifts the result out, `@annotations` and all. Your spatial annotations
 are re-appended verbatim on every round-trip, so editing the graph's data never
 rewrites your layout rules.
 
@@ -269,8 +273,8 @@ editor's "clear all" swaps in a fresh data instance. You get one clean event per
 logical edit.
 
 `diagnostics` describes the text that was applied (the initial source, or the last
-**Run ▸**). The editor element itself reports only a constraint clash as you edit;
-run the text again to refresh the rest.
+**Update diagram**). The editor element itself reports only a constraint clash as you edit;
+update the diagram again to refresh the rest.
 
 ### The serializer on its own
 
@@ -288,9 +292,9 @@ The playground's **Edit** toggle and
 [`examples/editable.html`](https://github.com/sidprasad/spytial-gdl/blob/main/examples/editable.html)
 are built on exactly this.
 
-### Why explicit Run, not live binding
+### Why source changes need a click
 
-Text to diagram is an explicit apply (**Run ▸** / ⌘⏎) rather than continuous
+Text to diagram is an explicit apply (**Update diagram** / ⌘⏎) rather than continuous
 binding. Continuous binding would fight the normalizing serializer mid-keystroke,
 producing caret jumps, dropped `%%` comments, and lost node positions. Diagram to
 text is live, since there's no text the user is in the middle of editing.
