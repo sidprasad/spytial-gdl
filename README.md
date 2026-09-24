@@ -145,6 +145,10 @@ The suite checks parsing, annotations, round-tripping, embedding integrations,
 and spatial semantics against spytial-core. For documentation changes, also
 preview the affected page and verify its live examples.
 
+For graph control changes, also open `/test/presentation-fixtures.html` and
+`/test/platform-fixtures.html` on the preview server. These exercise the direct
+render APIs and document embeds against the installed browser engine.
+
 ## License
 
 [MIT](https://github.com/sidprasad/spytial-gdl/blob/main/LICENSE)

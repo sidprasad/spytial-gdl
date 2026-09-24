@@ -250,7 +250,11 @@ renderSpytialGdlEditable(container, source, opts?) → Promise<handle>
 
 - `container`: an `Element` to mount into, or a `<structured-input-graph>` itself.
 - `source`: spytial-gdl text with inline `@annotations`, same as the read-only path.
-- `opts`: `{ rules?, extraSpec?, width?, height?, theme?, ariaLabel? }`.
+- `opts`: `{ rules?, extraSpec?, width?, height?, theme?, ariaLabel?, viewOptions? }`.
+
+Editable diagrams use compact core controls with graph editing actions enabled.
+Use `viewOptions` to customize them, for example `{ toolbar: 'full' }` or
+`{ controls: { editing: false } }`.
 
 Returns `{ applied: false, reason, … }` if the source has no nodes; otherwise the
 handle below.
@@ -365,6 +369,18 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 | `validator` | `'qualitative'` | constraint validator. `'qualitative'` gives IIS clash reporting plus a best-feasible counterfactual; `'kiwi'` is the alternative solver. |
 | `rules` | none | raw CnD layout YAML, merged with the inline annotations. An advanced escape hatch. |
 | `extraSpec` | none | extra spec YAML folded in via the class registry. |
+| `viewOptions` | compact controls | core view options; for example `{ toolbar: 'full' }` restores its full toolbar, or `{ toolbar: 'none' }` hides its controls. |
+
+All GDL render paths share the same presentation defaults. Read-only diagrams
+show core's **+, −, and Fit** controls in the lower-right corner; editable
+diagrams keep compact controls and graph editing actions. This applies to the
+playground and programmatic examples as well as Markdown and HTML embeds.
+Markdown/HTML wrappers additionally provide the source disclosure; callers with
+their own source editor retain that editor.
+
+An explicit `viewOptions.toolbar` uses core's usual toolbar placement. Defaults
+are applied once per graph element, so re-rendering source preserves later host
+customizations. Pass `viewOptions` again to update them on a subsequent render.
 
 #### The result object
 

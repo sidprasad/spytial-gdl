@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>GDL presentation fixtures</title>
+<!-- npm run serve → /test/presentation-fixtures.html. Uses the installed core. -->
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px; }
+  section { margin: 24px 0; }
+  webcola-cnd-graph, structured-input-graph { display: block; height: 300px; }
+  .PASS { color: #08754b; } .FAIL { color: #b42318; }
+</style>
+<body>
+<h1>GDL presentation fixtures</h1>
+<ul id="report"></ul>
+<div id="fixtures"></div>
+<script src="/node_modules/spytial-core/dist/browser/spytial-core-complete.global.js"></script>
+<script type="module">
+import { mountGraph, renderSpytialGdl, renderSpytialGdlEditable } from '../src/index.js';
+import { renderSpytialGdls } from '../src/markdown.js';
+
+const SOURCE = 'A -> B\nB -> C\n@orientation(selector=_links, directions=[right])';
+const assert = (value, message) => { if (!value) throw new Error(message); };
+const control = (graph, selector) => graph.shadowRoot.querySelector(selector);
+const visible = element => !!element && !element.closest('[hidden]') && element.getClientRects().length > 0;
+function compact(graph, floating) {
+  const toolbar = control(graph, '#graph-toolbar');
+  assert(toolbar.dataset.presentation === 'compact', 'Expected compact controls');
+  for (const id of ['zoom-in', 'zoom-out', 'zoom-fit']) {
+    assert(visible(control(graph, '#' + id)), 'Missing visible ' + id);
+  }
+  for (const id of ['routing-mode', 'theme-mode', 'screenshot-btn']) {
+    assert(!visible(control(graph, '#' + id)), 'Unexpected visible ' + id);
+  }
+  assert((getComputedStyle(toolbar).position === 'absolute') === floating, 'Wrong control placement');
+}
+let failures = 0, total = 0;
+async function test(name, run) {
+  total++;
+  const host = document.createElement('section');
+  const heading = document.createElement('h2');
+  heading.textContent = name;
+  host.appendChild(heading);
+  document.getElementById('fixtures').appendChild(host);
+  const row = document.createElement('li');
+  try { await run(host); row.className = 'PASS'; row.textContent = 'PASS — ' + name; }
+  catch (error) { failures++; row.className = 'FAIL'; row.textContent = 'FAIL — ' + name + ': ' + error.message; }
+  document.getElementById('report').appendChild(row);
+}
+
+await test('Direct read-only API shares the floating controls', async host => {
+  const graph = mountGraph(host);
+  const result = await renderSpytialGdl(graph, SOURCE);
+  assert(result.applied, 'Diagram did not render');
+  compact(graph, true);
+  await renderSpytialGdl(graph, SOURCE);
+  compact(graph, true);
+  assert(graph.shadowRoot.querySelectorAll('#spytial-gdl-graph-view').length === 1, 'Duplicate presentation styles');
+});
+
+await test('Explicit toolbar choices and later host changes survive re-rendering', async host => {
+  const graph = mountGraph(host);
+  await renderSpytialGdl(graph, SOURCE, { viewOptions: { toolbar: 'full' } });
+  assert(control(graph, '#graph-toolbar').dataset.presentation === 'full', 'Full override lost');
+  assert(getComputedStyle(control(graph, '#graph-toolbar')).position !== 'absolute', 'Full toolbar is floating');
+  await graph.setViewOptions({ toolbar: 'none' });
+  await renderSpytialGdl(graph, SOURCE);
+  assert(!visible(control(graph, '#graph-toolbar')), 'Host override lost on re-render');
+  await renderSpytialGdl(graph, SOURCE, { viewOptions: {} });
+  compact(graph, true);
+  await renderSpytialGdl(graph, SOURCE, { viewOptions: { toolbar: 'compact' } });
+  compact(graph, false);
+});
+
+await test('Direct editable API keeps compact controls and editing actions', async host => {
+  const handle = await renderSpytialGdlEditable(host, SOURCE);
+  const graph = handle.element;
+  // Core creates the editing action group on its first animation frame.
+  await new Promise(requestAnimationFrame);
+  compact(graph, false);
+  assert(visible(control(graph, '[data-action="add-atom"]')), 'Add Node missing');
+  assert(visible(control(graph, '[data-action="add-relation"]')), 'Add Relation missing');
+  assert(handle.getValue().atoms.length === 3, 'Editable data changed');
+  await renderSpytialGdlEditable(graph, SOURCE, {
+    viewOptions: { toolbar: 'none', controls: { editing: false } },
+  });
+  assert(!visible(control(graph, '#graph-toolbar')), 'Explicitly hidden editing toolbar is visible');
+});
+
+await test('Markdown/HTML wrapper adds Source beside the same controls', async host => {
+  const block = document.createElement('div');
+  block.className = 'spytial-gdl';
+  block.textContent = SOURCE;
+  host.appendChild(block);
+  const [result] = await renderSpytialGdls(host, { injectEngine: false });
+  assert(result.result.applied, 'Embed did not render');
+  const graph = host.querySelector('webcola-cnd-graph');
+  compact(graph, true);
+  assert(visible(control(graph, '.spytial-gdl-source-toggle')), 'Source missing beside controls');
+});
+
+await test('Editable wrapper honors its viewOptions through source re-application', async host => {
+  const block = document.createElement('div');
+  block.className = 'spytial-gdl-editable';
+  block.textContent = SOURCE;
+  host.appendChild(block);
+  const [result] = await renderSpytialGdls(host, {
+    injectEngine: false, viewOptions: { toolbar: 'full' },
+  });
+  assert(result.handle, 'Editable embed did not render');
+  const graph = result.handle.element;
+  assert(control(graph, '#graph-toolbar').dataset.presentation === 'full', 'Wrapper override lost');
+  await renderSpytialGdlEditable(graph, SOURCE);
+  assert(control(graph, '#graph-toolbar').dataset.presentation === 'full', 'Override lost on source re-application');
+});
+
+document.title = failures ? `${failures} FAILED — presentation fixtures` : 'all PASS — presentation fixtures';
+document.getElementById('report').dataset.failures = String(failures);
+document.getElementById('report').dataset.total = String(total);
+</script>
+</body>
