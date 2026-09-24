@@ -17,9 +17,9 @@ export function manifest() {
     upstream: {
       coreVersion: tables.coreVersion,
       layoutLanguageVersion: tables.languageVersion,
-      layoutManifest: 'https://cdn.jsdelivr.net/npm/spytial-core@5/docs/spytial-language.json',
+      layoutManifest: 'https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/docs/spytial-language.json',
       selectorManifest: 'https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json',
-      note: 'Upstream URLs follow their package majors. The annotation vocabulary below is generated from the vendored schema at coreVersion. Selector support follows the engine loaded by the host.',
+      note: 'Upstream URLs follow compatible package ranges. The annotation vocabulary below is generated from the vendored schema at coreVersion. Selector support follows the engine loaded by the host.',
     },
     syntax: {
       note: 'These canonical authoring forms are documented here and checked against the parser. They do not enumerate every accepted Mermaid spelling.',

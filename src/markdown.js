@@ -165,7 +165,7 @@ export function sourceFromBlock(el) {
 }
 
 function collectBlocks(root, opts = {}) {
-  const found = new Map(); // host element → { source, editable } (dedup by host)
+  const found = new Map(); // host element → block settings (dedup by host)
   for (const el of root.querySelectorAll(blockSelector())) {
     // A pipeline often tags several nested elements of one block at once
     // (Docusaurus marks the wrapper <div> and the <pre>; Quarto marks the <pre>
@@ -181,13 +181,51 @@ function collectBlocks(root, opts = {}) {
     if (host.dataset && host.dataset.spytialProcessed) continue;
     if (found.has(host)) continue;
     // Entity-decoded by the DOM, so `-->` and `>` come through verbatim.
-    found.set(host, { source: sourceFromBlock(el), editable: isEditableBlock(el, host, opts) });
+    const code = el.querySelector && el.querySelector('code');
+    const setting = (name) => host.getAttribute(name) ?? el.getAttribute(name) ?? code?.getAttribute(name);
+    found.set(host, {
+      source: sourceFromBlock(el), editable: isEditableBlock(el, host, opts),
+      height: setting('data-height'),
+      theme: setting('data-theme'),
+    });
     // Claim the host now, not when it is finally swapped out. Rendering awaits
     // between blocks, and the mutation observer fires on our own insertions, so
     // a second pass can start while this one still has hosts in the document.
     if (host.dataset) host.dataset.spytialProcessed = '1';
   }
   return found;
+}
+
+// Follow an explicit block or call setting first. Otherwise use the page's
+// declared theme; a page with no theme declaration keeps the light baseline.
+function themeForBlock(doc, host, blockTheme, opts) {
+  if (blockTheme) return blockTheme;
+  if (opts.theme) return opts.theme;
+  const pageTheme = host.closest('[data-theme]')?.getAttribute('data-theme');
+  if (pageTheme === 'light' || pageTheme === 'dark') return pageTheme;
+  const view = doc.defaultView;
+  const scheme = view?.getComputedStyle(host).colorScheme || 'normal';
+  if (scheme === 'dark') return 'dark';
+  if (scheme.includes('dark') && view.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
+  return 'light';
+}
+
+// Markdown embeds give the drawing most of the space. Authors can restore or
+// customize core's full toolbar with opts.viewOptions. Editable blocks keep
+// their graph-editing actions even in compact mode.
+function embedViewOptions(editable, overrides = {}) {
+  return {
+    toolbar: 'compact',
+    ...overrides,
+    controls: { ...(editable ? { editing: true } : {}), ...overrides.controls },
+  };
+}
+
+async function configureEmbedGraph(graphEl, editable, overrides) {
+  if (typeof graphEl.setViewOptions !== 'function') {
+    throw new Error('Markdown embeds require spytial-core 6.3.0 or newer');
+  }
+  await graphEl.setViewOptions(embedViewOptions(editable, overrides || {}));
 }
 
 // Is the spytial-core engine (+ the custom element) ready on the page?
@@ -222,12 +260,10 @@ export function whenEngineReady(timeoutMs = 10000) {
   });
 }
 
-// The three scripts the renderer needs, in dependency order (webcola needs d3;
-// spytial-core needs both). Loaded only if the page hasn't already included them.
+// Core's complete browser bundle includes its renderer dependencies.
+// Loaded only if the page hasn't already included it.
 const ENGINE_DEPS = [
-  'https://d3js.org/d3.v4.min.js',
-  'https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js',
-  'https://cdn.jsdelivr.net/npm/spytial-core@5/dist/browser/spytial-core-complete.global.js',
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/dist/browser/spytial-core-complete.global.js',
 ];
 
 function loadScript(src) {
@@ -249,7 +285,7 @@ function loadScript(src) {
 
 // Ensure the renderer engine is present, injecting the CDN scripts if the page
 // didn't already include them. Lets a page bootstrap from a single import. Pass
-// { deps: [...] } to pin/host the scripts yourself, or skip injection by having
+// { deps: [...] } to pin/host the bundle yourself, or skip injection by having
 // already loaded spytial-core.
 export async function ensureEngineLoaded(opts = {}) {
   if (engineReady()) return;
@@ -377,7 +413,7 @@ function buildDevice(doc, opts, height, editable) {
     codeWrap.style.cssText = `position: relative; flex: 1 1 auto; min-height: 0; background: ${C.bg};`;
     srcGhost = doc.createElement('pre');
     srcGhost.setAttribute('aria-hidden', 'true');
-    srcGhost.style.cssText = CODE_LAYER + ` overflow: hidden; pointer-events: none; color: ${C.ink};`;
+    srcGhost.style.cssText = CODE_LAYER + ` overflow: hidden; pointer-events: none; background: ${C.bg}; color: ${C.ink};`;
     srcTextarea = doc.createElement('textarea');
     srcTextarea.spellcheck = false;
     srcTextarea.setAttribute('aria-label', 'Diagram source — edit, then Run (⌘⏎)');
@@ -390,7 +426,7 @@ function buildDevice(doc, opts, height, editable) {
   } else {
     srcPre = doc.createElement('pre');
     srcPre.style.cssText =
-      `margin: 0; padding: 12px 14px; white-space: pre; tab-size: 2; color: ${C.ink}; font: 12.5px/1.6 ${MONO};`;
+      `margin: 0; padding: 12px 14px; white-space: pre; tab-size: 2; background: ${C.bg}; color: ${C.ink}; font: 12.5px/1.6 ${MONO};`;
     srcBody.appendChild(srcPre);
   }
 
@@ -692,7 +728,8 @@ function renderError(doc, host, message) {
 //
 //   opts.height   — diagram height (number px or CSS string). Default 360.
 //                   A block can override with a data-height attribute.
-//   opts.theme    — 'light' | 'dark' passed to mountGraph.
+//   opts.theme    — core theme name; defaults to the surrounding page theme.
+//   opts.viewOptions — core presentation options; compact toolbar by default.
 //   opts.injectEngine — inject the CDN engine scripts if absent (default true).
 export async function renderSpytialGdls(root = document, opts = {}) {
   const doc = root.ownerDocument || (root.nodeType === 9 ? root : document);
@@ -712,15 +749,16 @@ export async function renderSpytialGdls(root = document, opts = {}) {
     }, 400);
   };
 
-  for (const [host, { source, editable }] of blocks) {
-    // Per-block height override via `data-height` on the host or its <code>.
-    const dataH = host.getAttribute && host.getAttribute('data-height');
-    const ui = buildDevice(doc, opts, dataH, editable);
+  for (const [host, { source, editable, height, theme: blockTheme }] of blocks) {
+    const theme = themeForBlock(doc, host, blockTheme, opts);
+    const blockOpts = { ...opts, theme };
+    const ui = buildDevice(doc, blockOpts, height, editable);
     host.replaceWith(ui.device);
 
     try {
       if (editable) {
-        const graphEl = mountInputGraph(ui.graphHost, { theme: opts.theme });
+        const graphEl = mountInputGraph(ui.graphHost, { theme });
+        await configureEmbedGraph(graphEl, true, opts.viewOptions);
         ui.setRefit(() => refit(graphEl));
 
         // Surface the UNSAT core, attached below the graph, and keep it live:
@@ -775,7 +813,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         // derived relations like siblings (`~r.r - iden`), so an embedder who
         // wants those — and can afford the wait — passes `infer: {maxDepth: 3}`.
         const demo = mountDemonstration(doc, ui.demoSlot, graphEl, {
-          dark: opts.theme === 'dark',
+          dark: theme === 'dark',
           infer: { maxDepth: 2, ...(opts.infer && typeof opts.infer === 'object' ? opts.infer : {}) },
           getData: () => (handle && handle.getValue ? handle.getValue() : null),
           onApply: (annotation) => ui.appendAnnotation(annotation),
@@ -810,7 +848,8 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         setTimeout(reflectConflict, 500);
         results.push({ host: ui.graphHost, editable: true, applied: handle && handle.applied, handle });
       } else {
-        const graphEl = mountGraph(ui.graphHost, { theme: opts.theme });
+        const graphEl = mountGraph(ui.graphHost, { theme });
+        await configureEmbedGraph(graphEl, false, opts.viewOptions);
         const result = await renderSpytialGdl(graphEl, source);
         ui.setRefit(() => refit(graphEl));
         refit(graphEl);
@@ -846,9 +885,9 @@ export async function renderSpytialGdls(root = document, opts = {}) {
 // whichever diagram currently has the displayed clash: one IIS panel at a time,
 // which is what the component is designed for.
 const ERROR_COMPONENT_JS =
-  'https://cdn.jsdelivr.net/npm/spytial-core@5/dist/components/react-component-integration.global.js';
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/dist/components/react-component-integration.global.js';
 const ERROR_COMPONENT_CSS =
-  'https://cdn.jsdelivr.net/npm/spytial-core@5/dist/components/react-component-integration.css';
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/dist/components/react-component-integration.css';
 
 let _errLoading = null;   // promise: the lazy component load
 let _errHost = null;      // the single <div> the modal renders into
