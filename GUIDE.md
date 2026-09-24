@@ -23,8 +23,8 @@ B -> C
 ```
 ````
 
-Every `spytial-gdl` block on the page becomes a diagram. The script pulls in the
-renderer (d3, WebCola, spytial-core) if the page doesn't already load it.
+Every `spytial-gdl` block on the page becomes a diagram. The script pulls in
+spytial-core's complete browser bundle if the page doesn't already load it.
 
 To wire it up yourself instead of using the drop-in tag:
 

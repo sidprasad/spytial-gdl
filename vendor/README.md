@@ -12,6 +12,6 @@ Re-vendor and regenerate together:
 ```
 
 Nothing loads this at runtime. The engine itself is fetched from CDN on a
-floating major tag, and `test/pins.test.mjs` keeps it that way — this directory
+compatible caret range, and `test/pins.test.mjs` keeps it that way — this directory
 is the one place a patch version is written down, because a schema has to come
 from some particular release.

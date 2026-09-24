@@ -13,7 +13,7 @@
 //
 // spytial-core is a peer dependency loaded on the page (CDN or bundler) as the
 // global `window.spytialcore`; it auto-registers the
-// <webcola-cnd-graph> custom element and needs d3 v4 + cola.js present. We do
+// <webcola-cnd-graph> custom element and bundles d3 v4 + cola.js. We do
 // NOT import it, so this module loads as a bare ES module in the browser.
 
 import { parseGraph } from './parse.js';
@@ -50,7 +50,7 @@ function getSpytialCore() {
   if (!s) {
     throw new Error(
       'spytial-gdl: spytial-core is not loaded. Include ' +
-        'spytial-core-complete.global.js (plus d3 v4 and cola.js) on the page.'
+        'spytial-core-complete.global.js on the page.'
     );
   }
   return s;
@@ -86,7 +86,7 @@ export function mountGraph(container, opts = {}) {
 
 // Create (or reuse) an editable <structured-input-graph> element inside
 // `container`. Returns the element to pass to renderSpytialGdlEditable. The
-// custom element is registered by spytial-core's global build (≥ 5.0.0).
+// custom element is registered by the required spytial-core browser bundle.
 export function mountInputGraph(container, opts = {}) {
   return mountElement(container, 'structured-input-graph', opts);
 }
@@ -192,7 +192,7 @@ export function compileSpytialGdl(source, opts = {}) {
 function engineApi(spytial) {
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial || {};
   for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 5.0.0`);
+    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 6.3.0`);
   }
   return { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance };
 }
@@ -426,7 +426,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   if (typeof el.setDataInstance !== 'function' || typeof el.setCnDSpec !== 'function') {
     throw new Error(
       'renderSpytialGdlEditable: <structured-input-graph> is not registered. ' +
-        'Load spytial-core ≥ 5.0.0 (its global build registers the element).'
+        'Load spytial-core ≥ 6.3.0 (its global build registers the element).'
     );
   }
 

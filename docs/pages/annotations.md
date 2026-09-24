@@ -223,7 +223,7 @@ the engine rather than to have been right when someone last typed it out.
 | `orientation` | constraint | `selector`, `directions`, `hold?` |
 | `align` | constraint | `selector`, `direction`, `hold?` |
 | `cyclic` | constraint | `selector`, `direction?`, `hold?` |
-| `group` | constraint | `selector`, `name` (except with `hold=never`), `addEdge?`, `textStyle(…)?`, `hold?` |
+| `group` | constraint | `selector`, `name` (except with `hold=never`), `addEdge?`, `textStyle(…)?`, `showLabel?`, `hold?` |
 | `size` | constraint | `width`, `height`, `selector?` |
 | `hideAtom` | constraint | `selector` |
 | `atomStyle` | directive | `selector?` (absent means every node), `fillStyle(…)?`, `borderStyle(…)?`, `iconStyle(…)?`, `textStyle(…)?`, `showLabel?` |

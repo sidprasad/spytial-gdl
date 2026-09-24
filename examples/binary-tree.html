@@ -25,10 +25,8 @@
     @media (max-width: 820px) { .panel { grid-template-columns: 1fr; } }
   </style>
 
-  <!-- d3 v4 + WebCola (constraint solver) + spytial-core (engine + <webcola-cnd-graph>) -->
-  <script src="https://d3js.org/d3.v4.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/spytial-core@5/dist/browser/spytial-core-complete.global.js"></script>
+  <!-- spytial-core includes its renderer dependencies and registers <webcola-cnd-graph>. -->
+  <script src="https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/dist/browser/spytial-core-complete.global.js"></script>
 </head>
 <body>
   <header class="site-header">

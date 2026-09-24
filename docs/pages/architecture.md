@@ -68,20 +68,18 @@ manage.
 
 ## Dependencies
 
-The engine is three scripts, loaded in dependency order. The Markdown path injects
-them from a CDN if the page doesn't already have them; for the programmatic API you
-include them yourself.
+The engine is one complete browser bundle. The Markdown path injects it from a
+CDN if the page doesn't already have it; for the programmatic API you include it
+yourself.
 
 | dependency | role |
 |---|---|
-| d3 **v4** | WebCola's rendering/data substrate |
-| `webcola@3.4.0` | the constraint-layout solver Spytial drives |
-| `spytial-core@^5.0` | the engine: registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
+| `spytial-core@^6.3.0` | bundles d3 and WebCola, registers `<webcola-cnd-graph>`, exposes `window.spytialcore` |
 
 spytial-core is a peer dependency. spytial-gdl doesn't `import` it, which is what
 lets its own modules load as bare browser ES modules. spytial-core auto-registers
-the custom element and exposes the engine on `window.spytialcore`. Vendor all
-three locally for an offline or version-pinned deploy
+the custom element and exposes the engine on `window.spytialcore`. Vendor the
+complete bundle locally for an offline or version-pinned deploy
 ([Embedding → self-hosting](embedding.md#self-hosting-the-engine)).
 
 ## File map

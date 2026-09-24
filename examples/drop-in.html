@@ -2,7 +2,7 @@
 <!--
   The minimal HTML drop-in. The whole integration is:
 
-    1. ONE script tag (it injects d3 + WebCola + spytial-core for you), and
+    1. ONE script tag (it injects spytial-core's complete browser bundle), and
     2. a <div class="spytial-gdl"> holding the notation.
 
   Published, that one tag is the CDN URL:
@@ -28,10 +28,6 @@
     h2 { font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .18em;
          color: var(--ink); margin: 44px 0 10px; }
     p { color: var(--ink-2); }
-    /* Give each block a frame + height. The renderer fills the container. */
-    .spytial-gdl, .spytial-gdl-editable {
-      height: 340px; border: var(--bar) solid var(--ink); margin: 12px 0; background: var(--raised);
-    }
   </style>
 </head>
 <body>
@@ -57,9 +53,9 @@
   </div>
 
   <h2>Editable — <code>class="spytial-gdl-editable"</code></h2>
-  <p>Add a node, drag to connect an edge, then hit <b>⧉ notation</b> to copy the
-     graph back out as spytial-gdl text.</p>
-  <div class="spytial-gdl-editable">
+  <p>Add a node, drag to connect an edge, then use the Source panel to copy the
+     graph back out as spytial-gdl text. This block uses a dark theme and a taller frame.</p>
+  <div class="spytial-gdl-editable" data-theme="dark" data-height="420">
     alice[Alice]:::Person -> acme[Acme]:::Company
     bob[Bob]:::Person     -> acme
 

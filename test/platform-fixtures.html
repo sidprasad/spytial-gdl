@@ -32,7 +32,7 @@
 <!-- 1. marked / markdown-it / kramdown (highlighter off) / Python-Markdown fenced_code / Eleventy -->
 <section data-platform="markdown-it / marked / kramdown / Python-Markdown">
 <h2>1. plain fenced output <code>&lt;pre&gt;&lt;code class="language-X"&gt;</code></h2>
-<pre><code class="language-spytial-gdl">A -&gt; B : left
+<pre><code class="language-spytial-gdl" data-theme="dark" data-height="420">A -&gt; B : left
 A -&gt; C : right
 
 @orientation(selector=_links, directions=[below])
@@ -162,6 +162,9 @@ for (const section of document.querySelectorAll('section[data-platform]')) {
     const longest = labels.reduce((a, b) => (a.length > b.length ? a : b), '');
     if (missing.length) why = `missing ${missing.join(', ')} — got ${JSON.stringify(labels)}`;
     else if (longest.length > 25) why = `a label swallowed the block: ${JSON.stringify(longest.slice(0, 60))}`;
+    else if (name.startsWith('markdown-it') && graph.getAttribute('theme') !== 'dark') why = 'data-theme on code was lost';
+    else if (name.startsWith('markdown-it') && section.querySelector('.spytial-gdl-device > div').style.height !== '420px') why = 'data-height on code was lost';
+    else if (root.querySelector('#graph-toolbar')?.dataset.presentation !== 'compact') why = 'compact toolbar was not applied';
   }
 
   const ok = !why;

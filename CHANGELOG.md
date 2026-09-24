@@ -5,6 +5,15 @@ Notable changes to spytial-gdl, newest first. The format follows
 as far as a 0.x can: a minor bump is new surface or a breaking change, a patch
 is a fix.
 
+## Unreleased
+
+- Require spytial-core 6.3.0 or newer. Browser embeds now load its complete
+  bundle, and the vendored annotation schema includes `@group(showLabel=…)`.
+- Give Markdown diagrams compact graph controls while keeping editing actions
+  in editable blocks. `viewOptions` can restore or customize core's toolbar.
+- Let each block override its theme and height; otherwise the graph follows the
+  page's declared light or dark theme. Fix dark source-panel contrast.
+
 ## [0.6.0] — 2026-09-06
 
 spytial-gdl has no installed base yet, so this release drops every legacy
