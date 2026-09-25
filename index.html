@@ -3,31 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spytial GDL · Lightweight interactive graphs (with semantics!)</title>
-  <meta name="description" content="Spytial GDL pairs a simple graph description language with spatial requirements. Create interactive graphs whose layouts preserve the relationships you specify." />
+  <title>Spytial GDL · Graph diagrams with layout requirements</title>
+  <meta name="description" content="Spytial GDL is a lightweight, web-native graph description language for spatially meaningful diagrams. Describe the graph, then state the layout requirements that matter." />
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    main { max-width: 880px; margin: 0 auto; padding: 48px 28px 64px; }
-    .name { margin: 0 0 32px; font: 18px/1.4 var(--display); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; }
-    h1 { font-size: clamp(36px, 5vw, 58px); line-height: 1.05; margin: 0 0 36px; }
-    h1 span { display: block; color: var(--blue); font-size: 0.75em; margin-top: 8px; }
-    .demo { min-width: 0; margin: 0 0 36px; }
-    .demo > .spytial-gdl { height: 460px; overflow: auto; white-space: pre-wrap; font: 12px/1.5 var(--mono); }
-    .explanation { font-size: 18px; line-height: 1.65; }
-    .explanation p { margin: 0 0 24px; }
-    .comparison { margin: 0 0 28px; font-size: 16px; }
-    .comparison summary { cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
-    .comparison pre, .spatial-rules { overflow-x: auto; padding: 16px; border: 1px solid var(--ink); font: 13px/1.6 var(--mono); }
-    .mermaid-preview { overflow: auto; margin: 20px 0; }
-    .mermaid-preview svg { display: block; width: 100%; height: auto; max-height: 480px; }
-    .actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 20px 32px; border-top: var(--bar) solid var(--ink); margin-top: 32px; padding-top: 24px; }
-    .agent-link { flex: 1 1 300px; }
-    .agent-link span { display: block; }
-    @media (max-width: 480px) {
-      main { padding: 28px 22px 40px; }
-      h1 { margin-bottom: 28px; }
-      .explanation { font-size: 17px; }
+    main { max-width: 1060px; margin: 0 auto; padding: 40px 28px 72px; }
+    .name { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 72px; }
+    .hero { max-width: 900px; }
+    h1 { max-width: 13ch; margin: 0 0 30px; font-size: clamp(48px, 8vw, 88px); line-height: .99; }
+    h1 span { color: var(--blue); }
+    .lede { max-width: 780px; margin: 0 0 12px; font: clamp(21px, 2.5vw, 27px)/1.35 var(--display); }
+    .lineage { max-width: 760px; margin: 0; color: var(--ink-2); font-size: 17px; line-height: 1.65; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 32px 0 84px; }
+    .hero-actions .btn { min-height: 42px; align-items: center; }
+    .argument, .model { border-top: var(--bar) solid var(--ink); padding-top: 20px; }
+    .argument { display: grid; grid-template-columns: minmax(210px, 310px) minmax(0, 1fr); gap: 28px 56px; margin-bottom: 76px; }
+    .argument h2, .model h2 { max-width: 15ch; font-size: clamp(30px, 3.8vw, 44px); line-height: 1.12; }
+    .argument-copy { max-width: 690px; }
+    .argument-copy p { margin: 0 0 20px; font-size: 18px; line-height: 1.65; }
+    .argument-copy .question { font: clamp(21px, 2.4vw, 27px)/1.35 var(--display); }
+    .model h2 { max-width: none; margin-bottom: 26px; }
+    .steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--hair); }
+    .steps li { display: grid; grid-template-columns: 48px minmax(190px, 290px) minmax(0, 1fr); gap: 14px 24px; align-items: baseline; padding: 22px 0; border-bottom: 1px solid var(--hair); }
+    .steps .number { color: var(--red); font: 500 13px/1 var(--display); }
+    .steps h3 { font-size: 22px; }
+    .steps p { max-width: 580px; margin: 0; color: var(--ink-2); font-size: 16px; }
+    .next { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: baseline; margin-top: 38px; }
+    .next a { font: 500 15px/1.4 var(--display); }
+    .next a::after { content: ' ↗'; }
+    @media (max-width: 700px) {
+      main { padding: 28px 22px 48px; }
+      .name { margin-bottom: 52px; }
+      .hero-actions { margin-bottom: 64px; }
+      .argument { display: block; margin-bottom: 58px; }
+      .argument h2 { margin-bottom: 24px; }
+      .steps li { grid-template-columns: 38px 1fr; }
+      .steps p { grid-column: 2; }
     }
   </style>
 </head>
@@ -36,64 +48,66 @@
     <header class="name">
       <a class="wordmark" href="./">Spytial GDL</a>
       <nav class="site-nav" aria-label="Main navigation">
+        <a href="./docs/#/embedding">Embed</a>
+        <a href="./docs/#/notation">Documentation</a>
         <a href="./playground/">Playground</a>
-        <a href="./docs/">Documentation</a>
       </nav>
     </header>
-    <h1>Lightweight interactive graphs <span>(with semantics!)</span></h1>
 
-    <div class="explanation">
-      <p>Traditional graph description languages let you write a diagram as lightweight source and delegate its layout to a renderer. That delegation becomes a problem when spatial arrangement itself carries meaning, because the renderer can place elements in ways that contradict it. Spytial GDL pairs a simple graph description language with spatial <em>requirements</em>.</p>
-
-      <p>Describe the graph, then state relationships, such as orientation and grouping, that every valid layout must preserve.</p>
-    </div>
-
-    <section class="demo" aria-label="Tic-tac-toe: drag a cell. Right and below relationships preserve the board's rows and columns.">
-      <div class="spytial-gdl" id="board-graph" data-height="460">
-%% An illustrative tic-tac-toe position. The dot is an empty cell.
-%% The edges describe the board, not the order of moves.
-a[X]:::Cell -> b[O]:::Cell : right
-b -> c[X]:::Cell : right
-d[·]:::Cell -> e[O]:::Cell : right
-e -> f[·]:::Cell : right
-g[O]:::Cell -> h[X]:::Cell : right
-h -> i[X]:::Cell : right
-a -> d : below
-d -> g : below
-b -> e : below
-e -> h : below
-c -> f : below
-f -> i : below
-
-@orientation(selector=right, directions=[directlyRight])
-@orientation(selector=below, directions=[directlyBelow])
-        </div>
+    <section class="hero" aria-labelledby="page-title">
+      <h1 id="page-title">Graph diagrams with <span>layout requirements.</span></h1>
+      <p class="lede">Spytial GDL is a lightweight, web-native graph description language for spatially meaningful diagrams.</p>
+      <p class="lineage">It pairs the declarative node-and-edge descriptions familiar from Mermaid and DOT with layout requirements drawn from the <a href="https://github.com/sidprasad/spytial-core">Spytial diagramming language</a>.</p>
+      <nav class="hero-actions" aria-label="Get started">
+        <a class="btn btn-solid" href="./playground/">Playground with examples</a>
+        <a class="btn" href="./docs/#/embedding">Embed in your document</a>
+        <a class="btn" href="./docs/#/notation">Syntax &amp; documentation</a>
+      </nav>
     </section>
 
-    <div class="explanation">
-      <p>The edges already say <code>right</code> and <code>below</code>. The layout should mean it. These two requirements keep the cells in their rows and columns, even when you drag them.</p>
-      <pre class="spatial-rules"><code>@orientation(selector=right, directions=[directlyRight])
-@orientation(selector=below, directions=[directlyBelow])</code></pre>
-      <details class="comparison" id="mermaid-comparison">
-        <summary>See the same graph in Mermaid</summary>
-        <p>In a Mermaid flowchart, <code>right</code> and <code>below</code> are edge labels, not layout requirements. A <a href="https://mermaid.js.org/syntax/flowchart.html#direction">flowchart direction</a> applies to the graph, not separately to each relation.</p>
-        <div id="mermaid-preview" class="mermaid-preview" role="img" aria-label="The same tic-tac-toe graph rendered by Mermaid without spatial requirements"></div>
-        <p id="mermaid-status" role="status"></p>
-        <details><summary>Mermaid source</summary><pre><code id="mermaid-source"></code></pre></details>
-        <p>This is Mermaid 11.12.0 with its default flowchart layout and <code>flowchart TB</code>. It has the same cells, labels, and edges as the board above. Mermaid also has <a href="https://mermaid.js.org/syntax/block.html">block diagrams</a> for explicitly arranging a grid; this example compares labeled flowcharts.</p>
-      </details>
+    <section class="argument" aria-labelledby="why-title">
+      <h2 id="why-title">Space is part of what a diagram says.</h2>
+      <div class="argument-copy">
+        <p class="question">Ever described the right graph in Mermaid or DOT, only to find that its layout obscured the point?</p>
+        <p>Effective diagrams use space to make structure perceptible. When you cede layout entirely to a renderer, you cede control over part of what makes the diagram effective.</p>
+        <p>Authors often steer the result with invisible edges, ranks, subgraphs, or changes to source order. These workarounds can be brittle as the graph changes. They also put elements in the source that exist only to influence placement, alongside the nodes and edges of the actual graph.</p>
+      </div>
+    </section>
 
-      <p>Explicit requirements on layout enable interaction beyond rendering: constrained rearrangement, explanations for contradictory requirements, and direct manipulation that edits the underlying graph while preserving the diagram's spatial meaning.</p>
-    </div>
-
-    <nav class="actions" aria-label="Next steps">
-      <a href="./docs/#/introduction">Learn more</a>
-      <a href="./playground/" data-playground-source="board-graph">Playground</a>
-      <a class="agent-link" href="./SKILL.md">Using an agent or workflow?<span>Use the Spytial-GDL skill.</span></a>
-    </nav>
+    <section class="model" aria-labelledby="model-title">
+      <h2 id="model-title">Add requirements where they matter.</h2>
+      <ol class="steps">
+        <li>
+          <span class="number">01</span>
+          <h3>Start with the graph.</h3>
+          <p>When spatiality is incidental, write only nodes and edges.</p>
+        </li>
+        <li>
+          <span class="number">02</span>
+          <h3>Add layout requirements.</h3>
+          <p>Specify only the spatial relationships that matter. Spytial GDL handles the rest of the layout.</p>
+        </li>
+        <li>
+          <span class="number">03</span>
+          <h3>Graphs are interactive.</h3>
+          <p>Drag nodes around without violating your layout requirements.</p>
+        </li>
+        <li>
+          <span class="number">04</span>
+          <h3>See conflicts.</h3>
+          <p>If no layout can satisfy the requirements, Spytial GDL shows which ones are incompatible and how they fail.</p>
+        </li>
+        <li>
+          <span class="number">05</span>
+          <h3>Edit the graph.</h3>
+          <p>In editable diagrams, the same requirements guide direct manipulation as the graph changes.</p>
+        </li>
+      </ol>
+      <nav class="next" aria-label="More about Spytial GDL">
+        <a href="https://github.com/sidprasad/spytial-gdl">View on GitHub</a>
+        <a href="./SKILL.md">Using an agent or workflow? Get the skill</a>
+      </nav>
+    </section>
   </main>
-  <script type="module" src="./assets/landing.js"></script>
-  <script type="module" src="./assets/landing-comparison.js"></script>
-  <script type="module" src="./src/auto.js"></script>
 </body>
 </html>

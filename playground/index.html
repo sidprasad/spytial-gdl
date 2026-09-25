@@ -192,13 +192,16 @@
         </a>
         <div class="spacer"></div>
         <nav class="site-nav" aria-label="Main navigation">
+            <a href="../docs/#/embedding">Embed</a>
+            <a href="../docs/#/notation">Documentation</a>
             <a href="./" aria-current="page">Playground</a>
-            <a href="../docs/">Documentation</a>
         </nav>
         <select id="example-select" title="Load an example" aria-label="Load an example">
             <option value="" disabled selected>Examples…</option>
             <option value="flowchart">Flowchart (faithful default)</option>
             <option value="pipeline">Left-to-right pipeline</option>
+            <option value="compiler">Compiler subsystem (local direction)</option>
+            <option value="replicas">Peer replicas (alignment)</option>
             <option value="cycle">State cycle (ring)</option>
             <option value="tree">Binary tree (left / right)</option>
             <option value="clash">⚠ Rules that clash</option>
@@ -289,6 +292,31 @@ Test -> Ship
 %% Every edge's target sits to the right of its source,
 %% so the pipeline reads left -> right.
 @orientation(selector=_links, directions=[right])`,
+
+            compiler: `source[Source] -> parse[Parse] : enters
+parse -> check[Check types] : stage
+check -> generate[Generate code] : stage
+generate -> program[Program] : leaves
+class parse,check,generate compiler
+
+%% Keep the compiler's internal order even with connections outside it.
+@group(selector=compiler, name='Compiler')
+@orientation(selector=stage, directions=[right])
+@align(selector=stage, direction=horizontal)
+@orientation(selector=enters, directions=[directlyBelow])
+@orientation(selector=leaves, directions=[directlyBelow])`,
+
+            replicas: `router[Router] -> east[East replica] : routes
+router -> west[West replica] : routes
+east -> eastStore[East store] : stores
+west -> westStore[West store] : stores
+east -> west : sync
+west -> east : sync
+
+%% A connection between peers need not put one below the other.
+@orientation(selector=routes, directions=[below])
+@orientation(selector=stores, directions=[directlyBelow])
+@align(selector=sync, direction=horizontal)`,
 
             cycle: `S0 -> S1
 S1 -> S2

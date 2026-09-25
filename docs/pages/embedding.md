@@ -1,10 +1,32 @@
-# Embedding & API
+# Embed in your document
 
 Rendering a diagram in a page, and driving one from JavaScript.
 
 The embedding layer scans already-rendered HTML for the code blocks a Markdown
 renderer produces and swaps each one for a live diagram. It's the same path the
 ` ```spytial-gdl ` blocks on this site go through.
+
+## Quick start
+
+Add the renderer once to your HTML page or Markdown site's template:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
+```
+
+Then write a fenced block in your document:
+
+````markdown
+```spytial-gdl
+A -> B
+```
+````
+
+The script renders each `spytial-gdl` block after your Markdown becomes HTML.
+Serve the page over HTTP; this module setup cannot run from a `file://` URL.
+GitHub README pages show the source but do not run the renderer. For a complete
+HTML page, see the [drop-in example](../examples/drop-in.html); for site-specific
+setup, see [Platforms](platforms.md).
 
 ## Choose how your diagrams appear
 
