@@ -1,36 +1,10 @@
-# Platforms
+# Platform setup
 
-Putting diagrams in MkDocs, Jekyll, Hugo, Docusaurus, Pollen, and the rest.
+Add the renderer once to your site's layout, then write `spytial-gdl` fenced
+blocks in Markdown. Diagrams render in the browser after your site builds.
 
-Rendering happens in the browser, after your site generator has already turned
-Markdown into HTML. Nothing hooks into the build: the script looks for the block
-your generator emitted and swaps it for a diagram. So for any platform there are
-only ever two questions — where the script tag goes, and whether anything
-rewrote the block on the way out.
-
-## The generators
-
-Every one of these works with no plugin and no build step. The middle column is
-what a ` ```spytial-gdl ` fence actually comes out as, which is worth knowing
-only when something goes wrong.
-
-| platform | the fence becomes | worth knowing |
-|---|---|---|
-| Jekyll · GitHub Pages | `<div class="language-spytial-gdl highlighter-rouge">` | Rouge has no lexer for us and falls back to plain text, which is what we want |
-| MkDocs | `<pre><code class="language-spytial-gdl">` | the `fenced_code` default |
-| MkDocs Material | `<div class="language-spytial-gdl highlight">` | Pygments; the [custom fence](#mkdocs) skips it |
-| Hugo | `<code class="language-spytial-gdl" data-lang="…">` | Chroma |
-| Docusaurus | `<div class="language-spytial-gdl codeBlockContainer…">` | Prism, one `<div>` per line |
-| VitePress | `<div class="language-spytial-gdl">` | the wrapper also holds the copy button |
-| Sphinx · MyST | `<div class="highlight-spytial-gdl notranslate">` | no `<code>` element at all |
-| Astro · Starlight | `<pre data-language="spytial-gdl">` | Expressive Code, one `<div>` per line |
-| Quarto · Pandoc | `<pre class="sourceCode spytial-gdl">` | |
-| Eleventy · marked · markdown-it · hand-written HTML | `<pre><code class="language-spytial-gdl">` | |
-| Pollen | whatever your tag function emits — [see below](#pollen) | |
-
-Those eleven shapes are pinned by `test/platforms.test.mjs`, and
-`test/platform-fixtures.html` renders all of them in a browser. They are facts
-about someone else's output, so they get tests rather than trust.
+The script placement is below. MkDocs, Hugo, and Pollen also have notes for
+their Markdown output.
 
 ## Where the script tag goes
 
@@ -152,6 +126,25 @@ and `smart-dashes` rewrites `-->` as `–>`. See
 `◊` never appears in the notation, so bodies need no escaping — but Pollen wants
 balanced braces, and `◊spytial-gdl|{ … }|` is the escape if you ever write an
 unbalanced one.
+
+## What the renderer recognizes
+
+If a diagram stays a code block, check the HTML your site generated. The
+renderer recognizes these common forms:
+
+| platform | the fence becomes | worth knowing |
+|---|---|---|
+| Jekyll · GitHub Pages | `<div class="language-spytial-gdl highlighter-rouge">` | Rouge has no lexer for us and falls back to plain text, which is what we want |
+| MkDocs | `<pre><code class="language-spytial-gdl">` | the `fenced_code` default |
+| MkDocs Material | `<div class="language-spytial-gdl highlight">` | Pygments; the [custom fence](#mkdocs) skips it |
+| Hugo | `<code class="language-spytial-gdl" data-lang="…">` | Chroma |
+| Docusaurus | `<div class="language-spytial-gdl codeBlockContainer…">` | Prism, one `<div>` per line |
+| VitePress | `<div class="language-spytial-gdl">` | the wrapper also holds the copy button |
+| Sphinx · MyST | `<div class="highlight-spytial-gdl notranslate">` | no `<code>` element at all |
+| Astro · Starlight | `<pre data-language="spytial-gdl">` | Expressive Code, one `<div>` per line |
+| Quarto · Pandoc | `<pre class="sourceCode spytial-gdl">` | |
+| Eleventy · marked · markdown-it · hand-written HTML | `<pre><code class="language-spytial-gdl">` | |
+| Pollen | whatever your tag function emits — [see below](#pollen) | |
 
 ## Known issues
 

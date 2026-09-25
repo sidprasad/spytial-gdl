@@ -8,38 +8,35 @@
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    main { max-width: 1060px; margin: 0 auto; padding: 40px 28px 72px; }
-    .name { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 72px; }
-    .hero { max-width: 900px; }
-    h1 { max-width: 13ch; margin: 0 0 30px; font-size: clamp(48px, 8vw, 88px); line-height: .99; }
-    h1 span { color: var(--blue); }
-    .lede { max-width: 780px; margin: 0 0 12px; font: clamp(21px, 2.5vw, 27px)/1.35 var(--display); }
-    .lineage { max-width: 760px; margin: 0; color: var(--ink-2); font-size: 17px; line-height: 1.65; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 32px 0 84px; }
-    .hero-actions .btn { min-height: 42px; align-items: center; }
-    .argument, .model { border-top: var(--bar) solid var(--ink); padding-top: 20px; }
-    .argument { display: grid; grid-template-columns: minmax(210px, 310px) minmax(0, 1fr); gap: 28px 56px; margin-bottom: 76px; }
-    .argument h2, .model h2 { max-width: 15ch; font-size: clamp(30px, 3.8vw, 44px); line-height: 1.12; }
-    .argument-copy { max-width: 690px; }
-    .argument-copy p { margin: 0 0 20px; font-size: 18px; line-height: 1.65; }
-    .argument-copy .question { font: clamp(21px, 2.4vw, 27px)/1.35 var(--display); }
-    .model h2 { max-width: none; margin-bottom: 26px; }
-    .steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--hair); }
-    .steps li { display: grid; grid-template-columns: 48px minmax(190px, 290px) minmax(0, 1fr); gap: 14px 24px; align-items: baseline; padding: 22px 0; border-bottom: 1px solid var(--hair); }
-    .steps .number { color: var(--red); font: 500 13px/1 var(--display); }
-    .steps h3 { font-size: 22px; }
-    .steps p { max-width: 580px; margin: 0; color: var(--ink-2); font-size: 16px; }
-    .next { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: baseline; margin-top: 38px; }
-    .next a { font: 500 15px/1.4 var(--display); }
-    .next a::after { content: ' ↗'; }
+    main { max-width: 900px; margin: 0 auto; padding: 36px 28px 88px; }
+    .name { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 84px; }
+    .hero { max-width: 760px; }
+    h1 { max-width: 16ch; margin: 0 0 24px; font-size: clamp(42px, 6vw, 64px); line-height: 1.08; }
+    .lede { max-width: 640px; margin: 0 0 12px; font-size: clamp(20px, 2.4vw, 23px); line-height: 1.4; }
+    .lineage { max-width: 650px; margin: 0; color: var(--ink-2); font-size: 17px; }
+    .hero-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; max-width: 680px; margin: 42px 0 92px; }
+    .hero-actions a { color: var(--ink); text-decoration: none; }
+    .hero-actions strong { display: block; margin-bottom: 5px; font: 500 20px/1.3 var(--display); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 4px; }
+    .hero-actions span { display: block; max-width: 29ch; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+    .hero-actions a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+    .argument { max-width: 670px; margin-bottom: 84px; }
+    .argument h2, .model h2 { font-size: clamp(27px, 3vw, 32px); line-height: 1.2; }
+    .argument h2 { margin-bottom: 14px; }
+    .argument-copy .question { margin: 0; font-size: 20px; line-height: 1.45; }
+    .model { max-width: 760px; }
+    .model h2 { margin-bottom: 28px; }
+    .steps { list-style: none; margin: 0; padding: 0; }
+    .steps li { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: baseline; margin: 0 0 19px; }
+    .steps h3 { font-size: 19px; }
+    .steps p { margin: 0; color: var(--ink-2); font-size: 16px; }
+    .next { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 64px; font-size: 15px; }
     @media (max-width: 700px) {
-      main { padding: 28px 22px 48px; }
-      .name { margin-bottom: 52px; }
-      .hero-actions { margin-bottom: 64px; }
-      .argument { display: block; margin-bottom: 58px; }
-      .argument h2 { margin-bottom: 24px; }
-      .steps li { grid-template-columns: 38px 1fr; }
-      .steps p { grid-column: 2; }
+      main { padding: 28px 22px 64px; }
+      .name { margin-bottom: 56px; }
+      .hero-actions { grid-template-columns: 1fr; gap: 22px; margin-bottom: 68px; }
+      .argument { margin-bottom: 64px; }
+      .steps li { display: block; margin-bottom: 22px; }
+      .steps h3 { margin-bottom: 3px; }
     }
   </style>
 </head>
@@ -48,20 +45,19 @@
     <header class="name">
       <a class="wordmark" href="./">Spytial GDL</a>
       <nav class="site-nav" aria-label="Main navigation">
+        <a href="./playground/">Examples</a>
         <a href="./docs/#/embedding">Embed</a>
-        <a href="./docs/#/notation">Documentation</a>
-        <a href="./playground/">Playground</a>
+        <a href="./docs/">Docs</a>
       </nav>
     </header>
 
     <section class="hero" aria-labelledby="page-title">
-      <h1 id="page-title">Graph diagrams with <span>layout requirements.</span></h1>
+      <h1 id="page-title">Graph diagrams with layout requirements.</h1>
       <p class="lede">Spytial GDL is a lightweight, web-native graph description language for spatially meaningful diagrams.</p>
       <p class="lineage">It pairs the declarative node-and-edge descriptions familiar from Mermaid and DOT with layout requirements drawn from the <a href="https://github.com/sidprasad/spytial-core">Spytial diagramming language</a>.</p>
       <nav class="hero-actions" aria-label="Get started">
-        <a class="btn btn-solid" href="./playground/">Playground with examples</a>
-        <a class="btn" href="./docs/#/embedding">Embed in your document</a>
-        <a class="btn" href="./docs/#/notation">Syntax &amp; documentation</a>
+        <a href="./playground/"><strong>Examples</strong><span>Open an example in the online playground.</span></a>
+        <a href="./docs/#/embedding"><strong>Embed</strong><span>Built to be embedded in HTML, MkDocs, Jekyll, Hugo, Docusaurus, and Pollen.</span></a>
       </nav>
     </section>
 
@@ -76,29 +72,20 @@
       <h2 id="model-title">Add requirements where they matter.</h2>
       <ol class="steps">
         <li>
-          <span class="number">01</span>
-          <h3>Start with the graph.</h3>
-          <p>When spatiality is incidental, write only nodes and edges.</p>
+          <h3>Write the graph.</h3>
+          <p>Start with nodes and edges. Leave layout unspecified when it doesn't matter.</p>
         </li>
         <li>
-          <span class="number">02</span>
           <h3>Add layout requirements.</h3>
-          <p>Specify only the spatial relationships that matter. Spytial GDL handles the rest of the layout.</p>
+          <p>Specify the spatial relationships that matter. Spytial GDL handles the rest.</p>
         </li>
         <li>
-          <span class="number">03</span>
-          <h3>Graphs are interactive.</h3>
-          <p>Drag nodes around without violating your layout requirements.</p>
+          <h3>Move and edit.</h3>
+          <p>Drag nodes or edit connections while the requirements continue to hold.</p>
         </li>
         <li>
-          <span class="number">04</span>
           <h3>See conflicts.</h3>
-          <p>If no layout can satisfy the requirements, Spytial GDL shows which ones are incompatible and how they fail.</p>
-        </li>
-        <li>
-          <span class="number">05</span>
-          <h3>Edit the graph.</h3>
-          <p>In editable diagrams, the same requirements guide direct manipulation as the graph changes.</p>
+          <p>When requirements cannot all hold, see which ones conflict.</p>
         </li>
       </ol>
       <nav class="next" aria-label="More about Spytial GDL">

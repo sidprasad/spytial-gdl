@@ -1,21 +1,10 @@
-# Syntax reference
+# Graph description syntax
 
-How to write the graph: nodes, edges, labels, types, classes.
+Write nodes and edges as text. Add labels, types, or classes when you need them.
+Use [layout requirements](annotations.md) to say where graph elements belong.
 
-For agents and tools, the [language manifest](../spytial-gdl-language.json)
-exports the basic authoring forms and the annotation arguments, style blocks,
-and allowed values used by the compiler. It also links to the upstream selector
-manifest. The annotation tables are generated from spytial-core's schema;
-the graph examples are checked against this parser. This is an authoring
-reference, not a complete machine grammar.
-
-The same file is published as the package export `spytial-gdl/language.json`.
-Run `npm run manifest` to regenerate it; `npm test` checks that it is current.
-
-The notation is a small text syntax. You write the graph and Spytial lays it out.
-There is no required header and no `TD`/`LR` direction, since spatial operations
-come from inline `@annotations`; a `graph TD` preamble would do nothing. Leave it
-out, though it is tolerated and ignored, so pasted Mermaid still works.
+There is no required header. Mermaid's `graph TD` and `flowchart LR` headers are
+accepted but ignored; direction comes from layout requirements.
 
 ## Edges
 
@@ -152,8 +141,7 @@ If you want to look at it directly, `parseGraph(source)` returns three structure
 - `edges`, an `Array<{ source, target, kind, label }>`
 - `classesPerNode`, a `Map<id, Set<string>>`
 
-These get relationalized into atoms and relations before layout. See
-[Architecture](architecture.md#the-pipeline). The full grammar lives in
+These become atoms and relations before layout. The full grammar lives in
 [`src/parse.js`](https://github.com/sidprasad/spytial-gdl/blob/main/src/parse.js).
 
 ## Selectors
@@ -298,7 +286,14 @@ evaluator. Quote the whole expression so its braces and pipe survive parsing:
 
 For everyday diagrams the named forms above are all you need.
 
+## Machine-readable reference
+
+The [language manifest](../spytial-gdl-language.json) lists authoring forms,
+annotation arguments, style blocks, and allowed values. It links to the upstream
+selector manifest. The same file is exported as `spytial-gdl/language.json`.
+Run `npm run manifest` to regenerate it; `npm test` checks that it is current.
+
 ## Next
 
-- [Requirements](annotations.md): turning these selectors into layout and style.
-- [Embedding & API](embedding.md): rendering the notation in a page or from JavaScript.
+- [Layout requirements](annotations.md): arrange and style the graph.
+- [Embed in a document](embedding.md): render it in a page or from JavaScript.

@@ -29,8 +29,6 @@ directly; use the corresponding local files when working in this repository.
 - **Embed in a page or application:** [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md)
   covers renderer and engine loading, JavaScript APIs, editing, and self-hosting.
   For a documentation framework, use its recipe in [Platforms](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/platforms.md).
-- **Convert an existing diagram:** [Conversion](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/conversion.md)
-  covers Mermaid flowcharts and Graphviz DOT, including losses that must be explained.
 - **Look up exact annotation arguments or allowed values:** use the
   [language manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json),
   also exported as `spytial-gdl/language.json`. Follow its upstream selector

@@ -16,7 +16,6 @@ and links to the relevant authoring, integration, and validation references.
 - Selector language manifest: https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json
 - Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/introduction.md
 - Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md
-- Conversion: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/conversion.md
 - Annotations: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md
 - Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md
 - Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/platforms.md

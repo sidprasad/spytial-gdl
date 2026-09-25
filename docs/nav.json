@@ -1,9 +1,9 @@
 [
-  { "title": "Introduction", "slug": "introduction" },
-  { "title": "Syntax reference", "slug": "notation" },
-  { "title": "Requirements", "slug": "annotations" },
-  { "title": "Conversion", "slug": "conversion" },
-  { "title": "Embed in your document", "slug": "embedding" },
-  { "title": "Platforms", "slug": "platforms" },
-  { "title": "Architecture", "slug": "architecture" }
+  { "title": "Start here", "slug": "introduction" },
+  { "title": "Embed in a document", "slug": "embedding" },
+  { "section": "Syntax reference", "pages": [
+    { "title": "Graph description", "slug": "notation" },
+    { "title": "Layout requirements", "slug": "annotations" }
+  ] },
+  { "title": "Platform setup", "slug": "platforms" }
 ]

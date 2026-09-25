@@ -7,26 +7,29 @@ const docs = read('docs/index.html');
 const playground = read('playground/index.html');
 const docsNav = JSON.parse(read('docs/nav.json'));
 
-assert.match(landing, /<h1[^>]*>Graph diagrams with <span>layout requirements\.<\/span><\/h1>/);
+assert.match(landing, /<h1 id="page-title">Graph diagrams with layout requirements\.<\/h1>/);
 assert.match(landing, /Spytial GDL is a lightweight, web-native graph description language/);
 assert.ok(landing.indexOf('Spytial GDL is a lightweight') < landing.indexOf('<section class="argument"'));
 assert.ok(landing.indexOf('<section class="argument"') < landing.indexOf('<section class="model"'));
 assert.ok(!landing.includes('board-graph'), 'The landing page should lead with the project, not the old board demo');
 
-for (const [page, embed, reference, editor] of [
-  [landing, './docs/#/embedding', './docs/#/notation', './playground/'],
-  [docs, '#/embedding', '#/notation', '../playground/'],
-  [playground, '../docs/#/embedding', '../docs/#/notation', './'],
+for (const [page, examples, embed, docsLink] of [
+  [landing, './playground/', './docs/#/embedding', './docs/'],
+  [docs, '../playground/', '#/embedding', '#/introduction'],
+  [playground, '../playground/', '../docs/#/embedding', '../docs/'],
 ]) {
   const mainNav = page.match(/<nav class="[^"]*" aria-label="Main navigation">([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(mainNav, 'Main navigation exists');
-  for (const href of [embed, reference, editor]) {
+  assert.deepEqual([...mainNav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]), ['Examples', 'Embed', 'Docs']);
+  for (const href of [examples, embed, docsLink]) {
     assert.ok(mainNav.includes(`href="${href}"`), `Main navigation includes ${href}`);
   }
 }
 
-for (const slug of ['notation', 'embedding']) {
-  assert.ok(docsNav.some((page) => page.slug === slug));
+const syntax = docsNav.find((entry) => entry.section === 'Syntax reference');
+assert.deepEqual(syntax.pages.map((page) => page.slug), ['notation', 'annotations']);
+for (const slug of ['introduction', 'embedding', 'notation', 'annotations']) {
+  assert.ok(docsNav.flatMap((entry) => entry.pages || [entry]).some((page) => page.slug === slug));
   assert.ok(existsSync(new URL(`../docs/pages/${slug}.md`, import.meta.url)));
 }
 assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/spytial-gdl\/src\/auto\.js"/);

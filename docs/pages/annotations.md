@@ -1,12 +1,8 @@
-# Requirements
+# Layout requirements syntax
 
-State the spatial relationships every valid layout must preserve.
-
-There is no `TD`/`LR` keyword in spytial-gdl. Write requirements with `@` operations
-that target a [selector](notation.md#selectors), such as keeping children below
-their parents or cells in the same row. Styling directives use the same syntax
-but change appearance rather than impose spatial requirements. One block of text
-describes both the graph and how it should be drawn.
+Add an `@` rule when a spatial relationship must hold. A rule uses a
+[selector](notation.md#selectors) to name the graph elements it applies to.
+Styling directives use the same syntax but change appearance rather than layout.
 
 ## Anatomy
 
@@ -30,12 +26,11 @@ Arguments are `key=value`, comma-separated. Values are barewords (`below`), quot
 strings (`'left subtree'`), numbers (`3`, `3.5`), lists (`[below, left]`), or a
 quoted comprehension (`'{x: Person | …}'`). Lists may nest.
 
-There are two kinds. Constraints shape layout and directives style. They differ
-only in which bucket they compile to, and the value syntax is identical.
+Layout requirements place graph elements. Styling directives change their appearance.
 
-## Constraints (layout)
+## Layout requirements
 
-| constraint | effect |
+| requirement | effect |
 |---|---|
 | `orientation` | place each edge's target relative to its source |
 | `align` | line the endpoints of a relation up on an axis (horizontal/vertical) |

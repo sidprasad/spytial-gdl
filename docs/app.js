@@ -92,7 +92,7 @@ function markActiveNav(slug) {
   els.sidenav.querySelectorAll('a').forEach((a) => {
     a.classList.toggle('active', a.dataset.slug === slug);
   });
-  const section = slug === 'embedding' || slug === 'platforms' ? 'embedding' : 'notation';
+  const section = slug === 'embedding' || slug === 'platforms' ? 'embedding' : 'introduction';
   document.querySelectorAll('.topbar-links a[href^="#/"]').forEach((a) => {
     if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');

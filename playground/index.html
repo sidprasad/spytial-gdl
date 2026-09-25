@@ -13,13 +13,11 @@
     <link rel="stylesheet" href="../assets/site.css" />
 
     <style>
-        /* Local aliases onto the site tokens, so the rules below read the way
-           an editor's rules should (chrome / canvas / editor) rather than in
-           poster vocabulary. */
+        /* Editor surfaces use the shared site colors. */
         :root {
             --chrome: var(--paper); --chrome-2: var(--sunken);
             --ink-soft: var(--ink-2); --ink-faint: var(--ink-3);
-            --border: var(--ink);
+            --border: var(--hair);
             --canvas: var(--raised); --editor-bg: var(--raised);
         }
         [data-theme="dark"] { --canvas: #f7f8fa; }
@@ -31,21 +29,20 @@
         header.topbar {
             flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
             padding: 11px 18px; background: var(--paper);
-            border-bottom: var(--bar) solid var(--ink); z-index: 20;
+            border-bottom: 1px solid var(--hair); z-index: 20;
         }
         .brand { display: flex; align-items: center; gap: 12px; color: var(--ink); }
         .brand:hover { text-decoration: none; }
         .brand .mark { font-size: 20px; }
-        .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 500; margin: 0; letter-spacing: -.01em; }
+        .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0; }
         .topbar .spacer { flex: 1; }
         .topbar select, .topbar button.ghost {
-            font: 500 12px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
+            font: 13px/1.2 var(--sans);
             background: var(--paper); color: var(--ink);
-            border: var(--bar) solid var(--ink); border-radius: 0;
+            border: 1px solid var(--hair); border-radius: 0;
             padding: 8px 11px; cursor: pointer;
         }
-        .topbar select { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 13px; }
-        .topbar button.ghost:hover { background: var(--ink); color: var(--paper); }
+        .topbar button.ghost:hover { background: var(--sunken); }
         .topbar button.icon { width: 34px; height: 33px; display: inline-grid; place-items: center; font-size: 14px; padding: 0; }
 
         /* ─── Main split ────────────────────────────────────────────────── */
@@ -55,7 +52,7 @@
         .pane.right { flex: 1; background: var(--paper); }
 
         .splitter { flex: 0 0 6px; cursor: col-resize; background: transparent; position: relative; }
-        .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--ink); }
+        .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--hair); }
         .splitter:hover::after { inset: 0; background: var(--red); }
 
         /* ─── Left: combined-source editor (flowchart + @annotations) ───── */
@@ -86,7 +83,7 @@
 
         .editor-foot {
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
-            padding: 11px 14px; border-top: var(--bar) solid var(--ink); background: var(--chrome-2);
+            padding: 11px 14px; border-top: 1px solid var(--hair); background: var(--chrome-2);
         }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
@@ -94,52 +91,51 @@
         .status.error { color: var(--red); }
         .status .pulse { display: inline-block; width: 8px; height: 8px; margin-right: 8px; vertical-align: middle; background: currentColor; }
         button.apply {
-            font: 500 13px/1 var(--display); text-transform: uppercase; letter-spacing: .12em;
+            font: 14px/1.2 var(--sans);
             background: var(--ink); color: var(--paper);
-            border: var(--bar) solid var(--ink); border-radius: 0; padding: 9px 16px; cursor: pointer;
+            border: 1px solid var(--ink); border-radius: 0; padding: 8px 14px; cursor: pointer;
             display: inline-flex; align-items: center; gap: 9px;
         }
         button.apply:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
-        button.apply:active { transform: translate(1px, 1px); }
         button.apply:disabled { opacity: .4; cursor: default; }
         button.apply:disabled:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-        button.apply kbd { font: inherit; font-family: var(--mono); font-size: 11px; letter-spacing: 0; opacity: .75; }
+        button.apply kbd { font: inherit; font-family: var(--mono); font-size: 11px; opacity: .75; }
 
         /* ─── Right: live diagram ───────────────────────────────────────── */
         .preview-bar {
             flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
             padding: 10px 16px; font-size: 12px; color: var(--ink-faint);
-            border-bottom: var(--bar) solid var(--ink); border-left: var(--bar) solid var(--ink);
+            border-bottom: 1px solid var(--hair); border-left: 1px solid var(--hair);
             background: var(--paper);
         }
         .preview-bar .hint { display: inline-flex; align-items: center; gap: 5px; }
-        .preview-body { flex: 1; position: relative; min-height: 0; padding: 16px; border-left: var(--bar) solid var(--ink); }
+        .preview-body { flex: 1; position: relative; min-height: 0; padding: 16px; border-left: 1px solid var(--hair); }
         /* The demonstration band sits under the diagram and never squeezes it. */
-        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; border-left: var(--bar) solid var(--ink); }
+        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; border-left: 1px solid var(--hair); }
         #demo-slot[hidden] { display: none; }
         .canvas-wrap {
             position: absolute; inset: 16px;
-            background: var(--canvas); border: var(--bar) solid var(--ink);
+            background: var(--canvas); border: 1px solid var(--hair);
             overflow: hidden;
         }
         webcola-cnd-graph, structured-input-graph { display: block; width: 100%; height: 100%; }
         webcola-cnd-graph[hidden], structured-input-graph[hidden] { display: none; }
 
         /* View / Edit segmented toggle + preview-bar buttons */
-        .seg { display: inline-flex; border: var(--bar) solid var(--ink); }
+        .seg { display: inline-flex; border: 1px solid var(--hair); }
         .seg button {
-            font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .12em;
+            font: 13px/1.2 var(--sans);
             padding: 7px 13px; background: var(--paper); color: var(--ink-soft); border: none; cursor: pointer;
         }
-        .seg button + button { border-left: var(--bar) solid var(--ink); }
+        .seg button + button { border-left: 1px solid var(--hair); }
         .seg button:hover { color: var(--ink); }
         .seg button.active { background: var(--ink); color: var(--paper); }
         .preview-bar .ghost {
-            font: 500 11px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
-            background: var(--paper); color: var(--ink); border: var(--bar) solid var(--ink);
+            font: 13px/1.2 var(--sans);
+            background: var(--paper); color: var(--ink); border: 1px solid var(--hair);
             border-radius: 0; padding: 7px 10px; cursor: pointer;
         }
-        .preview-bar .ghost:hover { background: var(--ink); color: var(--paper); }
+        .preview-bar .ghost:hover { background: var(--sunken); }
         .preview-bar .ghost.active { background: var(--blue); color: #fff; border-color: var(--blue); }
         .preview-bar .ghost[hidden] { display: none; }
 
@@ -154,7 +150,7 @@
         .value-panel {
             position: absolute; bottom: 20px; left: 20px; width: min(360px, 55%); max-height: 52%;
             overflow: auto; z-index: 9; background: var(--paper); color: var(--ink);
-            border: var(--bar) solid var(--ink); border-radius: 0;
+            border: 1px solid var(--hair); border-radius: 0;
             font-family: var(--mono); font-size: 11.5px;
             line-height: 1.5; white-space: pre; padding: 12px 14px; margin: 0;
         }
@@ -170,7 +166,7 @@
         #toast {
             position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
             background: var(--ink); color: var(--paper);
-            font: 500 12px/1 var(--display); text-transform: uppercase; letter-spacing: .1em;
+            font: 13px/1.3 var(--sans);
             padding: 12px 18px; opacity: 0; pointer-events: none;
             transition: opacity .2s, transform .2s; z-index: 50;
         }
@@ -188,23 +184,23 @@
                 <rect class="n-red"    x="22" y="6" width="18" height="12" />
                 <rect class="n-yellow" x="46" y="6" width="14" height="12" />
             </svg>
-            <h1>spytial&#8209;gdl</h1>
+            <h1>Spytial GDL</h1>
         </a>
         <div class="spacer"></div>
         <nav class="site-nav" aria-label="Main navigation">
+            <a href="../playground/" aria-current="page">Examples</a>
             <a href="../docs/#/embedding">Embed</a>
-            <a href="../docs/#/notation">Documentation</a>
-            <a href="./" aria-current="page">Playground</a>
+            <a href="../docs/">Docs</a>
         </nav>
         <select id="example-select" title="Load an example" aria-label="Load an example">
-            <option value="" disabled selected>Examples…</option>
-            <option value="flowchart">Flowchart (faithful default)</option>
-            <option value="pipeline">Left-to-right pipeline</option>
-            <option value="compiler">Compiler subsystem (local direction)</option>
-            <option value="replicas">Peer replicas (alignment)</option>
-            <option value="cycle">State cycle (ring)</option>
-            <option value="tree">Binary tree (left / right)</option>
-            <option value="clash">⚠ Rules that clash</option>
+            <option value="" disabled selected>Choose example…</option>
+            <option value="flowchart">Basic flowchart</option>
+            <option value="pipeline">Pipeline</option>
+            <option value="compiler">Compiler subsystem</option>
+            <option value="replicas">Peer replicas</option>
+            <option value="cycle">Cycle</option>
+            <option value="tree">Binary tree</option>
+            <option value="clash">Conflicting requirements</option>
         </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
@@ -241,8 +237,8 @@
                 </div>
                 <button class="ghost" id="sync-btn" type="button" title="Write the edited graph back to the notation" hidden>⤓ Sync to text</button>
                 <button class="ghost" id="value-btn" type="button" title="Show the reified value (JSON)">{ } value</button>
-                <span class="hint" id="view-hint">✦ drag nodes — constraints hold</span>
-                <span class="hint" id="edit-hint" style="display:none;">✦ + Node / + Relation, drag to connect — notation updates live</span>
+                <span class="hint" id="view-hint">Drag nodes; requirements hold.</span>
+                <span class="hint" id="edit-hint" style="display:none;">Add nodes or relations; the source updates.</span>
                 <span class="hint" id="conflict-hint" style="color:var(--red); display:none;">⚠ rules clash — see explanation</span>
             </div>
             <div class="preview-body">

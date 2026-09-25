@@ -135,12 +135,12 @@ and selector manifests. It is also exported as `spytial-gdl/language.json`.
 
 | Resource | Contents |
 | --- | --- |
-| [Introduction](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction) | A live walkthrough of graph structure, spatial rules, conflicts, and editing |
-| [Syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation) | Nodes, edges, labels, types, classes, and Mermaid compatibility |
-| [Requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial constraints, selectors, and styling |
-| [Conversion](https://www.siddharthaprasad.com/spytial-gdl/docs/#/conversion) | Translating Mermaid flowcharts and Graphviz DOT, with compatibility limits |
+| [Start here](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction) | Choose how to try, embed, or write a diagram |
+| [Graph description syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation) | Nodes, edges, labels, types, classes, and Mermaid compatibility |
+| [Layout requirements syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial requirements, selectors, and styling |
 | [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding) | Renderer setup, JavaScript APIs, and editable diagrams |
-| [Examples](https://www.siddharthaprasad.com/spytial-gdl/examples/) | Runnable integrations with source you can reuse |
+| [Examples](https://www.siddharthaprasad.com/spytial-gdl/playground/) | Editable diagrams in the online playground |
+| [Integrations](https://www.siddharthaprasad.com/spytial-gdl/examples/) | Runnable integrations with source you can reuse |
 | [Changelog](https://github.com/sidprasad/spytial-gdl/blob/main/CHANGELOG.md) | Release history |
 
 ## Development

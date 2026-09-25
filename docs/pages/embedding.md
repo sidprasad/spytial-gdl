@@ -1,10 +1,6 @@
-# Embed in your document
+# Embed in a document
 
-Rendering a diagram in a page, and driving one from JavaScript.
-
-The embedding layer scans already-rendered HTML for the code blocks a Markdown
-renderer produces and swaps each one for a live diagram. It's the same path the
-` ```spytial-gdl ` blocks on this site go through.
+Add a live graph diagram to an HTML page or a Markdown site.
 
 ## Quick start
 
@@ -193,8 +189,7 @@ autoRender({
 ```
 
 Or load spytial-core on the page yourself and call
-`autoRender({ injectEngine: false })`. The exact dependency set is in
-[Architecture → dependencies](architecture.md#dependencies).
+`autoRender({ injectEngine: false })`.
 
 ## Framework notes
 
@@ -372,7 +367,7 @@ created element.
 > `window.spytialcore`. `mountGraph` and `renderSpytialGdl` don't import it, which
 > is what keeps this module a bare browser ES module. If it isn't present you get a
 > clear "spytial-core is not loaded" error, and the Markdown path injects it for
-> you. See [Architecture](architecture.md#dependencies).
+> you.
 
 ### renderSpytialGdl
 
@@ -518,12 +513,11 @@ returns `{ layout, error, selectorErrors, warnings, diagnostics, rules, … }`, 
 same solve both render paths perform. That is what
 `test/engine-diagnostics.test.mjs` runs against the installed core.
 
-Both render paths call this, so what you get here is what a diagram gets. That is
-also what lets [the conformance
-suite](architecture.md#testing-what-a-spec-means) check what our specs entail
-without rendering anything.
+Both render paths call this, so what you get here is what a diagram gets. The
+[conformance tests](https://github.com/sidprasad/spytial-gdl/blob/main/test/conformance.test.mjs)
+use this path to check what the requirements entail without rendering.
 
 ## Next
 
 - [Conflicts & errors](annotations.md#errors-and-conflicts): reading the panels when something clashes.
-- [Architecture](architecture.md): what happens between source and pixels.
+- [Platform setup](platforms.md): add the renderer to a documentation site.
