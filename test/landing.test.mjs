@@ -8,9 +8,8 @@ const playground = read('playground/index.html');
 const docsNav = JSON.parse(read('docs/nav.json'));
 
 assert.match(landing, /<h1 id="page-title">Graph diagrams with layout requirements\.<\/h1>/);
-assert.match(landing, /Spytial GDL is a lightweight, web-native graph description language/);
-assert.ok(landing.indexOf('Spytial GDL is a lightweight') < landing.indexOf('<section class="argument"'));
-assert.ok(landing.indexOf('<section class="argument"') < landing.indexOf('<section class="model"'));
+assert.match(landing, /<p class="lede">Have you ever described a Mermaid or DOT graph/);
+assert.ok(landing.indexOf('<section class="hero"') < landing.indexOf('<section class="model"'));
 assert.ok(!landing.includes('board-graph'), 'The landing page should lead with the project, not the old board demo');
 
 for (const [page, examples, embed, docsLink] of [

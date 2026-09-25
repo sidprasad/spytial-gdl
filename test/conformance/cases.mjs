@@ -21,17 +21,26 @@
 // rejects that — a disagreement conformance.test.mjs pins directly rather than
 // papering over here.
 
-import { readFileSync } from 'node:fs';
-
-// Test the source shipped on the homepage, not a separate copy of the drawing.
-const homepage = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-const board = homepage.match(/id="board-graph"[^>]*>([\s\S]*?)<\/div>/);
-if (!board) throw new Error('The homepage must contain its live tic-tac-toe graph.');
+// Keep a stable conformance fixture independent of the marketing homepage.
+const board = `a:::Cell -> b:::Cell : right
+b -> c:::Cell : right
+d:::Cell -> e:::Cell : right
+e -> f:::Cell : right
+g:::Cell -> h:::Cell : right
+h -> i:::Cell : right
+a -> d : below
+d -> g : below
+b -> e : below
+e -> h : below
+c -> f : below
+f -> i : below
+@orientation(selector=right, directions=[directlyRight])
+@orientation(selector=below, directions=[directlyBelow])`;
 
 export const CASES = [
   {
-    name: 'the homepage board preserves rows and columns',
-    gdl: board[1],
+    name: 'the tic-tac-toe board preserves rows and columns',
+    gdl: board,
     assertions: [
       { query: 'nodes()', count: 9 },
       { query: 'must.rightOf(a)', contains: ['b', 'c'] },
@@ -49,8 +58,8 @@ export const CASES = [
     ],
   },
   {
-    name: 'right and below labels alone do not constrain the homepage layout',
-    gdl: board[1].replace(/^@orientation.*$/gm, ''),
+    name: 'right and below labels alone do not constrain the layout',
+    gdl: board.replace(/^@orientation.*$/gm, ''),
     assertions: [
       { query: 'nodes()', count: 9 },
       { query: 'must.rightOf(a)', empty: true },
