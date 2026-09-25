@@ -44,9 +44,8 @@ layout has to solve for, rather than decorating a solved one.
 
 ### orientation
 
-This is the one you'll use most. `directions` is a list of one or more of `above`,
-`below`, `left`, `right`, applied to every edge in the selector, with the target
-placed relative to the source:
+`directions` places each selected edge's target `above`, `below`, `left`, or
+`right` of its source. Combine directions in a list:
 
 ```spytial-gdl
 A -> B : left
@@ -103,11 +102,8 @@ class web frontend
 @orientation(selector=_links, directions=[below])
 ```
 
-`name` is not optional, even though a group without one would draw a perfectly
-sensible unlabeled region: spytial-core refuses to parse it, and it fails the
-*whole* spec rather than the one constraint, so every other annotation in the
-diagram goes with it. The one exception is a negated group — `hold=never` — where
-core generates a name, since nothing is drawn to caption.
+`name` is required. Without it, the engine rejects the whole rule set. The
+exception is a negated group (`hold=never`), which draws no labeled region.
 
 ### align
 
@@ -138,20 +134,19 @@ whole chain settles into a row.
 | `tag` | annotate nodes with a tag |
 | `flag` | a layout flag, e.g. `flag(name=hideDisconnected)` |
 
-The common ones set color:
+For example, style node types and their connecting edges:
 
 ```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
-@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
-@atomStyle(selector=Company, borderStyle(color='#ffe7b3'))
-@edgeStyle(field=_, lineStyle(color='#1f4396'))
+@atomStyle(selector=Person, borderStyle(color='#795db4', width=2))
+@atomStyle(selector=Company, borderStyle(color='#b85c38', width=2))
+@edgeStyle(field=_, lineStyle(color='#795db4'))
 @orientation(selector=_links, directions=[left])
 ```
 
-The two styling directives match differently, which is the easiest thing to get
-wrong here. `atomStyle` takes a node selector: a type, a class, or `univ`.
+`atomStyle` takes a node selector: a type, a class, or `univ`.
 `edgeStyle` takes a `field`, meaning the relation's name. Unlabeled edges are all
 named `_` (see [drawn once](notation.md#drawn-once)), so `field=_` means every
 plain edge, and a labeled edge is styled by its label, as in `field=works_at`. Its
@@ -175,22 +170,22 @@ Copy-paste, then swap the names. Throughout, `rel` is an edge label
 | colour `rel` | `@edgeStyle(field=rel, lineStyle(color=crimson))` |
 | thicken `rel` | `@edgeStyle(field=rel, lineStyle(weight=3))` |
 | drop `rel`'s label | `@edgeStyle(field=rel, showLabel=false)` |
-| restyle `rel`'s label | `@edgeStyle(field=rel, textStyle(size=small, color=gray))` |
-| style the unlabeled edges | `@edgeStyle(field=_, lineStyle(color=gray))` |
+| restyle `rel`'s label | `@edgeStyle(field=rel, textStyle(size=small))` |
+| style the unlabeled edges | `@edgeStyle(field=_, lineStyle(color='#795db4'))` |
 | stop drawing `rel` entirely | `@hideField(field=rel)` |
 | tint a node's outline | `@atomStyle(selector=Person, borderStyle(color=steelblue, width=2))` |
-| fill a node's interior | `@atomStyle(selector=Person, fillStyle(color='#eef6ff'))` |
+| fill a node's interior | `@atomStyle(selector=Person, fillStyle(color='#795db4'), textStyle(color=white))` |
 | restyle a node's label | `@atomStyle(selector=Person, textStyle(size=large))` |
 | resize nodes | `@size(selector=Person, width=140, height=60)` |
 | hide nodes | `@hideAtom(selector=Person)` |
 
-One rule carries as many blocks as you want, so a dotted, grey, unlabeled connector
+One rule carries as many blocks as you want, so a dotted, unlabeled connector
 is a single line:
 
 ```spytial-gdl
 concept[blood pressure] -> measure[BP@6mo] : stands_for
 
-@edgeStyle(field=stands_for, lineStyle(pattern=dotted, color='#94a3b8'), showLabel=false)
+@edgeStyle(field=stands_for, lineStyle(pattern=dotted, color='#795db4'), showLabel=false)
 @orientation(selector=stands_for, directions=[below])
 ```
 
@@ -200,20 +195,13 @@ or class. An `atomStyle` with no `selector` at all styles every node.
 
 ### Argument reference
 
-An annotation maps onto spytial-core's vocabulary directly: `@name(a=1, b=2)`
-compiles to `{ name: { a: 1, b: 2 } }`. So the argument names matter, and a
-misspelled one is not harmless — core keeps what it doesn't recognise and then
-does nothing with it, so the rule silently stops applying.
-
-spytial-gdl checks each annotation against the arguments core actually reads, so
-a typo, a missing required argument, or a value outside a closed vocabulary is
-reported with a line number instead. The table it checks against is generated
-from the schema spytial-core publishes, which is why it can be trusted to match
-the engine rather than to have been right when someone last typed it out.
+Use the argument names below exactly. A misspelled name, missing required
+argument, or unsupported value produces an error on its source line. The table
+is checked against spytial-core's published schema.
 
 `?` means optional; `(…)` marks a [style block](#style-blocks).
 
-| annotation | kind | arguments |
+| rule | kind | arguments |
 |---|---|---|
 | `orientation` | constraint | `selector`, `directions`, `hold?` |
 | `align` | constraint | `selector`, `direction`, `hold?` |
@@ -234,16 +222,13 @@ Only the constraints listed with it take it; `size` and `hideAtom` accept the ke
 syntactically and ignore it, so writing it there would quietly mean the opposite
 of what it says, and spytial-gdl rejects it rather than emitting a no-op.
 
-The table above is the whole language. spytial-gdl accepts exactly what the
-current spytial-core schema marks current, so a form core has deprecated or
-removed — `icon`, `atomColor`, `edgeColor`, `inferredEdge`'s inline `color` and
-`style`, the old by-field `group` — is not a warning or a rewrite here; it is an
-unknown annotation or argument, reported on its line like any other.
+The table lists every supported `@` rule. Deprecated forms such as `atomColor`,
+`edgeColor`, and `inferredEdge`'s inline `color` are reported as unknown rules or
+arguments.
 
-> The [spytial-core](https://github.com/sidprasad/spytial-core) reference stays
-> authoritative. `test/spec-tables.test.mjs` holds the table above to the same
-> generated vocabulary the compiler uses, so it cannot fall behind the engine
-> without a test saying so.
+> The [spytial-core](https://github.com/sidprasad/spytial-core) reference is
+> authoritative. `test/spec-tables.test.mjs` checks this table against the
+> vocabulary used by the compiler.
 
 ## Style blocks
 
@@ -254,13 +239,13 @@ label. Each part is its own block, written as a nested call:
 ```spytial-gdl
 @edgeStyle(field=next,
   lineStyle(color=crimson, pattern=dashed, weight=2),
-  textStyle(size=small, color=gray),
+  textStyle(size=small),
   showLabel=true)
 
 @atomStyle(selector=Person,
-  borderStyle(color=steelblue, width=2),
-  fillStyle(color='#eef6ff'),
-  textStyle(size=large))
+  borderStyle(color='#b85c38', width=2),
+  fillStyle(color='#795db4'),
+  textStyle(size=large, color=white))
 ```
 
 The blocks are one shared vocabulary, so the same names mean the same thing
@@ -277,28 +262,29 @@ wherever they appear:
 too:
 
 ```spytial-gdl
-@inferredEdge(name=parent, selector='~children', lineStyle(color=gray, pattern=dotted))
+@inferredEdge(name=parent, selector='~children', lineStyle(pattern=dotted))
 @attribute(field=weight, textStyle(size=small))
 @group(selector=Team.members, name=Team,
   addEdge(points=togroup, lineStyle(pattern=dashed)),
-  textStyle(color=navy))
+  textStyle(size=small))
 ```
 
-Blocks wrap across lines and take the `%%` guard like any other annotation, and
+Blocks wrap across lines and take the `%%` guard like any other `@` rule, and
 everything is optional, so write only the parts you mean.
 
 > **Note.** A node's `borderStyle(color=…)` is what tints it in the default
 > rendering. `fillStyle` paints the interior and is opt-in. If a diagram looks
-> unchanged after you set `fillStyle`, you probably wanted `borderStyle`.
+> unchanged after you set `fillStyle`, you probably wanted `borderStyle`. Set
+> `textStyle(color=…)` with a fill so the label remains readable in both themes.
 
 > **Style collisions are an error.** Two rules that set the same style leaf to
 > different values fail with a `StyleCollisionError` instead of one silently
 > winning. Rules that touch different leaves still compose freely, so
 > `borderStyle(color=…)` from one rule and `textStyle(size=…)` from another is
 > fine. This is checked when the diagram is drawn, so it surfaces in the browser
-> rather than as an annotation error.
+> rather than as a rule error.
 
-## Mermaid-safe annotations
+## Mermaid-safe rules
 
 A `%%@name(...)` form is also accepted. It's a Mermaid comment guard, so a block
 survives being pasted into a vanilla Mermaid renderer, which ignores `%%` lines,
@@ -316,17 +302,17 @@ Failures are reported by kind, and none of them is silent. Problems in the sourc
 are caught before layout runs. Problems the engine finds — a name it cannot read
 back, a rule it refuses, a selector it cannot use or that matches nothing — are
 collected from the solve and reported beside the diagram, with the line of the
-annotation they concern. Rules that cannot all hold are explained as a conflict.
+rule they concern. Rules that cannot all hold are explained as a conflict.
 The diagram renders best-effort at every stage.
 
-### Parse and annotation errors
+### Source errors
 
 These come first: problems in the source text, before any layout runs. There are
 two kinds, both caught up front and both reported with line numbers.
 
-Annotation errors are annotations that don't parse, such as an unknown `@name`, a
-missing comma, or an unterminated `(`. They come back as `annotationErrors`, an
-array of `{ line, text, message }`, and the offending annotation is dropped.
+Malformed `@` rules, such as an unknown `@name`, a missing comma, or an
+unterminated `(`, appear in `annotationErrors` as `{ line, text, message }`.
+The compiler drops the offending rule.
 
 Parse errors are graph lines the parser flagged. They come back as `parseErrors`,
 an array of `{ line, text, severity, message }`. A `severity` of `'error'` is a
@@ -348,7 +334,7 @@ one shape, so a host can show them all at once:
 | stage | failure | result field | embed panel |
 |---|---|---|---|
 | parse graph | bad line / ignored Mermaid / a name that cannot be a selector | `parseErrors`, `diagnostics` | ⚠ … in this source |
-| lift annotations | bad `@name` / args | `annotationErrors`, `diagnostics` | ⚠ … in this source |
+| read `@` rules | bad `@name` / args | `annotationErrors`, `diagnostics` | ⚠ … in this source |
 | solve | a selector the engine cannot use or that matches nothing; a spec it refuses | `diagnostics` (raw: `selectorErrors`, `warnings`) | ⚠ … in this source |
 | solve constraints | rules can't all hold | `error` (UNSAT core) | ⚠ These rules can't all hold |
 
@@ -368,13 +354,13 @@ assigned — is a *warning*. The rule constrains nothing and the diagram draws a
 it were not there, which is the quietest way a diagram can be wrong; it is
 reported so that it is not.
 
-Both arrive on `diagnostics`, each with the line of the annotation it concerns,
+Both arrive on `diagnostics`, each with the line of the rule it concerns,
 and in an embed they share the **⚠ … in this source** band with the parse and
-annotation errors. `selectorErrors` and `warnings` carry the engine's own records
+rule errors. `selectorErrors` and `warnings` carry the engine's own records
 for anyone who wants them raw.
 
 A spec the engine's parser refuses outright is reported the same way, and the
-diagram is drawn under no rules rather than not at all. The annotation compiler
+diagram is drawn under no rules rather than not at all. The rule compiler
 catches the cases it knows from the schema first, so this is rare.
 
 ```js
@@ -428,7 +414,7 @@ The report is rendered by spytial-core's own IIS component, the same one the
 [playground](../playground/) mounts. It's lazy-loaded the first time a clash
 appears, so conflict-free pages never load it.
 
-Every rule spytial-gdl hands the engine carries the annotation it came from, as
+Every rule spytial-gdl hands the engine carries the `@` statement it came from, as
 written and with its line (`source`, a block spytial-core accepts from 5.4.0).
 The engine cites that in place of its own rendering of the rule, so the conflict
 report names `@orientation(selector=left, directions=[left]) (line 4)` rather
@@ -455,7 +441,8 @@ render the panel; if you build your own UI, branch on those fields the same way.
 
 ## Composing with raw rules
 
-Inline annotations are the primary authoring model, but they compose with two
+Inline requirements and styling rules are the primary authoring model, but they
+compose with two
 lower-level inputs that feed the same layout spec: `opts.rules`, which is raw CnD
 YAML, and the per-class `registerSpec` registry. All three are merged before
 solving. See

@@ -39,7 +39,7 @@
   </header>
   <h1>The JavaScript API</h1>
   <p class="lede">A binary tree rendered by <code>renderSpytialGdl()</code>. Each button
-     re-renders the same graph with different annotations; the panels show what went in
+     re-renders the same graph with different layout requirements; the panels show what went in
      and what came back.</p>
   <div class="controls">
     <button class="btn" id="btn-sat">Satisfiable</button>
@@ -50,7 +50,7 @@
 
   <div class="panel">
     <div class="col">
-      <h2>source — nodes, edges, @annotations</h2>
+      <h2>source — graph and requirements</h2>
       <pre id="source"></pre>
     </div>
     <div class="col">
@@ -64,7 +64,7 @@
   <script type="module">
     import { renderSpytialGdl, mountGraph } from '../src/index.js';
 
-    // ── Inline @annotations live in the source itself ───────────────────
+    // ── Inline requirements live in the source itself ───────────────────
     // The spatial operations are part of the diagram now: every edge points
     // below ('_links' is all edges), 'left' edges also point left, 'right' edges
     // point right, and the root node is tinted by a directive. No separate rules
@@ -73,7 +73,7 @@
 @orientation(selector=_links, directions=[below])
 @orientation(selector=left,  directions=[left])
 @orientation(selector=right, directions=[right])
-@atomStyle(selector=root, borderStyle(color='#ffe7b3'))`;
+@atomStyle(selector=root, borderStyle(color='#b85c38', width=2))`;
 
     // ── Source: a complete binary tree, three levels ────────────────────
     const baseGraph = `
@@ -87,7 +87,7 @@ class A root`;
 
     const satSource = baseGraph + '\n' + TREE_ANNOTATIONS;
 
-    // Add a contradicting annotation: forces edges ABOVE while the tree forces
+    // Add a conflicting requirement: forces edges ABOVE while the tree forces
     // them BELOW. Spytial reports the clash; the element gets `unsat`.
     const unsatSource = satSource + '\n@orientation(selector=_links, directions=[above])';
 
@@ -122,7 +122,7 @@ class A root`;
     async function runOnce(mode, src) {
       document.getElementById('source').textContent = src.trim();
       try {
-        // The spatial operations come from the inline @annotations in `src` —
+        // The layout requirements come from the inline @ rules in `src` —
         // renderSpytialGdl extracts and compiles them automatically.
         const result = await renderSpytialGdl(graphEl, src);
         if (result.reason) { setStatus(`[${mode}] ${result.reason}`, false); return; }

@@ -138,6 +138,7 @@ import {
 | `height` | `360` | diagram height: a number of pixels, or any CSS length. A block overrides it with `data-height`. |
 | `theme` | page theme, otherwise `'light'` | Core theme name. `data-theme` on a block takes precedence; the nearest page `data-theme="light"` or `"dark"` is used when no theme is passed. |
 | `viewOptions` | core zoom and fit buttons floated beside Source; editing controls on editable blocks | Core's presentation options. Pass `{ toolbar: 'none' }` to hide zoom and fit, `{ toolbar: 'compact' }` for Core's usual compact toolbar, or `{ toolbar: 'full' }` for every Core control. |
+| `sourceOpen` | `false` | start read-only blocks with the source panel visible. Editable blocks already open with their source editor visible. |
 | `editable` | `false` | render every block as the editor (see [Editable diagrams](#editable-diagrams)). |
 | `observe` | `true` | (`autoRender` only) keep watching for blocks added after the first pass, so client-side navigation renders too. |
 | `injectEngine` | `true` | inject the CDN engine scripts if absent. Set it to `false` if you load spytial-core yourself. |
@@ -166,12 +167,11 @@ block, and `handle` is the [editable handle](#the-handle) for an editable one.
 
 ## View and edit source
 
-Every embed can show its live notation below the full-width diagram. In a read-only
-block, click **View source** beside the zoom and fit controls to reveal the highlighted
-notation, then **Copy source** to lift it out. Editable blocks open with the source editor
-visible below the drawing: drag the graph or edit the text and **Update diagram** (⌘⏎) it
-back in, with the two staying in sync. The same control becomes **Hide source**
-while the panel is open.
+Every embed can show its source below the diagram. Read-only embeds start with it
+hidden by default; click **View source** beside the zoom and fit controls to reveal
+and copy it. The examples on this documentation site start with source open.
+Editable blocks also open with their source editor visible: drag the graph or edit
+the text and press **Update diagram** (⌘⏎). Use **Hide source** to close either panel.
 
 When constraints clash, a collapsible conflict panel appears inside the same
 border, so the UNSAT report belongs to the diagram rather than to the page prose.
@@ -217,9 +217,8 @@ A -> C : right
 
 The source editor below the diagram is live in both directions: edit the graph and
 the text re-derives, edit the text and **Update diagram** pushes it back into the diagram.
-**Copy source** lifts the result out, `@annotations` and all. Your spatial annotations
-are re-appended verbatim on every round-trip, so editing the graph's data never
-rewrites your layout rules.
+**Copy source** lifts the result out, requirements and all. The `@` rules are
+preserved verbatim when graph edits update the source.
 
 ### Turning a block editable
 
@@ -266,7 +265,7 @@ renderSpytialGdlEditable(container, source, opts?) → Promise<handle>
 ```
 
 - `container`: an `Element` to mount into, or a `<structured-input-graph>` itself.
-- `source`: spytial-gdl text with inline `@annotations`, same as the read-only path.
+- `source`: spytial-gdl text with inline requirements, same as the read-only path.
 - `opts`: `{ rules?, extraSpec?, width?, height?, theme?, ariaLabel?, viewOptions? }`.
 
 Editable diagrams use compact core controls with graph editing actions enabled.
@@ -280,7 +279,7 @@ handle below.
 
 | member | what it gives you |
 |---|---|
-| `getSource()` | re-get spytial-gdl notation for the current graph, with your `@annotations` re-appended verbatim |
+| `getSource()` | get the edited graph as spytial-gdl source, with its `@` rules preserved |
 | `getValue()` | the reified value: `{ atoms, relations }` JSON |
 | `onChange(cb)` | runs `cb({ source, value, error })` after every edit; returns an unsubscribe function |
 | `element` | the live `<structured-input-graph>` |
@@ -347,7 +346,7 @@ The full export surface:
 | `mountInputGraph(container, opts)` | create/return an editable `<structured-input-graph>` |
 | `renderSpytialGdlEditable(container, source, opts)` | render onto the editor, returning a [handle](#the-handle) |
 | `serializeToSpytialGdl(value, opts)` | the notation serializer, inverse of render |
-| `extractAnnotations(rawSource)` | lift inline `@annotations` out of source |
+| `extractAnnotations(rawSource)` | extract inline `@` rules from source |
 | `registerSpec`, `clearRegistry`, `mergeSpecStrings`, `mergeSpecsForClasses` | the rule registry and merge helpers |
 
 ### mountGraph
@@ -376,7 +375,7 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 ```
 
 - `graphEl`: a `<webcola-cnd-graph>`, from `mountGraph`.
-- `source`: spytial-gdl text with inline `@annotations`.
+- `source`: spytial-gdl text with inline requirements.
 - `opts`: see below.
 
 #### opts
@@ -384,7 +383,7 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 | option | default | meaning |
 |---|---|---|
 | `validator` | `'qualitative'` | constraint validator. `'qualitative'` gives IIS clash reporting plus a best-feasible counterfactual; `'kiwi'` is the alternative solver. |
-| `rules` | none | raw CnD layout YAML, merged with the inline annotations. An advanced escape hatch. |
+| `rules` | none | raw CnD layout YAML, merged with inline requirements and styling rules. An advanced escape hatch. |
 | `extraSpec` | none | extra spec YAML folded in via the class registry. |
 | `viewOptions` | compact controls | core view options; for example `{ toolbar: 'full' }` restores its full toolbar, or `{ toolbar: 'none' }` hides its controls. |
 
@@ -414,7 +413,7 @@ customizations. Pass `viewOptions` again to update them on a subsequent render.
 | `diagnostics` | every problem in one list: `[{ severity, message, line?, source }]`, where `severity` is `'error'` or `'warning'` and `source` is `'parse'`, `'annotation'` or `'engine'`. What an embed's **⚠ … in this source** band shows. See [What the engine reports](annotations.md#what-the-engine-reports) |
 | `selectorErrors` | the engine's own records of selectors it could not use (wrong arity, unparseable); `[]` when clean. Each is also on `diagnostics` with a line |
 | `warnings` | the engine's advisories, chiefly a selector that matched nothing; `[]` when clean. Each is also on `diagnostics` with a line |
-| `annotationErrors` | malformed or unknown annotations, as `[{ line, text, message }]` |
+| `annotationErrors` | malformed or unknown `@` rules, as `[{ line, text, message }]` |
 | `parseErrors` | graph lines the parser flagged, as `[{ line, text, severity, message }]`, where `severity` is `'error'` (a line it could not read, or a name that cannot be a selector) or `'warning'` (an ignored Mermaid construct, a node labeled twice, a repeated edge) |
 | `parsed` | `{ nodes, edges, classesPerNode, errors, labelLines, classLines }` from the parser |
 | `data` | the relational `{ atoms, relations }` handed to spytial-core |
@@ -438,18 +437,18 @@ B -> C:::Person : knows
 C -> A : knows
 
 @cyclic(selector=knows, direction=clockwise)
-@atomStyle(selector=Person, borderStyle(color='#e7defb'))
+@atomStyle(selector=Person, borderStyle(color='#795db4', width=2))
 ```
 
 ### Composing rules: registry and YAML
 
-Inline `@annotations` are the primary authoring model, but they compose with two
+Inline requirements and styling rules are the primary authoring model, but they compose with two
 lower-level inputs through the shared `mergeSpecStrings` concat. The resolution
 order, per render:
 
 1. specs registered with `registerSpec` for the classes used in this source, plus
    any `opts.extraSpec`;
-2. the inline `@annotation` spec compiled from the source;
+2. the inline `@` rules compiled from the source;
 3. an explicit `opts.rules` string.
 
 ```js
@@ -497,12 +496,12 @@ const { ok, datum, rules, hiddenRelations, annotationErrors } =
 
 - `datum` — `{ atoms, relations }`, the graph in relational form.
 - `rules` — the complete layout spec as YAML, with every source already merged
-  (registered class specs, inline annotations, `opts.rules`) and the selector-only
+  (registered class specs, inline `@` rules, `opts.rules`) and the selector-only
   relations already hidden. This is the exact string handed to the engine. Each
-  inline annotation's rule carries a `source` block with the annotation's text
+  inline rule carries a `source` block with its original text
   and line, which spytial-core 5.4+ cites in conflict reports; pass
   `{ provenance: false }` for the bare rules.
-- `annotationMeta` — one record per compiled annotation (`line`, `name`, the
+- `annotationMeta` — one record per compiled `@` rule (`line`, `name`, the
   `selectors` it names), which is how an engine diagnostic is mapped back to a
   line.
 - `ok` is `false`, with a `reason`, when the source parses to no nodes.
@@ -520,4 +519,4 @@ use this path to check what the requirements entail without rendering.
 ## Next
 
 - [Conflicts & errors](annotations.md#errors-and-conflicts): reading the panels when something clashes.
-- [Platform setup](platforms.md): add the renderer to a documentation site.
+- [Specific Document Platform Support](platforms.md): add the renderer to a documentation site.

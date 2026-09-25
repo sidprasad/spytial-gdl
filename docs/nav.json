@@ -5,5 +5,5 @@
     { "title": "Graph description", "slug": "notation" },
     { "title": "Layout requirements", "slug": "annotations" }
   ] },
-  { "title": "Platform setup", "slug": "platforms" }
+  { "title": "Platform support", "slug": "platforms" }
 ]

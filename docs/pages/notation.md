@@ -6,16 +6,19 @@ Use [layout requirements](annotations.md) to say where graph elements belong.
 There is no required header. Mermaid's `graph TD` and `flowchart LR` headers are
 accepted but ignored; direction comes from layout requirements.
 
+The examples below render live, with their source visible beneath each diagram.
+
 ## Edges
 
-A node is implicit from any edge, so the smallest graph is one line:
+Write one edge per line. Reuse an ID to connect edges to the same node:
 
 ```spytial-gdl
 A -> B
+B -> C
 ```
 
-Label an edge after a colon. That label is also a selector you can target in
-annotations (see [Selectors](#selectors)):
+A label after `:` names a relationship. A layout requirement can target every
+edge with that label (see [Selectors](#selectors)):
 
 ```spytial-gdl
 A -> B : hit
@@ -25,58 +28,46 @@ A -> C : miss
 @orientation(selector=miss, directions=[below])
 ```
 
-> **Note.** A label is a selector name: letters, digits and `_`, not starting with
-> a digit. A space, a hyphen or any punctuation is reported as an error on that
-> line (`-` is set difference in the query grammar, so `left-child` would read as
-> `left` minus `child`), and so is a name starting with `_`, which spytial-gdl
-> keeps for `_` and `_links`. The query grammar also reserves a few words of its
-> own (`no`, `in`, `some`, and others that vary by spytial-core release); an
-> annotation that names one is reported by the engine, on that annotation's line,
-> so there is no list here to go stale. The same rule applies to sorts and
-> classes.
+> **Names.** Edge labels, types, and classes can contain letters, digits, and
+> underscores, and must start with a letter. Spaces, hyphens, and reserved query
+> words are rejected with a line number.
 
 ## Nodes, labels, and ids
 
-A node's id is its name. A `[bracket]` gives it a display label, mermaid-style;
-without one, the id is shown. The id stays the stable identity that edges
-reference, which helps when the ids are generated:
+Write `id[Display label]` when the visible label should differ from the ID used
+by edges:
 
 ```spytial-gdl
 cs2[CS 2] -> algorithms[Algorithms]
 cs2 -> systems[Systems]
 ```
 
-`cs2` is written once with its label and then referenced bare, and both edges attach
-to the same node. You can also declare a node on its own line, with no edge:
+Both edges use the same `cs2` node. A node can also appear without an edge:
 
 ```spytial-gdl
 solo[Just here]
 ```
 
-## Sorts (types)
+## Types
 
-A `:::Sort` tag gives a node a type, so `selector: Course` then matches every node
-of that type. A plain node is untyped: with no sort it carries no type name, so no
-named `selector` matches it. Only `univ`, the universal set, reaches every node
-regardless of type:
+Add `:::Type` to select nodes of that type for styling or grouping. In this
+example, `Course` and `Term` select different sets of nodes:
 
 ```spytial-gdl
 algorithms[Algorithms]:::Course -> fall[Fall term]:::Term
 systems[Systems]:::Course      -> fall
 
-@atomStyle(selector=Course, borderStyle(color='#1f4396'))
-@atomStyle(selector=Term, borderStyle(color='#cd3b26'))
+@atomStyle(selector=Course, borderStyle(color='#795db4', width=2))
+@atomStyle(selector=Term, borderStyle(color='#b85c38', width=2))
 ```
 
-So each part of a node does one job: the id is the identity edges reference, the
-label is what's drawn, and the sort is what selectors match. A node takes one sort
-for now. A chain like `:::Course:::Seminar` (a linear sort hierarchy) is reserved
-for later; today the most specific segment, the last one, wins.
+`univ` selects every node, including untyped ones. A node has one type; in a
+chain such as `:::Course:::Seminar`, only the last type, `Seminar`, applies.
 
 ## Classes
 
-For a cross-cutting group that isn't a type, tag nodes with `class A,B,C tag`. A
-class is a selector too, so you can style or group the whole set at once:
+Use a class to select nodes across types. Write `class A,B,C tag`, then use
+`selector=tag` to style or group them:
 
 ```spytial-gdl
 A -> B
@@ -103,13 +94,13 @@ A -> B   %% the spine
 B -> C
 ```
 
-There is also a `%%@name(...)` form, which guards an annotation so a block still
+There is also a `%%@name(...)` form, which guards a rule so a block still
 degrades gracefully if it gets pasted into a vanilla Mermaid renderer. See
-[Requirements](annotations.md#mermaid-safe-annotations).
+[Requirements](annotations.md#mermaid-safe-rules).
 
 ## Mermaid compatibility
 
-Existing flowcharts paste in. These are all accepted and normalized:
+These Mermaid flowchart forms parse, with the changes shown below:
 
 | Mermaid form | read as |
 |---|---|
@@ -117,10 +108,10 @@ Existing flowcharts paste in. These are all accepted and normalized:
 | `A --> B`, `A -.-> B`, `A ==> B`, `A --- B` | an edge (arrow style is not significant) |
 | `A -->\|left\| B` | a labeled edge, label `left` |
 | `cs[Algorithms]`, `cs(Algorithms)`, `cs{Algorithms}`, `cs((Algorithms))` | a node with display label `Algorithms` |
-| `classDef …` | ignored (CSS styling is not this notation's domain) |
+| `classDef …` | ignored; use `@atomStyle` or `@edgeStyle` instead |
 
-So the canonical arrow is `->` but `-->` works, and the canonical label is
-`A -> B : left` but `A -->|left| B` works. Pick one style and stay consistent.
+The native forms are `A -> B` and `A -> B : left`. Mermaid arrows and labels
+let you paste an existing flowchart and then add requirements:
 
 ```spytial-gdl
 flowchart TD
@@ -133,22 +124,10 @@ flowchart TD
 @orientation(selector=right, directions=[right])
 ```
 
-## What the parser produces
-
-If you want to look at it directly, `parseGraph(source)` returns three structures:
-
-- `nodes`, a `Map<id, { id, type, label }>` where type and label are `null` unless given
-- `edges`, an `Array<{ source, target, kind, label }>`
-- `classesPerNode`, a `Map<id, Set<string>>`
-
-These become atoms and relations before layout. The full grammar lives in
-[`src/parse.js`](https://github.com/sidprasad/spytial-gdl/blob/main/src/parse.js).
-
 ## Selectors
 
-Every annotation targets a selector: a name that resolves to a set of edges or a
-set of nodes. One rule then applies to every element that matches, so you never
-write a layout instruction per node.
+Selectors name sets of edges or nodes. A layout requirement can then apply to
+every matching element, without naming each node separately.
 
 ### The built-in selectors
 
@@ -157,12 +136,12 @@ write a layout instruction per node.
 | `<label>` | edges carrying that label. `A -> B : left` gives `left` |
 | `_` | the unlabeled edges (plain `A -> B`) |
 | `_links` | every edge, labeled or not |
-| `<type>` | nodes of that sort. `cs:::Course` gives `Course`; a plain node is untyped |
+| `<type>` | nodes of that type. `cs:::Course` gives `Course`; a plain node is untyped |
 | `<class>` | nodes carrying that class. `class A,B team` gives `team` |
 | `univ` | every node, whatever its type. The universal set |
 
-The first three select edges and the last three select nodes. An annotation that
-wants edges, like `@orientation`, takes an edge selector; one that wants nodes,
+The first three select edges and the last three select nodes. A rule that
+places edges, like `@orientation`, takes an edge selector; one that acts on nodes,
 like `@group` or `@atomStyle`, takes a node selector.
 
 ### Edge selectors
@@ -193,13 +172,13 @@ b -> b1
 @orientation(selector=right, directions=[right])
 ```
 
-Here every edge goes below its source, from `_links`, and the two named relations
-add a sideways bias on top of that. The plain `a -> a1` and `b -> b1` edges match
-only `_links`.
+`_links` puts all four targets below their sources. The `left` and `right`
+requirements also place those labeled targets to either side. The unlabeled
+edges match only `_links`.
 
 ### Node selectors: types and classes
 
-A type comes from `:::Sort` and a class comes from `class … tag`. Both select node
+A type comes from `:::Type` and a class comes from `class … tag`. Both select node
 sets, and you can use either wherever a node selector is expected:
 
 ```spytial-gdl
@@ -209,8 +188,8 @@ web[Web]:::Client -> api
 
 class db critical
 
-@atomStyle(selector=Service, borderStyle(color='#dce8ff'))
-@atomStyle(selector=Client, borderStyle(color='#e7defb'))
+@atomStyle(selector=Service, borderStyle(color='#795db4', width=2))
+@atomStyle(selector=Client, borderStyle(color='#b85c38', width=2))
 @group(selector=critical, name='Critical')
 @orientation(selector=_links, directions=[left])
 ```
@@ -219,7 +198,7 @@ The types `Service` and `Client` tint nodes by role, and the class `critical` dr
 a region around the one node tagged with it. A type says what a node is; a class is
 a tag you can apply across types.
 
-A node with no `:::Sort` is untyped. It belongs to no named type, so a named
+A node with no `:::Type` is untyped. It belongs to no named type, so a named
 selector never touches it by accident. To reach every node regardless of type,
 typed or classed or plain, use `univ`:
 
@@ -227,15 +206,13 @@ typed or classed or plain, use `univ`:
 a[Root] -> b:::Service
 a -> c:::Client
 
-@atomStyle(selector=univ, borderStyle(color='#f3f4f6'))
+@atomStyle(selector=univ, borderStyle(width=3))
 @orientation(selector=_links, directions=[below])
 ```
 
-One `univ` rule tints all three nodes the same, untyped `Root` included. Use it
-when a rule should apply to the whole diagram. When you want some nodes styled
-differently, give those a type or a class and target that instead: two `atomStyle`
-rules that both match a node (say `univ` and `Service`) and set the same thing are
-a conflict, not a last-one-wins override. The note below has the details.
+`univ` gives all three nodes a thicker outline, including the untyped `Root`.
+If a type needs a different outline, target that type instead of applying an
+overlapping `univ` style.
 
 > **Note.** `atomStyle` won't paint one node two colors. If a node is matched by
 > two selectors that set the same style leaf to different values, the engine
@@ -247,15 +224,8 @@ a conflict, not a last-one-wins override. The note below has the details.
 
 ### Drawn once
 
-Each edge is drawn exactly once, under its own label or under `_` if it has none.
-`_links` and the node-set relations (your types and classes) are selector-only:
-they resolve in selectors but are hidden from drawing, so they never double-draw an
-edge or render a phantom relation. `univ` is a built-in universal set rather than a
-relation, so there is nothing to hide. The engine emits the necessary `hideField`
-directives, and you don't have to manage any of it.
-
-In practice this means targeting `_links` changes layout for every edge without
-adding a second arrow on top of the labeled one.
+`_links` selects every edge but draws no extra arrows. Types, classes, and `univ`
+also exist for selection; they do not add visible edges to the diagram.
 
 ### Collisions
 
@@ -270,7 +240,7 @@ that names a node no line declares is reported the same way.
 > **Note.** A selector that doesn't resolve to what you meant is reported rather
 > than failing silently. One the engine cannot use (a sort where edges are needed,
 > a reserved word) is a selector error; one that matches nothing is a warning.
-> Both arrive on the result's `diagnostics` with the annotation's line, and in an
+> Both arrive on the result's `diagnostics` with the rule's line, and in an
 > embed they appear in the **⚠ … in this source** band under the diagram. See
 > [What the engine reports](annotations.md#what-the-engine-reports).
 
@@ -284,12 +254,10 @@ evaluator. Quote the whole expression so its braces and pipe survive parsing:
 @group(selector='{p: Person | some p.reports_to}', name='Managers')
 ```
 
-For everyday diagrams the named forms above are all you need.
-
 ## Machine-readable reference
 
 The [language manifest](../spytial-gdl-language.json) lists authoring forms,
-annotation arguments, style blocks, and allowed values. It links to the upstream
+requirement arguments, style blocks, and allowed values. It links to the upstream
 selector manifest. The same file is exported as `spytial-gdl/language.json`.
 Run `npm run manifest` to regenerate it; `npm test` checks that it is current.
 

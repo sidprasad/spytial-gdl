@@ -83,7 +83,7 @@ Quote a compound selector as a whole in GDL or YAML so the host preserves its
 spaces and punctuation. For example, on the graph above:
 
 ```text
-@atomStyle(selector='{p: Person | some p.child}', fillStyle(color='#eef6ff'))
+@atomStyle(selector='{p: Person | some p.child}', fillStyle(color='#795db4'), textStyle(color=white))
 @align(selector='(~child.child) - iden', direction=horizontal)
 ```
 

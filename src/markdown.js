@@ -279,7 +279,7 @@ export async function ensureEngineLoaded(opts = {}) {
 }
 
 // Build the framed diagram with a source disclosure below it. Source stays out
-// of the drawing's width, and an editable block opens its editor by default.
+// of the drawing's width. Editable blocks and opts.sourceOpen start expanded.
 // Conflicts and diagnostics remain attached beneath the drawing.
 //
 // The source mirrors the current notation, so editing the diagram (in the
@@ -357,7 +357,7 @@ function buildDevice(doc, opts, height, editable) {
   const sourceToggle = mkBtn('View source', 'Show diagram source');
   sourceToggle.className = 'spytial-gdl-source-toggle';
   sourceToggle.setAttribute('aria-controls', sourceCol.id);
-  sourceToggle.setAttribute('aria-expanded', editable ? 'true' : 'false');
+  sourceToggle.setAttribute('aria-expanded', editable || opts.sourceOpen ? 'true' : 'false');
   sourceToggle.style.cssText =
     `appearance: none; cursor: pointer; border: 0; background: transparent;` +
     ` color: ${C.ink}; font: 500 12px/1 ${SANS}; padding: 7px 9px;`;
@@ -530,7 +530,7 @@ function buildDevice(doc, opts, height, editable) {
   device.appendChild(conflict);
 
   // ── behaviors ──
-  let collapsed = !editable;     // editable opens expanded; read-only opens collapsed
+  let collapsed = !(editable || opts.sourceOpen);
   let dirty = false;             // unsaved edits in the textarea (editable only)
   let getSource = () => '';
   let applyFn = null;
@@ -677,6 +677,7 @@ function renderError(doc, host, message) {
 //   opts.height   — diagram height (number px or CSS string). Default 360.
 //                   A block can override with a data-height attribute.
 //   opts.theme    — core theme name; defaults to the surrounding page theme.
+//   opts.sourceOpen — show each block's source on first render (default false).
 //   opts.viewOptions — core presentation options; compact controls by default.
 //   opts.injectEngine — inject the CDN engine scripts if absent (default true).
 export async function renderSpytialGdls(root = document, opts = {}) {

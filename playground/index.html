@@ -55,7 +55,7 @@
         .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--hair); }
         .splitter:hover::after { inset: 0; background: var(--red); }
 
-        /* ─── Left: combined-source editor (flowchart + @annotations) ───── */
+        /* ─── Left: combined-source editor (graph + requirements) ───── */
         .editor-stack { flex: 1; position: relative; min-height: 0; }
         .editor-panel { position: absolute; inset: 0; display: flex; flex-direction: column; }
 
@@ -207,7 +207,7 @@
     </header>
 
     <main>
-        <!-- LEFT: one combined-source editor (flowchart + inline @annotations) -->
+        <!-- LEFT: one combined-source editor (graph + inline requirements) -->
         <section class="pane left">
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
@@ -264,7 +264,7 @@
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
         import { toHtml, toCss } from '../src/highlight.js';
 
-        // ─── Examples (one combined source: graph + inline @annotations) ──────
+        // ─── Examples (one combined source: graph + inline requirements) ──────
         // Selectors below match what relationalize.js emits:
         //   <label>  — edges with that label, e.g. left / right (drawn)
         //   _        — unlabeled edges (drawn)
@@ -277,8 +277,8 @@ Build -> Test
 Test -> Release : ship
 Test -> Build : retry
 
-%% No annotations yet — Spytial places nodes freely. Add a spatial operation to
-%% constrain the space — try @orientation(selector=_links, directions=[below])
+%% No layout requirements yet — Spytial places nodes freely. Try
+%% @orientation(selector=_links, directions=[below])
 %% to point every edge downward. See the "Binary tree" example for more.`,
 
             pipeline: `Start -> Build
@@ -423,7 +423,7 @@ c -> a : r3
         function fitView() { fitEl(graphEl); }
 
         // ─── Show, don't tell ───────────────────────────────────────────
-        // Append an accepted annotation to the notation and re-render, so it is
+        // Append an accepted rule to the notation and re-render, so it is
         // indistinguishable from one you typed — the textarea stays the source of
         // truth. Matches what the markdown blocks do.
         async function appendAnnotation(line) {
@@ -556,7 +556,7 @@ c -> a : r3
             e.target.selectedIndex = 0;
         });
 
-        // ─── The pipeline: graph + @annotations -> live constraint diagram ───
+        // ─── The pipeline: graph + requirements -> live constraint diagram ───
         async function apply() {
             // Edit mode renders live from the structured-input graph; nothing to apply.
             if (mode === 'edit') return;
@@ -569,7 +569,7 @@ c -> a : r3
 
             let result;
             try {
-                // Spatial operations come from inline @annotations in the source.
+                // Layout requirements come from inline @ rules in the source.
                 result = await renderSpytialGdl(graphEl, src);
             } catch (err) {
                 console.error(err);

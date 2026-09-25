@@ -1,6 +1,6 @@
 ---
 name: spytial-operations
-description: Write and debug Spytial spatial requirements and styling operations. Use when translating layout intent into Spytial-GDL annotations or Spytial-Core YAML rules.
+description: Write and debug Spytial spatial requirements and styling operations. Use when translating layout intent into Spytial-GDL requirements or Spytial-Core YAML rules.
 license: MIT
 ---
 
@@ -31,7 +31,7 @@ from the packages actually installed or loaded by the host. The GDL manifest's
 `coreVersion` with the runtime and Core's `languageVersion` before adopting a
 newer feature. Core support alone does not establish that GDL accepts the same
 surface syntax. For an unavailable operation, explain the gap or propose a
-supported composition instead of inventing an annotation.
+supported composition instead of inventing a rule.
 
 For prose and examples, read the
 [GDL requirements reference](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md)
@@ -95,7 +95,7 @@ constraints:
 
 Core YAML sections are lists of single-key mappings. Validate fields and values
 against the manifest: Core can silently ignore unknown keys, so successful YAML
-parsing is insufficient. Keep `@` annotations in GDL and YAML in Core spec inputs.
+parsing is insufficient. Keep `@` rules in GDL and YAML in Core spec inputs.
 
 ## Check composition and diagnose failures
 

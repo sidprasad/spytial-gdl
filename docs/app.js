@@ -174,7 +174,7 @@ async function renderPage(slug, isRerender = false) {
   await renderMermaid();
   els.status.textContent = 'rendering diagrams…';
   try {
-    const results = await renderSpytialGdls(els.doc, { theme: themeOpt() });
+    const results = await renderSpytialGdls(els.doc, { theme: themeOpt(), sourceOpen: true });
     const live = results.filter((r) => !r.error).length;
     els.status.textContent = live ? `${live} live diagram${live === 1 ? '' : 's'}` : '';
   } catch (err) {

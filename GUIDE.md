@@ -1,7 +1,7 @@
 # Embedding spytial-gdls in Markdown
 
 A **spytial-gdl** is a small text notation for a graph with its layout written
-inline. You write nodes, edges, and spatial operations as `@annotations`, then
+inline. You write nodes, edges, and spatial requirements as `@` rules, then
 Spytial solves the layout and draws a live, draggable diagram. It runs in the
 browser, with no build step and no server beyond static hosting.
 
@@ -66,10 +66,9 @@ Give each block a height, because the diagram fills its container:
 ```
 
 For an editor instead of a static view, use `class="spytial-gdl-editable"`, or add
-`data-editable` to the div. It opens with the **Source** panel beside the diagram
-as a live text editor, so you can drag the graph or edit the text and **Run ▸**
-(⌘⏎) it in, with both directions staying in sync. **⧉ Copy** lifts the notation
-out.
+`data-editable` to the div. Its source editor opens below the diagram. Drag the
+graph or edit the text and press **Update diagram** (⌘⏎). **Copy source** copies
+the current notation.
 
 One thing to know: the page has to be served by a static server rather than opened
 as `file://`, because the tag is an ES module. A complete, runnable page is
@@ -77,10 +76,11 @@ as `file://`, because the tag is an ES module. A complete, runnable page is
 
 ## The notation
 
-A node is implicit from any edge, so the smallest graph is one line:
+Write one edge per line. Reuse an ID to connect edges to the same node:
 
 ```spytial-gdl
 A -> B
+B -> C
 ```
 
 Label an edge after a colon. That label is also a selector you can target:
@@ -97,41 +97,41 @@ without one, the id is shown:
 u1[Alice] -> u2[Bob]
 ```
 
-A `:::Sort` tag gives the node a type, so `selector: Person` then matches every
+A `:::Type` tag gives the node a type, so `selector=Person` then matches every
 node of that type:
 
 ```spytial-gdl
 alice[Alice]:::Person -> acme[Acme]:::Company
 bob[Bob]:::Person     -> acme
 
-@atomStyle(selector=Person, borderStyle(color='#cfe8d8'))
+@atomStyle(selector=Person, borderStyle(color='#795db4', width=2))
 ```
 
-Each part of a node does one job: the id is the identity edges reference, the label
-is what's drawn, and the sort is what selectors match. A node takes one sort for
-now. A chain like `:::Person:::Employee` (a linear hierarchy) is reserved for later.
+The ID is what edges reference, the label is what readers see, and the type is
+what a selector matches. A node has one type; in a chain like
+`:::Person:::Employee`, only the last type, `Employee`, applies.
 
 For a cross-cutting group, tag nodes with `class A,B tag`. There is no header and
-no `TD`/`LR` direction, since layout comes from the annotations rather than a
+no `TD`/`LR` direction, since layout comes from the requirements rather than a
 keyword.
 
 ## Spatial operations
 
-Annotations are the layout. Each is one line, `@name(arg=value, …)`:
+Write each requirement as `@name(arg=value, …)`:
 
-| annotation | effect |
+| rule | effect |
 |---|---|
 | `@orientation(selector=_links, directions=[below])` | put each edge's target below its source |
 | `@align(selector=row, direction=horizontal)` | line a relation's endpoints up on an axis |
 | `@cyclic(selector=_links, direction=clockwise)` | arrange a cycle as a ring |
 | `@group(selector=team, name='Team A')` | draw a labeled region around a set |
-| `@atomStyle(selector=root, borderStyle(color='#ffe7b3'))` | tint a node's outline |
+| `@atomStyle(selector=root, borderStyle(color='#b85c38', width=2))` | tint a node's outline |
 | `@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))` | style a relation's edges |
 
 Styling is written in blocks: `borderStyle`, `fillStyle`, `iconStyle`, and
 `textStyle` on a node, `lineStyle` and `textStyle` on an edge. Each part of a
 node or edge is set independently. See
-[Annotations → style blocks](docs/pages/annotations.md#style-blocks).
+[Requirements → style blocks](docs/pages/annotations.md#style-blocks).
 
 A `selector` names nodes or edges:
 
@@ -184,10 +184,9 @@ A -> C : right
 ```
 ````
 
-Each editable block sits beside a collapsible **Source** panel that re-derives
-spytial-gdl text from the edited graph on every edit, and the panel is editable
-itself: type notation and **Run ▸** (⌘⏎) to push it into the diagram, with the two
-staying in sync. **⧉ Copy** lifts the result back out, `@annotations` and all. A
+Each editable block shows a source editor below the diagram. It updates when
+you edit the graph; press **Update diagram** (⌘⏎) to apply changes made in the
+text. **Copy source** copies the result, requirements included. A
 hand-authored container with `data-editable` works too, as does
 `autoRender({ editable: true })` to make every block editable.
 

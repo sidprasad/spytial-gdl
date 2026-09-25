@@ -1,4 +1,4 @@
-# Platform setup
+# Specific Document Platform Support
 
 Add the renderer once to your site's layout, then write `spytial-gdl` fenced
 blocks in Markdown. Diagrams render in the browser after your site builds.

@@ -114,7 +114,7 @@ Two focused skills support more involved authoring tasks:
 
 | Skill | Use it to |
 | --- | --- |
-| [Spytial operations](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md) | Translate spatial intent into GDL annotations or Core YAML using the operation manifest |
+| [Spytial operations](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md) | Translate spatial intent into GDL requirements or Core YAML using the operation manifest |
 | [Spytial selectors](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md) | Select nodes, derive relationships, and check the exact tuples an expression returns |
 
 The main skill links to these when needed. To install them independently, copy
@@ -128,7 +128,7 @@ and syntax carry over, and Mermaid's sequence diagrams, Gantt charts, and
 other non-graph formats are outside the language's scope.
 
 For tools, the [language manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json)
-lists canonical graph forms and supported annotations, with links to the layout
+lists canonical graph forms, requirements, and styling rules, with links to the layout
 and selector manifests. It is also exported as `spytial-gdl/language.json`.
 
 ## Reference
@@ -167,7 +167,7 @@ npm install
 npm test
 ```
 
-The suite checks parsing, annotations, round-tripping, embedding integrations,
+The suite checks parsing, requirements, round-tripping, embedding integrations,
 and spatial semantics against spytial-core. For documentation changes, also
 preview the affected page and verify its live examples.
 
