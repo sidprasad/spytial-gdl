@@ -7,6 +7,10 @@ is a fix.
 
 ## Unreleased
 
+- Apply the shared compact graph controls to every GDL render path, including
+  the playground and programmatic examples. Read-only diagrams use floating
+  zoom/Fit controls; editable diagrams retain graph editing actions. Both render
+  APIs accept `viewOptions` for explicit customization.
 - Refresh the vendored spytial-core schema and language manifest from 6.3.1;
   the layout language version remains 2026-09-18.
 - Require spytial-core 6.3.0 or newer. Browser embeds now load its complete

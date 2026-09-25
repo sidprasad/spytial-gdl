@@ -211,35 +211,6 @@ function themeForBlock(doc, host, blockTheme, opts) {
   return 'light';
 }
 
-// Keep core's own zoom and fit controls, but present them without a full-width
-// toolbar in read-only embeds. Editable embeds also keep their graph actions.
-// Authors can customize core's toolbar with viewOptions.
-function embedViewOptions(editable, overrides = {}) {
-  return {
-    toolbar: 'compact',
-    ...overrides,
-    controls: { ...(editable ? { editing: true } : {}), ...overrides.controls },
-  };
-}
-
-async function configureEmbedGraph(graphEl, editable, overrides) {
-  if (typeof graphEl.setViewOptions !== 'function') {
-    throw new Error('Markdown embeds require spytial-core 6.3.0 or newer');
-  }
-  await graphEl.setViewOptions(embedViewOptions(editable, overrides || {}));
-  // Core's editor group normally follows other toolbar groups, so it draws a
-  // leading divider. It is the first group in a quiet editable embed.
-  if (editable && graphEl.shadowRoot) {
-    const style = graphEl.ownerDocument.createElement('style');
-    style.textContent = '#graph-toolbar[data-presentation="none"]' +
-      ' { padding: 4px 8px; margin-bottom: 0; background: transparent;' +
-      ' border: 0; box-shadow: none; backdrop-filter: none; }' +
-      '#graph-toolbar[data-presentation="none"] .si-toolbar-group' +
-      ' { margin-left: 0; padding-left: 0; border-left: 0; }';
-    graphEl.shadowRoot.appendChild(style);
-  }
-}
-
 // Is the spytial-core engine (+ the custom element) ready on the page?
 function engineReady() {
   const core =
@@ -676,12 +647,6 @@ function buildDevice(doc, opts, height, editable) {
       viewControls.remove();
       const style = doc.createElement('style');
       style.textContent =
-        '#graph-shell { position: relative; }' +
-        '#graph-toolbar[data-presentation="compact"] {' +
-        ' position: absolute; right: 10px; bottom: 10px; z-index: 2;' +
-        ' flex-wrap: nowrap; padding: 0; margin: 0; background: transparent;' +
-        ' border: 0; box-shadow: none; backdrop-filter: none; }' +
-        '#zoom-controls { gap: 4px; }' +
         '#graph-toolbar .spytial-gdl-source-toggle {' +
         ' margin-left: 4px; font-size: 11px; padding: 0 8px; }';
       el.shadowRoot.appendChild(style);
@@ -741,8 +706,6 @@ export async function renderSpytialGdls(root = document, opts = {}) {
     try {
       if (editable) {
         const graphEl = mountInputGraph(ui.graphHost, { theme });
-        await configureEmbedGraph(graphEl, true, opts.viewOptions);
-        ui.attachCoreToolbar(graphEl);
 
         // Surface the UNSAT core, attached below the graph, and keep it live:
         // every edit re-reads the element's constraint error, so resolving the
@@ -822,7 +785,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           return { ok: true };
         });
 
-        const initial = await renderSpytialGdlEditable(graphEl, source);
+        const initial = await renderSpytialGdlEditable(graphEl, source, { viewOptions: opts.viewOptions });
         wire(initial);
         reflectDiag(initial);
         refit(graphEl);
@@ -832,9 +795,8 @@ export async function renderSpytialGdls(root = document, opts = {}) {
         results.push({ host: ui.graphHost, editable: true, applied: handle && handle.applied, handle });
       } else {
         const graphEl = mountGraph(ui.graphHost, { theme });
-        await configureEmbedGraph(graphEl, false, opts.viewOptions);
+        const result = await renderSpytialGdl(graphEl, source, { viewOptions: opts.viewOptions });
         ui.attachCoreToolbar(graphEl);
-        const result = await renderSpytialGdl(graphEl, source);
         refit(graphEl);
         ui.setSourceProvider(() => source);
         ui.refreshSource(true);

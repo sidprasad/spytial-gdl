@@ -398,17 +398,6 @@ c -> a : r3
         }
         function fitView() { fitEl(graphEl); }
 
-        // Hide the canvas's dev-tool dropdowns (routing strategy + a Mode toggle
-        // that duplicates our header theme switch). Keep zoom + PNG export.
-        function tidyCanvasChrome(el = graphEl) {
-            const sr = el.shadowRoot;
-            if (!sr || sr.getElementById('pg-tidy')) return;
-            const style = document.createElement('style');
-            style.id = 'pg-tidy';
-            style.textContent = '#routing-control, #mode-control { display: none !important; }';
-            sr.appendChild(style);
-        }
-
         // ─── Show, don't tell ───────────────────────────────────────────
         // Append an accepted annotation to the notation and re-render, so it is
         // indistinguishable from one you typed — the textarea stays the source of
@@ -565,7 +554,7 @@ c -> a : r3
                 return;
             }
 
-            if (result.applied) { fitView(); tidyCanvasChrome(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
+            if (result.applied) { fitView(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
 
             // Feed the demonstration mode. `data` is what generalization names a
             // relation from; `instance` is what selector synthesis evaluates
@@ -680,7 +669,6 @@ c -> a : r3
                 else setStatus('Edited — notation updated.', 'success');
             });
             updateValuePanel(handle.getValue());
-            tidyCanvasChrome(inputGraphEl);
             setStatus('Edit mode — add nodes / edges; the notation mirrors your edits.', 'info');
             fitEl(inputGraphEl); setTimeout(() => fitEl(inputGraphEl), 450);
         }

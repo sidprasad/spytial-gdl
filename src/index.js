@@ -22,6 +22,7 @@ import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
 import { serializeToSpytialGdl } from './serialize.js';
 import { sourceDiagnostics, engineDiagnostics } from './diagnostics.js';
+import { configureGraphView } from './graph-view.js';
 
 export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGdl };
 export { sourceDiagnostics, engineDiagnostics, attributeLine } from './diagnostics.js';
@@ -265,7 +266,8 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
 //   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
 //   source   — spytial-gdl text (nodes/edges) with inline `@orientation(...)`
 //              spatial annotations (see annotations.js)
-//   opts     — { rules?: string, extraSpec?: string, validator?: 'qualitative'|'kiwi' }
+//   opts     — { rules?, extraSpec?, validator?, viewOptions? }
+//              viewOptions overrides GDL's compact core controls.
 //
 // Returns { applied, layout, error, selectorErrors, warnings, diagnostics,
 //           annotationErrors, parseErrors, parsed, data, instance, rules,
@@ -282,6 +284,7 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
 
   const spytial = getSpytialCore();
   engineApi(spytial);
+  await configureGraphView(graphEl, false, opts.viewOptions);
 
   // 0. annotations → spec, notation → graph, graph → datum. Everything up to
   //    here is engine-independent and shared with the editable path.
@@ -407,7 +410,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
 //
 //   container — an Element to mount into, or a <structured-input-graph> itself
 //   source    — spytial-gdl text with inline @annotations (same as renderSpytialGdl)
-//   opts      — { rules?, extraSpec?, width?, height?, theme?, ariaLabel? }
+//   opts      — { rules?, extraSpec?, width?, height?, theme?, ariaLabel?, viewOptions? }
 //
 // Returns a handle:
 //   { applied, element, dataInstance, parsed, annotationErrors, parseErrors,
@@ -429,6 +432,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
         'Load spytial-core ≥ 6.3.0 (its global build registers the element).'
     );
   }
+  await configureGraphView(el, true, opts.viewOptions);
 
   // 0. same compilation as the read-only path. `annotationLines` comes back too,
   //    so getSource() can re-append the annotations verbatim on the round-trip
