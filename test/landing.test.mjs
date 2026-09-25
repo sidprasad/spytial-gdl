@@ -73,7 +73,7 @@ assert.ok(html.indexOf('src="./assets/landing.js"') < html.indexOf('src="./src/a
 const actions = html.match(/<nav class="actions"[\s\S]*?<\/nav>/)[0];
 assert.equal([...actions.matchAll(/<a\s/g)].length, 3);
 assert.ok(actions.includes('href="./docs/#/introduction"'));
-assert.ok(actions.includes('href="./AGENTS.md"'));
+assert.ok(actions.includes('href="./SKILL.md"'));
 assert.ok(!html.includes('<figcaption'));
 assert.ok(!html.includes('data-copy-target'));
 assert.ok(html.indexOf('Traditional graph description languages') < html.indexOf('id="board-graph"'));

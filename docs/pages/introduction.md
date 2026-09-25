@@ -159,7 +159,7 @@ run from a `file://` URL. GitHub README pages display the source only.
 [Open the playground](../playground/), [copy an HTML example](../examples/drop-in.html),
 or follow the [setup for your docs site](platforms.md).
 If you already have a Mermaid flowchart, give it to your agent with
-[the conversion guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md).
+[the conversion guide](conversion.md).
 
 For the language itself, see the [syntax reference](notation.md),
 [requirements](annotations.md), and [embedding API](embedding.md).

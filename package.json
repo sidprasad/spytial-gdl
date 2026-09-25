@@ -31,7 +31,8 @@
   "files": [
     "src",
     "spytial-gdl-language.json",
-    "AGENTS.md",
+    "SKILL.md",
+    "skills",
     "llms.txt",
     "README.md",
     "GUIDE.md",

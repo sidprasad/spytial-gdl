@@ -9,7 +9,7 @@ A graph description language with spatial semantics.
 [Playground](https://www.siddharthaprasad.com/spytial-gdl/playground/) ·
 [Gallery](https://www.siddharthaprasad.com/spytial-gdl/gallery/) ·
 [Documentation](https://www.siddharthaprasad.com/spytial-gdl/docs/) ·
-[Agent guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md)
+[Agent skill](https://www.siddharthaprasad.com/spytial-gdl/SKILL.md)
 
 Describe nodes, edges, and the spatial relationships that matter. spytial-gdl
 renders an interactive graph in your documents, preserving those relationships
@@ -91,16 +91,36 @@ covers compilation, engine loading, rendering, and reading back graph edits.
 
 ## Use with an agent
 
-The [agent guide](https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md) covers authoring, conversion, embedding, and
-verification. Give your agent this instruction with the document or project:
+Point your agent or workflow at the
+[Spytial-GDL skill](https://www.siddharthaprasad.com/spytial-gdl/SKILL.md).
+It guides graph authoring, spatial requirements, integration, and validation,
+and points to the relevant reference for each task. No checkout of this
+repository is needed. Give it the skill URL alongside your task, for example:
 
 ```text
-Read https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
-Use spytial-gdl where a graph would help explain this document. Describe the
-nodes and edges, and add spatial rules where position carries meaning.
-Set up the renderer and verify the result in a browser. If the document
-cannot run it, provide a link to the live graph.
+Read and use https://www.siddharthaprasad.com/spytial-gdl/SKILL.md.
+Then use it to diagram [the system, document, or graph described here].
+Integrate the result into [the target page or project] and verify the graph
+and its spatial requirements.
 ```
+
+For reuse in an agent that supports Agent Skills, save the file as
+`spytial-gdl/SKILL.md` inside that agent's supported skills directory and follow
+its discovery or reload instructions. The skill uses public documentation links,
+so it needs network access to fetch those references when used outside this
+repository. Reading the URL provides task context; it does not install the skill.
+
+Two focused skills support more involved authoring tasks:
+
+| Skill | Use it to |
+| --- | --- |
+| [Spytial operations](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md) | Translate spatial intent into GDL annotations or Core YAML using the operation manifest |
+| [Spytial selectors](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md) | Select nodes, derive relationships, and check the exact tuples an expression returns |
+
+The main skill links to these when needed. To install them independently, copy
+the desired folder from `skills/` into your agent's supported skills directory.
+They link to the Core and Simple Graph Query manifests and explain how to use
+the versions installed by the host.
 
 You can also provide a Mermaid flowchart or Graphviz DOT graph for conversion.
 This is not a drop-in replacement: DOT requires translation, not all styling
@@ -118,11 +138,17 @@ and selector manifests. It is also exported as `spytial-gdl/language.json`.
 | [Introduction](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction) | A live walkthrough of graph structure, spatial rules, conflicts, and editing |
 | [Syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation) | Nodes, edges, labels, types, classes, and Mermaid compatibility |
 | [Requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial constraints, selectors, and styling |
+| [Conversion](https://www.siddharthaprasad.com/spytial-gdl/docs/#/conversion) | Translating Mermaid flowcharts and Graphviz DOT, with compatibility limits |
 | [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding) | Renderer setup, JavaScript APIs, and editable diagrams |
 | [Examples](https://www.siddharthaprasad.com/spytial-gdl/examples/) | Runnable integrations with source you can reuse |
 | [Changelog](https://github.com/sidprasad/spytial-gdl/blob/main/CHANGELOG.md) | Release history |
 
 ## Development
+
+This repository owns notation, parsing, serialization, Markdown and HTML
+embedding, and documentation. Fundamental layout semantics belong in
+`spytial-core`. Do not edit generated artifacts. Run the smallest relevant
+test for a change; use `npm test` for broad changes.
 
 From a checkout, start the local site:
 

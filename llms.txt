@@ -3,15 +3,20 @@
 > A small graph description language for live, draggable diagrams with explicit spatial requirements.
 
 Create graph diagrams or translate Mermaid flowcharts and Graphviz DOT graphs, then embed them in
-Markdown or HTML. Start with the agent guide for conversion and setup.
+Markdown or HTML. Point an agent or workflow at the skill for task guidance
+and links to the relevant authoring, integration, and validation references.
 
 ## Start here
 
-- Agent instructions: https://www.siddharthaprasad.com/spytial-gdl/AGENTS.md
+- Agent skill: https://www.siddharthaprasad.com/spytial-gdl/SKILL.md
+- Operations skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md
+- Selectors skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md
 - GDL language manifest: https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json
+- Core layout manifest: https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/docs/spytial-language.json
 - Selector language manifest: https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json
 - Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/introduction.md
 - Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md
+- Conversion: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/conversion.md
 - Annotations: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md
 - Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md
 - Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/platforms.md
@@ -25,5 +30,5 @@ Add this script to the page that renders Markdown:
 
     <script type="module" src="https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js"></script>
 
-Then use fenced blocks with the `spytial-gdl` language identifier. The complete
-authoring and migration guidance is in AGENTS.md.
+Then use fenced blocks with the `spytial-gdl` language identifier. SKILL.md
+routes agents to the guidance needed for their task.

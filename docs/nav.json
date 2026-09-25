@@ -2,6 +2,7 @@
   { "title": "Introduction", "slug": "introduction" },
   { "title": "Syntax reference", "slug": "notation" },
   { "title": "Requirements", "slug": "annotations" },
+  { "title": "Conversion", "slug": "conversion" },
   { "title": "Embedding & API", "slug": "embedding" },
   { "title": "Platforms", "slug": "platforms" },
   { "title": "Architecture", "slug": "architecture" }
