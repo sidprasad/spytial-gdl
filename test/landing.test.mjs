@@ -9,8 +9,8 @@ const docsNav = JSON.parse(read('docs/nav.json'));
 
 assert.match(landing, /<h1[^>]*>Graph diagrams with <span>layout requirements\.<\/span><\/h1>/);
 assert.match(landing, /Spytial GDL is a lightweight, web-native graph description language/);
-assert.ok(landing.indexOf('Spytial GDL is a lightweight') < landing.indexOf('Space is part of what a diagram says.'));
-assert.ok(landing.indexOf('Space is part of what a diagram says.') < landing.indexOf('Add requirements where they matter.'));
+assert.ok(landing.indexOf('Spytial GDL is a lightweight') < landing.indexOf('<section class="argument"'));
+assert.ok(landing.indexOf('<section class="argument"') < landing.indexOf('<section class="model"'));
 assert.ok(!landing.includes('board-graph'), 'The landing page should lead with the project, not the old board demo');
 
 for (const [page, embed, reference, editor] of [
