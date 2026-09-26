@@ -80,6 +80,12 @@ not run the renderer. Include a link to a live diagram, optionally accompanied
 by an exported image. The playground's **Share** button creates a link containing
 the graph source.
 
+For a PR, `scripts/render-gdl-previews.py` can make that image and link from a
+`.gdl` file. It opens the playground in Chromium, checks that the graph rendered,
+and writes a PNG plus a manifest containing the live link. Commit the PNG and
+paste the linked image into the PR description. See the
+[GitHub PR preview recipe](docs/pages/platforms.md#github-pr-previews).
+
 For programmatic use, install the package:
 
 ```sh
