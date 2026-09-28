@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spytial GDL · Graph diagrams with layout requirements</title>
+  <title>Spytial Graph Description Language</title>
   <meta name="description" content="Spytial GDL is a lightweight, web-native graph description language for spatially meaningful diagrams. Describe the graph, then state the layout requirements that matter." />
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
   <link rel="stylesheet" href="./assets/site.css" />
@@ -48,10 +48,15 @@
 
     <section class="hero" aria-labelledby="page-title">
       <h1 id="page-title">Graph diagrams with layout requirements.</h1>
-      <p class="lede">Have you ever described a Mermaid or DOT graph, only to have it laid out all wrong? Spytial GDL is a graph description language that pairs familiar node-and-edge syntax with lightweight, enforced layout requirements—so your diagram’s arrangement carries the meaning you intended.</p>
+      <p class="lede">Have you ever described a Mermaid or DOT graph, only to have it laid out all wrong? Spytial-GDL pairs the
+        familiar node-and-edge syntax of these graph description languages with lightweight layout requirements.
+        It is backed by a spatial semantics that ensures that any rendered graph lays out as you specified, and
+        fails loudly and usefully when these requirements cannot be met.
+    </p>
       <nav class="hero-actions" aria-label="Get started">
-        <a href="./playground/"><strong>Examples</strong><span>Open an example in the online playground.</span></a>
-        <a href="./docs/#/embedding"><strong>Embed</strong><span>Built to be embedded in HTML, MkDocs, Jekyll, Hugo, Docusaurus, and Pollen.</span></a>
+        <a href="./playground/"><strong>Examples</strong><span>Try out some examples online.</span></a>
+        <a href="./docs/#/embedding"><strong>Web Native</strong><span>Easy to embed in HTML, Markdown, MkDocs, Jekyll, 
+          Hugo, Pollen, Docusaurus, ...</span></a>
       </nav>
     </section>
 
@@ -59,20 +64,23 @@
       <h2 id="model-title">Add requirements where they matter.</h2>
       <ol class="steps">
         <li>
-          <h3>Write the graph.</h3>
+          <h3>Describe the graph.</h3>
           <p>Start with nodes and edges. Leave layout unspecified when it doesn't matter.</p>
         </li>
         <li>
           <h3>Add layout requirements.</h3>
-          <p>Specify the spatial relationships that matter. Spytial GDL handles the rest.</p>
+          <p>Specify only the spatial relationships that matter.</p>
         </li>
         <li>
-          <h3>Move and edit.</h3>
-          <p>Drag nodes or edit connections while the requirements continue to hold.</p>
+          <h3>Enforced in real time</h3>
+          <p>Generated graphs are interactive! You can drag elements around, with confidence that
+          the layout requirements will always hold.
+          </p>
         </li>
         <li>
-          <h3>See conflicts.</h3>
-          <p>When requirements cannot all hold, see which ones conflict.</p>
+          <h3>Fail loudly and usefully!</h3>
+          <p>When requirements cannot all hold, you get an error report, 
+            and a counterfactual diagram that helps explain why.</p>
         </li>
       </ol>
       <nav class="next" aria-label="More about Spytial GDL">
