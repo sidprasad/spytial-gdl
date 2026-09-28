@@ -1,5 +1,4 @@
 [
-  { "title": "Start here", "slug": "introduction" },
   { "title": "Embed in a document", "slug": "embedding" },
   { "section": "Syntax reference", "pages": [
     { "title": "Graph description", "slug": "notation" },

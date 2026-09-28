@@ -11,7 +11,7 @@
 // inference runs. Nothing is inferred from a drag you did not frame that way,
 // because outside the mode nothing is even watched.
 //
-//   idle ──"✦ Show, don't tell"──▶ demonstrating ──"Explain this ▸"──▶ offering
+//   idle ──"Show, don't tell"──▶ demonstrating ──"Explain this ▸"──▶ offering
 //     ▲                                  │  ▲                            │
 //     └──────────"Cancel"────────────────┘  └────"Keep arranging" ────────┘
 //                                           └────  (any drag)     ────────┘
@@ -365,7 +365,7 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     bar.appendChild(label);
 
     if (s.state === IDLE) {
-      const start = btn('✦ Show, don\'t tell', 'Arrange the diagram by hand; I\'ll work out the rules', true);
+      const start = btn('Show, don\'t tell', 'Arrange the diagram by hand; I\'ll work out the rules', true);
       start.addEventListener('click', () => machine.begin());
       bar.insertBefore(start, label);
       label.textContent = s.accepted
@@ -378,7 +378,7 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     // In the mode: say what is being watched, and how much of it there is.
     label.innerHTML = '';
     const head = doc.createElement('strong');
-    head.textContent = s.state === OFFERING ? '✦ Here\'s what would explain it' : '✦ Showing';
+    head.textContent = s.state === OFFERING ? 'Here\'s what would explain it' : 'Showing';
     head.style.cssText = 'font-weight: 700;';
     label.appendChild(head);
     const tail = doc.createElement('span');

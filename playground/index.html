@@ -81,9 +81,9 @@
         textarea.code::placeholder { color: var(--ink-faint); }
         textarea.code::selection { background: var(--sel); }
 
-        .editor-foot {
+        .editor-bar {
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
-            padding: 11px 14px; border-top: 1px solid var(--hair); background: var(--chrome-2);
+            padding: 11px 14px; border-bottom: 1px solid var(--hair); background: var(--chrome-2);
         }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
@@ -94,7 +94,7 @@
             font: 14px/1.2 var(--sans);
             background: var(--ink); color: var(--paper);
             border: 1px solid var(--ink); border-radius: 0; padding: 8px 14px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 9px;
+            display: inline-flex; align-items: center; gap: 9px; margin-left: auto;
         }
         button.apply:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
         button.apply:disabled { opacity: .4; cursor: default; }
@@ -111,7 +111,7 @@
         .preview-bar .hint { display: inline-flex; align-items: center; gap: 5px; }
         .preview-body { flex: 1; position: relative; min-height: 0; padding: 16px; border-left: 1px solid var(--hair); }
         /* The demonstration band sits under the diagram and never squeezes it. */
-        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; border-left: 1px solid var(--hair); }
+        #demo-slot { flex: 0 0 auto; max-height: 42vh; overflow-y: auto; border-left: 1px solid var(--hair); margin-bottom: 12px; }
         #demo-slot[hidden] { display: none; }
         .canvas-wrap {
             position: absolute; inset: 16px;
@@ -146,21 +146,17 @@
         .code-wrap.mirror { background: var(--chrome-2); }
         .code-wrap.mirror .code-ghost { opacity: .72; }
 
-        /* Reified-value inspector panel */
-        .value-panel {
-            position: absolute; bottom: 20px; left: 20px; width: min(360px, 55%); max-height: 52%;
-            overflow: auto; z-index: 9; background: var(--paper); color: var(--ink);
-            border: 1px solid var(--hair); border-radius: 0;
-            font-family: var(--mono); font-size: 11.5px;
-            line-height: 1.5; white-space: pre; padding: 12px 14px; margin: 0;
-        }
-        .value-panel[hidden] { display: none; }
-
         #error-messages {
             position: absolute; left: 20px; right: 20px; bottom: 20px;
             max-height: 48%; overflow: auto; z-index: 8;
         }
         #error-messages:empty { display: none; }
+        /* Core leaves the report card transparent; keep the diagram behind it
+           from showing through in both themes. The canvas is light in both. */
+        #error-messages #error-message-modal {
+            background: var(--canvas);
+            color: #24231f;
+        }
 
         /* ─── Toast ─────────────────────────────────────────────────────── */
         #toast {
@@ -193,14 +189,11 @@
             <a href="../docs/">Docs</a>
         </nav>
         <select id="example-select" title="Load an example" aria-label="Load an example">
-            <option value="" disabled selected>Choose example…</option>
-            <option value="flowchart">Basic flowchart</option>
-            <option value="pipeline">Pipeline</option>
+            <option value="" disabled>Custom diagram</option>
+            <option value="tree" selected>Binary tree</option>
+            <option value="cycle">Five-node cycle</option>
             <option value="compiler">Compiler subsystem</option>
-            <option value="replicas">Peer replicas</option>
-            <option value="cycle">Cycle</option>
-            <option value="tree">Binary tree</option>
-            <option value="clash">Conflicting requirements</option>
+            <option value="counterfactual">Counterfactual clash</option>
         </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
@@ -209,6 +202,10 @@
     <main>
         <!-- LEFT: one combined-source editor (graph + inline requirements) -->
         <section class="pane left">
+            <div class="editor-bar">
+                <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
+                <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
+            </div>
             <div class="editor-stack">
                 <div class="editor-panel" id="panel-diagram">
                     <div class="code-wrap">
@@ -216,13 +213,9 @@
                              and hidden from assistive tech: the textarea is the text. -->
                         <pre class="code code-ghost" id="source-ghost" aria-hidden="true"></pre>
                         <textarea id="source-input" class="code" spellcheck="false"
-                            placeholder="Start -> Build&#10;Build -> Test&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
+                            placeholder="A -> B : left&#10;A -> C : right&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
                     </div>
                 </div>
-            </div>
-            <div class="editor-foot">
-                <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
-                <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
             </div>
         </section>
 
@@ -236,8 +229,6 @@
                     <button id="mode-edit" type="button" title="Edit the graph; the notation mirrors your edits">Edit</button>
                 </div>
                 <button class="ghost" id="sync-btn" type="button" title="Write the edited graph back to the notation" hidden>⤓ Sync to text</button>
-                <button class="ghost" id="value-btn" type="button" title="Show the reified value (JSON)">{ } value</button>
-                <span class="hint" id="view-hint">Drag nodes; requirements hold.</span>
                 <span class="hint" id="edit-hint" style="display:none;">Add nodes or relations; the source updates.</span>
                 <span class="hint" id="conflict-hint" style="color:var(--red); display:none;">⚠ rules clash — see explanation</span>
             </div>
@@ -245,7 +236,6 @@
                 <div class="canvas-wrap">
                     <webcola-cnd-graph id="graph" theme="light" aria-label="Live constraint diagram"></webcola-cnd-graph>
                     <structured-input-graph id="input-graph" theme="light" aria-label="Editable constraint diagram" hidden></structured-input-graph>
-                    <pre class="value-panel" id="value-panel" hidden></pre>
                     <div id="error-messages"></div>
                 </div>
             </div>
@@ -272,22 +262,27 @@
         //   <type>   — nodes of that sort, e.g. A:::Person → Person
         //   <class>  — nodes carrying a class
         const EXAMPLES = {
-            flowchart: `Start -> Build
-Build -> Test
-Test -> Release : ship
-Test -> Build : retry
+            tree: `A -> B : left
+A -> C : right
+B -> D : left
+B -> E : right
+C -> F : left
+C -> G : right
 
-%% No layout requirements yet — Spytial places nodes freely. Try
-%% @orientation(selector=_links, directions=[below])
-%% to point every edge downward. See the "Binary tree" example for more.`,
+%% Every child goes below its parent. Left children go left;
+%% right children go right.
+@orientation(selector=_links, directions=[below])
+@orientation(selector=left,  directions=[left])
+@orientation(selector=right, directions=[right])`,
 
-            pipeline: `Start -> Build
-Build -> Test
-Test -> Ship
+            cycle: `S0 -> S1
+S1 -> S2
+S2 -> S3
+S3 -> S4
+S4 -> S0
 
-%% Every edge's target sits to the right of its source,
-%% so the pipeline reads left -> right.
-@orientation(selector=_links, directions=[right])`,
+%% Arrange the five nodes as a ring.
+@cyclic(selector=_links, direction=clockwise)`,
 
             compiler: `source[Source] -> parse[Parse] : enters
 parse -> check[Check types] : stage
@@ -302,54 +297,21 @@ class parse,check,generate compiler
 @orientation(selector=enters, directions=[directlyBelow])
 @orientation(selector=leaves, directions=[directlyBelow])`,
 
-            replicas: `router[Router] -> east[East replica] : routes
-router -> west[West replica] : routes
-east -> eastStore[East store] : stores
-west -> westStore[West store] : stores
-east -> west : sync
-west -> east : sync
-
-%% A connection between peers need not put one below the other.
-@orientation(selector=routes, directions=[below])
-@orientation(selector=stores, directions=[directlyBelow])
-@align(selector=sync, direction=horizontal)`,
-
-            cycle: `S0 -> S1
-S1 -> S2
-S2 -> S3
-S3 -> S0
-
-%% Arrange the edge cycle as a ring.
-@cyclic(selector=_links, direction=clockwise)`,
-
-            tree: `A -> B : left
-A -> C : right
-B -> D : left
-B -> E : right
-C -> F : left
-C -> G : right
-
-%% Every edge points down; 'left' edges also point left,
-%% 'right' edges point right — a binary tree.
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])`,
-
-            clash: `a -> b : r1
+            counterfactual: `a -> b : r1
 b -> c : r2
 c -> a : r3
 
-%% These rules cannot all hold at once: r1, r2, r3 chase each
-%% other around the cycle a -> b -> c -> a, but each demands its
-%% target sit further left. Spytial renders the best feasible
-%% layout and explains the minimal clash.
-@orientation(selector=r1, directions=[left])
-@orientation(selector=r2, directions=[left])
-@orientation(selector=r3, directions=[left])`,
+%% Each edge demands that its target sit to the right. Around
+%% this cycle, the three demands cannot all hold. The diagram
+%% shows a counterfactual layout; the report explains the clash.
+@orientation(selector=r1, directions=[right])
+@orientation(selector=r2, directions=[right])
+@orientation(selector=r3, directions=[right])`,
         };
 
         // ─── Element refs / state ───────────────────────────────────────
         const sourceEl = document.getElementById('source-input');
+        const exampleSelect = document.getElementById('example-select');
         const ghostEl = document.getElementById('source-ghost');
         const codeWrapEl = ghostEl.parentElement;
         const graphEl = document.getElementById('graph');
@@ -359,8 +321,6 @@ c -> a : r3
         const modeViewBtn = document.getElementById('mode-view');
         const modeEditBtn = document.getElementById('mode-edit');
         const syncBtn = document.getElementById('sync-btn');
-        const valueBtn = document.getElementById('value-btn');
-        const valuePanel = document.getElementById('value-panel');
 
         // View ⇄ Edit state. In View, the textarea is the source of truth and we
         // render a read-only diagram. In Edit, the structured-input graph is the
@@ -368,7 +328,6 @@ c -> a : r3
         let mode = 'view';
         let editHandle = null;   // handle from renderSpytialGdlEditable
         let editUnsub = null;    // its onChange unsubscribe
-        let valueOpen = false;
 
         // Show, don't tell. Lives in View, where the diagram is the solver's own
         // answer and rearranging it is a way of disagreeing with it. Edit mode is
@@ -392,8 +351,15 @@ c -> a : r3
         function setSource(text) {
             sourceEl.value = text;
             paintSource();
+            syncExampleSelection();
         }
-        sourceEl.addEventListener('input', paintSource);
+        function syncExampleSelection() {
+            exampleSelect.value = Object.keys(EXAMPLES).find((key) => EXAMPLES[key] === sourceEl.value) || '';
+        }
+        sourceEl.addEventListener('input', () => {
+            paintSource();
+            syncExampleSelection();
+        });
         sourceEl.addEventListener('scroll', () => {
             ghostEl.scrollTop = sourceEl.scrollTop;
             ghostEl.scrollLeft = sourceEl.scrollLeft;
@@ -412,8 +378,9 @@ c -> a : r3
         }
 
         function setStatus(msg, kind = 'info') {
+            statusEl.hidden = !msg;
             statusEl.className = `status ${kind}`;
-            statusEl.innerHTML = `<span class="pulse"></span>${msg}`;
+            statusEl.innerHTML = msg ? `<span class="pulse"></span>${msg}` : '';
         }
 
         // The graph component only auto-fits on first connect; re-fit after render.
@@ -547,13 +514,12 @@ c -> a : r3
         }
 
         // ─── Examples ───────────────────────────────────────────────────
-        document.getElementById('example-select').addEventListener('change', (e) => {
+        exampleSelect.addEventListener('change', (e) => {
             const src = EXAMPLES[e.target.value];
             if (!src) return;
             setSource(src);
             // Loading an example resets to View (its own source of truth).
             if (mode === 'edit') enterView(); else apply();
-            e.target.selectedIndex = 0;
         });
 
         // ─── The pipeline: graph + requirements -> live constraint diagram ───
@@ -616,12 +582,10 @@ c -> a : r3
                 handleConflict(result.error);
                 document.getElementById('conflict-hint').style.display = 'inline-flex';
             } else {
-                const n = result.parsed.nodes.size, e = result.parsed.edges.length;
-                const drawn = `Rendered ${n} node${n !== 1 ? 's' : ''}, ${e} edge${e !== 1 ? 's' : ''}.`;
                 if (warnings.length) {
-                    setStatus(`${drawn} ${where(warnings[0])}${warnings[0].message}${rest(warnings)}`, 'info');
+                    setStatus(`${where(warnings[0])}${warnings[0].message}${rest(warnings)}`, 'info');
                 } else {
-                    setStatus(drawn, 'success');
+                    setStatus('');
                 }
             }
         }
@@ -631,7 +595,6 @@ c -> a : r3
         function setModeButtons() {
             modeViewBtn.classList.toggle('active', mode === 'view');
             modeEditBtn.classList.toggle('active', mode === 'edit');
-            document.getElementById('view-hint').style.display = mode === 'view' ? '' : 'none';
             document.getElementById('edit-hint').style.display = mode === 'edit' ? '' : 'none';
         }
 
@@ -639,26 +602,6 @@ c -> a : r3
             if (editUnsub) { editUnsub(); editUnsub = null; }
             editHandle = null;
         }
-
-        function currentValue() {
-            if (mode === 'edit' && editHandle) { try { return editHandle.getValue(); } catch (e) {} }
-            return null;
-        }
-        function updateValuePanel(data) {
-            if (!valueOpen) return;
-            const v = data !== undefined ? data : currentValue();
-            try {
-                valuePanel.textContent = v
-                    ? JSON.stringify(v, null, 2)
-                    : '// switch to Edit to inspect the live value';
-            } catch (e) { valuePanel.textContent = '// (unserializable value)'; }
-        }
-        valueBtn.onclick = () => {
-            valueOpen = !valueOpen;
-            valuePanel.hidden = !valueOpen;
-            valueBtn.classList.toggle('active', valueOpen);
-            if (valueOpen) updateValuePanel();
-        };
 
         // Edit: hand the current notation to the structured-input editor and let
         // it own the graph; mirror its serialized notation back into the textarea.
@@ -685,14 +628,12 @@ c -> a : r3
             if (handle.applied === false) { setStatus(handle.reason || 'Nothing to edit.', 'error'); return; }
             editHandle = handle;
             // Live notation mirror: every edit re-serializes back into the textarea.
-            editUnsub = handle.onChange(({ source, value, error }) => {
+            editUnsub = handle.onChange(({ source, error }) => {
                 setSource(source);
                 writeHash();
-                updateValuePanel(value);
                 if (error) setStatus('Edited — these rules clash on the new graph.', 'error');
                 else setStatus('Edited — notation updated.', 'success');
             });
-            updateValuePanel(handle.getValue());
             setStatus('Edit mode — add nodes / edges; the notation mirrors your edits.', 'info');
             fitEl(inputGraphEl); setTimeout(() => fitEl(inputGraphEl), 450);
         }
@@ -783,7 +724,7 @@ c -> a : r3
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
             const shared = await readHash();
-            setSource(shared && shared.m != null ? shared.m : EXAMPLES.flowchart);
+            setSource(shared && shared.m != null ? shared.m : EXAMPLES.tree);
 
             applyBtn.disabled = false;
             setStatus('Ready — edit and press Apply (⌘⏎).', 'info');

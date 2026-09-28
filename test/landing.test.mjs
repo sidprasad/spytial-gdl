@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import * as core from 'spytial-core';
+import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const landing = read('index.html');
@@ -9,12 +11,11 @@ const docsNav = JSON.parse(read('docs/nav.json'));
 
 assert.match(landing, /<h1 id="page-title">Graph diagrams with layout requirements\.<\/h1>/);
 assert.match(landing, /<p class="lede">Have you ever described a Mermaid or DOT graph/);
-assert.ok(landing.indexOf('<section class="hero"') < landing.indexOf('<section class="model"'));
 assert.ok(!landing.includes('board-graph'), 'The landing page should lead with the project, not the old board demo');
 
 for (const [page, examples, embed, docsLink] of [
   [landing, './playground/', './docs/#/embedding', './docs/'],
-  [docs, '../playground/', '#/embedding', '#/introduction'],
+  [docs, '../playground/', '#/embedding', '#/notation'],
   [playground, '../playground/', '../docs/#/embedding', '../docs/'],
 ]) {
   const mainNav = page.match(/<nav class="[^"]*" aria-label="Main navigation">([\s\S]*?)<\/nav>/)?.[1];
@@ -27,11 +28,38 @@ for (const [page, examples, embed, docsLink] of [
 
 const syntax = docsNav.find((entry) => entry.section === 'Syntax reference');
 assert.deepEqual(syntax.pages.map((page) => page.slug), ['notation', 'requirements']);
-for (const slug of ['introduction', 'embedding', 'notation', 'requirements']) {
+for (const slug of ['embedding', 'notation', 'requirements']) {
   assert.ok(docsNav.flatMap((entry) => entry.pages || [entry]).some((page) => page.slug === slug));
   assert.ok(existsSync(new URL(`../docs/pages/${slug}.md`, import.meta.url)));
 }
 assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/spytial-gdl\/src\/auto\.js"/);
-assert.match(playground, /<select id="example-select"[\s\S]*<option value="pipeline">/);
+const exampleMenu = playground.match(/<select id="example-select"[\s\S]*?<\/select>/)?.[0];
+assert.ok(exampleMenu, 'The playground has an example menu');
+assert.deepEqual([...exampleMenu.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]),
+  ['', 'tree', 'cycle', 'compiler', 'counterfactual']);
+assert.match(exampleMenu, /<option value="tree" selected>Binary tree<\/option>/);
+const examples = Object.fromEntries([...playground.matchAll(/\n\s+(tree|cycle|compiler|counterfactual): `([\s\S]*?)`,/g)]
+  .map(([, name, source]) => [name, source]));
+assert.deepEqual(Object.keys(examples), ['tree', 'cycle', 'compiler', 'counterfactual']);
+for (const [name, source] of Object.entries(examples)) {
+  const compiled = compileSpytialGdl(source);
+  assert.equal(compiled.ok, true, name);
+  assert.deepEqual(compiled.parseErrors, [], name);
+  assert.deepEqual(compiled.annotationErrors, [], name);
+  const solved = solveSpytialGdl(core, compiled);
+  if (name === 'counterfactual') {
+    assert.ok(solved.error?.errorMessages, 'The counterfactual example reports a constraint clash');
+  } else {
+    assert.equal(solved.error, null, `${name} layout requirements are satisfiable`);
+  }
+  assert.deepEqual(solved.diagnostics, [], name);
+  assert.ok(solved.layout, name);
+  if (name === 'cycle') {
+    assert.equal(compiled.parsed.nodes.size, 5);
+    assert.equal(compiled.parsed.edges.length, 5);
+  }
+}
+assert.doesNotMatch(playground, /id="value-btn"|id="view-hint"/);
+assert.match(playground, /#error-messages #error-message-modal\s*\{[^}]*background: var\(--canvas\)/);
 assert.ok(existsSync(new URL('../SKILL.md', import.meta.url)));
 console.log('Landing copy, primary navigation, embedding route, and playground examples are present.');

@@ -1,7 +1,7 @@
 // spytial-gdl docs shell — a tiny client-side, zero-build site that renders
 // Markdown pages with LIVE spytial-gdl diagrams (the docs dogfood the tool).
 //
-// It generalizes examples/md-viewer.html: marked turns each page into HTML, then
+// marked turns each page into HTML, then
 // renderSpytialGdls lights up every ```spytial-gdl block, exactly the way a
 // reader's own page would. Pages live in pages/<slug>.md; the nav is nav.json.
 //
@@ -92,7 +92,7 @@ function markActiveNav(slug) {
   els.sidenav.querySelectorAll('a').forEach((a) => {
     a.classList.toggle('active', a.dataset.slug === slug);
   });
-  const section = slug === 'embedding' || slug === 'platforms' ? 'embedding' : 'introduction';
+  const section = slug === 'embedding' || slug === 'platforms' ? 'embedding' : 'notation';
   document.querySelectorAll('.topbar-links a[href^="#/"]').forEach((a) => {
     if (a.getAttribute('href') === `#/${section}`) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
@@ -121,7 +121,7 @@ function parseHash() {
 async function route() {
   let { slug, heading } = parseHash();
   if (!slug) {
-    location.replace(`#/${flat[0] ? flat[0].slug : 'introduction'}`);
+    location.replace(`#/${flat[0] ? flat[0].slug : 'notation'}`);
     return; // hashchange re-fires route()
   }
   closeNav();

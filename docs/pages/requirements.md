@@ -1,108 +1,23 @@
 # Layout requirements syntax
 
-Write rules as `@name(key=value, ...)`. Selectors determine which nodes or
-edges a rule applies to.
-
 ## Selectors
 
-Selectors are [Simple Graph Query expressions](https://github.com/sidprasad/simple-graph-query/blob/main/LANGUAGE.md).
-The language uses a fragment of Forge, an Alloy dialect, with extensions and
-omissions. This section covers the names Spytial GDL exposes for graph elements.
-For GDL rules, selectors identify nodes or edge pairs.
+A selector tells a requirement which nodes or edges to use. Selectors are
+written in [Simple Graph Query (SGQ)](https://github.com/sidprasad/simple-graph-query),
+which borrows relational expressions from [Forge](https://forge-fm.org/).
 
-### The built-in selectors
-
-| selector | selects |
-|---|---|
-| `<label>` | edges carrying that label. `A -> B : left` gives `left` |
-| `_` | the unlabeled edges (plain `A -> B`) |
-| `_links` | every edge, labeled or not; does not draw additional edges |
-| `<type>` | nodes of that type. `cs:::Course` gives `Course`; a plain node is untyped |
-| `<class>` | nodes carrying that class. `class A,B team` gives `team` |
-| `univ` | every node, whatever its type. The universal set |
-
-The first three select edges and the last three select nodes. A rule that
-places edges, like `@orientation`, takes an edge selector; one that acts on nodes,
-like `@group` or `@atomStyle`, takes a node selector.
-
-### Edge selectors
-
-The label after a colon is the relation name. Target it directly:
-
-```spytial-gdl
-A -> B : reports_to
-C -> B : reports_to
-B -> D : owns
-
-@orientation(selector=reports_to, directions=[above])
-@orientation(selector=owns, directions=[right])
-```
-
-`_` is the relation that unlabeled edges carry, and `_links` is the union of all
-edges. Use `_links` for a baseline that applies to everything, then refine per
-label:
-
-```spytial-gdl
-root -> a : left
-root -> b : right
-a -> a1
-b -> b1
-
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])
-```
-
-`_links` puts all four targets below their sources. The `left` and `right`
-requirements also place those labeled targets to either side. The unlabeled
-edges match only `_links`.
-
-### Node selectors: types and classes
-
-A type comes from `:::Type` and a class comes from `class … tag`. Both select node
-sets, and you can use either wherever a node selector is expected:
-
-```spytial-gdl
-db[DB]:::Service
-api[API]:::Service -> db
-web[Web]:::Client -> api
-
-class db critical
-
-@atomStyle(selector=Service, borderStyle(color='#795db4', width=2))
-@atomStyle(selector=Client, borderStyle(color='#b85c38', width=2))
-@group(selector=critical, name='Critical')
-@orientation(selector=_links, directions=[left])
-```
-
-The types `Service` and `Client` tint nodes by role, and the class `critical` draws
-a region around the one node tagged with it. A type says what a node is; a class is
-a tag you can apply across types.
-
-A node with no `:::Type` is untyped. It belongs to no named type, so a named
-selector never touches it by accident. To reach every node regardless of type,
-typed or classed or plain, use `univ`:
-
-```spytial-gdl
-a[Root] -> b:::Service
-a -> c:::Client
-
-@atomStyle(selector=univ, borderStyle(width=3))
-@orientation(selector=_links, directions=[below])
-```
-
-`univ` gives all three nodes a thicker outline, including the untyped `Root`.
-
-### Advanced: comprehensions
-
-A set comprehension can select nodes by a condition. Quote the expression so
-GDL passes it to Simple Graph Query intact:
-
-```text
-@group(selector='{p: Person | some p.reports_to}', name='Managers')
-```
+1. **Nodes.** A node ID selects that one node: `A` selects `A`. `univ` selects
+   every node. A type name selects every node of that type: `Person` selects all
+   nodes declared with `:::Person`.
+2. **Edges.** An edge name selects the pairs of nodes joined by edges with that
+   name. For `A -> B : child`, `child` includes the pair `(A, B)`. `_links`
+   selects all edges; `_` selects only unlabeled edges such as `A -> B`.
+3. **Combine them.** SGQ's Forge-style relational expressions let you combine
+   node sets and edge relations to select more specific parts of a graph.
 
 ## Layout requirements
+
+Write rules as `@name(key=value, ...)`.
 
 | requirement | effect |
 |---|---|

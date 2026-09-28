@@ -47,7 +47,7 @@ check('the spytial-core devDependency is on the same range as the peer dependenc
   devRange === range, `dev ${JSON.stringify(devRange)} vs peer ${JSON.stringify(range)}`);
 
 // Anywhere a pin can hide: sources, pages, and the docs/README prose.
-const SCAN_DIRS = ['src', 'examples', 'playground', 'docs', 'test'];
+const SCAN_DIRS = ['src', 'playground', 'docs', 'test'];
 const SCAN_FILES = ['README.md', 'index.html'];
 const SCANNABLE = /\.(js|mjs|html|md)$/;
 const SELF = basename(fileURLToPath(import.meta.url));
