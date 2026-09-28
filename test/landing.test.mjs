@@ -26,8 +26,8 @@ for (const [page, examples, embed, docsLink] of [
 }
 
 const syntax = docsNav.find((entry) => entry.section === 'Syntax reference');
-assert.deepEqual(syntax.pages.map((page) => page.slug), ['notation', 'annotations']);
-for (const slug of ['introduction', 'embedding', 'notation', 'annotations']) {
+assert.deepEqual(syntax.pages.map((page) => page.slug), ['notation', 'requirements']);
+for (const slug of ['introduction', 'embedding', 'notation', 'requirements']) {
   assert.ok(docsNav.flatMap((entry) => entry.pages || [entry]).some((page) => page.slug === slug));
   assert.ok(existsSync(new URL(`../docs/pages/${slug}.md`, import.meta.url)));
 }

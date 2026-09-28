@@ -35,7 +35,6 @@
     "skills",
     "llms.txt",
     "README.md",
-    "GUIDE.md",
     "CHANGELOG.md"
   ],
   "scripts": {

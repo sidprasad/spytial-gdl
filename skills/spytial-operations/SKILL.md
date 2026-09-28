@@ -34,7 +34,7 @@ surface syntax. For an unavailable operation, explain the gap or propose a
 supported composition instead of inventing a rule.
 
 For prose and examples, read the
-[GDL requirements reference](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md)
+[GDL requirements reference](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/requirements.md)
 or the Core manifest's `documentation` links as needed.
 
 ## Choose operations by meaning

@@ -15,4 +15,4 @@ Spytial GDL turns a text description of a graph into an interactive diagram. Add
 The syntax reference has two parts:
 
 - [Graph description](notation.md): nodes, edges, labels, types, and classes.
-- [Layout requirements](annotations.md): orientation, alignment, grouping, styling, and conflicts.
+- [Layout requirements](requirements.md): selectors, orientation, alignment, grouping, and styling.

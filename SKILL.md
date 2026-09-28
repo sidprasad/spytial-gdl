@@ -18,17 +18,17 @@ directly; use the corresponding local files when working in this repository.
 
 - **Author or edit graph source:** [Notation](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md)
   covers IDs, display labels, relations, types, classes, and accepted syntax.
-- **Express layout or style:** [Requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/annotations.md)
+- **Express layout or style:** [Requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/requirements.md)
   covers spatial rules, selectors, styling, and conflict diagnostics.
 - **Turn a spatial requirement into operations:** use the
   [operations skill](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md)
-  for choosing operations, reading the Core manifest, and checking their meaning.
+  for choosing operations, reading the spytial-core manifest, and checking their meaning.
 - **Select nodes or derive relationships:** use the
   [selectors skill](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md)
   for writing and evaluating Simple Graph Query expressions.
 - **Embed in a page or application:** [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md)
-  covers renderer and engine loading, JavaScript APIs, editing, and self-hosting.
-  For a documentation framework, use its recipe in [Platforms](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/platforms.md).
+  covers platform setup, renderer and engine loading, JavaScript APIs, editing,
+  and self-hosting.
 - **Look up exact requirement arguments or allowed values:** use the
   [language manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json),
   also exported as `spytial-gdl/language.json`. Follow its upstream selector

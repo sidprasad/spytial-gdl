@@ -163,7 +163,7 @@ const j = (v) => JSON.stringify(v);
 // on atomStyle. Reading it was how someone would have written an annotation
 // that quietly does nothing, so it is held to the tables as well.
 {
-  const DOC = new URL('../docs/pages/annotations.md', import.meta.url);
+  const DOC = new URL('../docs/pages/requirements.md', import.meta.url);
   const text = readFileSync(DOC, 'utf8');
   const rows = new Map();
   for (const line of text.split('\n')) {

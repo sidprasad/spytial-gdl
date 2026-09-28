@@ -3,7 +3,6 @@
   { "title": "Embed in a document", "slug": "embedding" },
   { "section": "Syntax reference", "pages": [
     { "title": "Graph description", "slug": "notation" },
-    { "title": "Layout requirements", "slug": "annotations" }
-  ] },
-  { "title": "Platform support", "slug": "platforms" }
+    { "title": "Layout requirements", "slug": "requirements" }
+  ] }
 ]

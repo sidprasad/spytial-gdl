@@ -26,8 +26,8 @@ Read the consuming operation's selector field in the
 (`items[].fields[].accepts`), or the installed `spytial-core/language.json`.
 For GDL, its [manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json)
 provides compatible upstream links and built-in selectors. Its
-[notation reference](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md)
-covers the names GDL creates. These names have stricter rules than arbitrary
+[requirements reference](https://www.siddharthaprasad.com/spytial-gdl/docs/pages/requirements.md#selectors)
+covers the names GDL exposes. These names have stricter rules than arbitrary
 SGQ identifiers; backquoting a query does not legalize an invalid GDL declaration.
 
 ## Decide the result shape first

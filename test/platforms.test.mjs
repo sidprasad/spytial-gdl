@@ -7,7 +7,7 @@
 // published docs (or, for the Python/Ruby toolchains, generated locally), with
 // the language and content swapped for ours. They are structural facts about
 // other people's output, so they belong in a test: if a fixture stops matching
-// what a generator emits, that is a real regression in docs/pages/platforms.md,
+// what a generator emits, that is a real regression in docs/pages/embedding.md,
 // not a stylistic choice we can change.
 //
 // The DOM here is a stub. querySelectorAll's CSS matching is the browser's job

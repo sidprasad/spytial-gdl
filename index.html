@@ -50,8 +50,7 @@
       <h1 id="page-title">Graph diagrams with layout requirements.</h1>
       <p class="lede">Have you ever described a Mermaid or DOT graph, only to have it laid out all wrong? Spytial-GDL pairs the
         familiar node-and-edge syntax of these graph description languages with lightweight layout requirements.
-        It is backed by a spatial semantics that ensures that any rendered graph lays out as you specified, and
-        fails loudly and usefully when these requirements cannot be met.
+        Its layout requirements keep spatial relationships in place as readers move nodes.
     </p>
       <nav class="hero-actions" aria-label="Get started">
         <a href="./playground/"><strong>Examples</strong><span>Try out some examples online.</span></a>
@@ -65,7 +64,7 @@
       <ol class="steps">
         <li>
           <h3>Describe the graph.</h3>
-          <p>Start with nodes and edges. Leave layout unspecified when it doesn't matter.</p>
+          <p>Start with nodes and edges. Leave layout unspecified when it does not matter.</p>
         </li>
         <li>
           <h3>Add layout requirements.</h3>
@@ -78,9 +77,8 @@
           </p>
         </li>
         <li>
-          <h3>Fail loudly and usefully!</h3>
-          <p>When requirements cannot all hold, you get an error report, 
-            and a counterfactual diagram that helps explain why.</p>
+          <h3>Inspect conflicts.</h3>
+          <p>If requirements conflict, the diagram identifies the affected rules and shows a feasible layout.</p>
         </li>
       </ol>
       <nav class="next" aria-label="More about Spytial GDL">

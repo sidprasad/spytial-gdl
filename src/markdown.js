@@ -48,7 +48,7 @@ let nextSourceId = 0;
 
 // CSS selectors covering how a fenced block comes out the other side of the
 // common documentation pipelines. Every shape below was read off a real
-// generator's output rather than guessed; docs/pages/platforms.md keeps the
+// generator's output rather than guessed; docs/pages/embedding.md keeps the
 // per-platform table and the recipes.
 //
 //   marked / markdown-it / kramdown / Prism  → <pre><code class="language-X">

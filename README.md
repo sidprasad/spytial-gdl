@@ -39,8 +39,7 @@ div -> two[2] : rhs
 
 [Try the live example](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction/drawing-an-expression)
 and drag the nodes. Their positions can change, but the operand relationships
-remain in force. The introduction also demonstrates conflicting rules and
-editing the graph itself.
+remain in force.
 
 Spatial rules express the author's intent. Satisfying them does not establish
 that a graph correctly describes the underlying system.
@@ -70,10 +69,8 @@ loads the rendering engine from a CDN; no build step is required.
 For Markdown, add the same script to your site's template and use a fenced
 code block with the language identifier `spytial-gdl`, as above. Use
 `spytial-gdl-editable` to let readers edit the graph as well as move its nodes.
-See the [platform setup guide](https://www.siddharthaprasad.com/spytial-gdl/docs/#/platforms)
-for integration with your document tooling, or the
-[embedding reference](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding)
-for self-hosting and version-pinned dependencies.
+See the [embedding reference](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding)
+for platform setup, self-hosting, and version-pinned dependencies.
 
 **On GitHub:** README files and PR descriptions display the GDL source but do
 not run the renderer. Include a link to a live diagram, optionally accompanied
@@ -114,12 +111,12 @@ Two focused skills support more involved authoring tasks:
 
 | Skill | Use it to |
 | --- | --- |
-| [Spytial operations](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md) | Translate spatial intent into GDL requirements or Core YAML using the operation manifest |
+| [Spytial operations](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md) | Translate spatial intent into GDL requirements or spytial-core YAML using the operation manifest |
 | [Spytial selectors](https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md) | Select nodes, derive relationships, and check the exact tuples an expression returns |
 
 The main skill links to these when needed. To install them independently, copy
 the desired folder from `skills/` into your agent's supported skills directory.
-They link to the Core and Simple Graph Query manifests and explain how to use
+They link to the spytial-core and Simple Graph Query manifests and explain how to use
 the versions installed by the host.
 
 You can also provide a Mermaid flowchart or Graphviz DOT graph for conversion.
@@ -137,7 +134,7 @@ and selector manifests. It is also exported as `spytial-gdl/language.json`.
 | --- | --- |
 | [Start here](https://www.siddharthaprasad.com/spytial-gdl/docs/#/introduction) | Choose how to try, embed, or write a diagram |
 | [Graph description syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation) | Nodes, edges, labels, types, classes, and Mermaid compatibility |
-| [Layout requirements syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/annotations) | Spatial requirements, selectors, and styling |
+| [Layout requirements syntax](https://www.siddharthaprasad.com/spytial-gdl/docs/#/requirements) | Spatial requirements, selectors, and styling |
 | [Embedding and API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding) | Renderer setup, JavaScript APIs, and editable diagrams |
 | [Examples](https://www.siddharthaprasad.com/spytial-gdl/playground/) | Editable diagrams in the online playground |
 | [Integrations](https://www.siddharthaprasad.com/spytial-gdl/examples/) | Runnable integrations with source you can reuse |

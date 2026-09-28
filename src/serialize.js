@@ -17,7 +17,7 @@
 //   `_links` relation          → skipped (selector-only; duplicates the drawn
 //                                edges, so emitting it would double every edge)
 //   unary (class) relation     → a `class …` line (inline ::: now denotes the
-//                                sort, so cross-cutting groups use the keyword form)
+//                                sort, so classes use the keyword form)
 //
 // Output is canonical and stable so it's diff-friendly and idempotent: nodes and
 // edges keep their first-seen order, a node's type/classes are emitted inline at
@@ -139,7 +139,7 @@ export function serializeToSpytialGdl(input, opts = {}) {
     }
   }
 
-  // Cross-cutting groups round-trip as `class …` lines (inline ::: now denotes
+  // Classes round-trip as `class …` lines (inline ::: now denotes
   // the sort), emitted after the node/edge lines so every referenced node has
   // already been introduced. Class membership is a set, and the atom order it
   // would otherwise follow isn't stable across a round-trip (serialize regroups
