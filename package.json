@@ -40,7 +40,7 @@
   "scripts": {
     "manifest": "node scripts/generate-language-manifest.mjs",
     "test:manifest": "node test/language-manifest.test.mjs",
-    "pretest": "npm run test:manifest && node test/landing.test.mjs && node test/gallery.test.mjs",
+    "pretest": "npm run test:manifest && node test/landing.test.mjs",
     "prepack": "node scripts/generate-language-manifest.mjs --check",
     "serve": "node scripts/preview-server.mjs",
     "update-core": "./scripts/update-spytial-core.sh",
@@ -54,7 +54,8 @@
     "test:conformance": "node test/conformance.test.mjs",
     "test:diagnostics": "node test/engine-diagnostics.test.mjs",
     "test:integration": "node test/sgq-integration.test.mjs",
-    "test:pins": "node test/pins.test.mjs"
+    "test:pins": "node test/pins.test.mjs",
+    "docs:build": "python3 scripts/build-site.py"
   },
   "devDependencies": {
     "spytial-core": "^6.3.0"

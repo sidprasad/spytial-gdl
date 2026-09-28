@@ -78,7 +78,7 @@ For HTML, use a `spytial-gdl` container. For rendered Markdown, use a
 `spytial-gdl` fence. Both need the renderer installed in the host page; the fence
 alone is insufficient. The drop-in module is
 `https://cdn.jsdelivr.net/npm/spytial-gdl/src/auto.js`; it loads the engine from a
-CDN. Serve over HTTP, and use the embedding reference for version pinning or
+CDN. ES modules cannot run from a `file://` URL, so serve over HTTP(S). Use the embedding reference for version pinning or
 self-hosting. Fit the integration to the project's existing tooling.
 
 Use `spytial-gdl-editable` fences or `data-editable` on an HTML container when

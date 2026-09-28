@@ -20,3 +20,13 @@ jobs:
       # build here rather than turning up in someone's diagram.
       - run: npm install
       - run: npm test
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-docs.txt
+      - run: python scripts/build-site.py

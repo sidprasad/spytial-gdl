@@ -1,155 +1,83 @@
-# Layout requirements syntax
-
-Write rules as `@name(key=value, ...)`. Selectors determine which nodes or
-edges a rule applies to.
+# Layout requirements
 
 ## Selectors
 
-Selectors are [Simple Graph Query expressions](https://github.com/sidprasad/simple-graph-query/blob/main/LANGUAGE.md).
-The language uses a fragment of Forge, an Alloy dialect, with extensions and
-omissions. This section covers the names Spytial GDL exposes for graph elements.
-For GDL rules, selectors identify nodes or edge pairs.
+Selectors come in two types: **unary** (sets of nodes) and **binary** (sets of
+pairs of nodes).
 
-### The built-in selectors
+1. **Node IDs and types are unary selectors.** `A` selects the node `A`.
+   `univ` selects all nodes. `Person` selects all nodes of type `Person`.
+   A class name selects all nodes in that class.
+2. **Edge names are binary selectors.** For `A -> B : child`, `child` selects
+   the pair `(A, B)`. It includes every pair joined by an edge named `child`.
+   `_links` selects all edges; `_` selects unlabeled edges.
+3. **Selectors can be composed relationally** using the
+   [SGQ](https://github.com/sidprasad/simple-graph-query) /
+   [Forge](https://forge-fm.org/) language.
 
-| selector | selects |
+Write a rule as `@name(option=value, ...)`. The `selector` says which nodes or
+pairs the rule applies to.
+
+## Constraints
+
+Constraints control the positions, sizes, and visibility of nodes.
+Edit an example’s source and choose **Update diagram** to try it.
+
+### orientation: place nodes in a direction { #orientation }
+
+Place the second node in each selected pair in a direction from the first.
+For `A -> B`, this places `B` relative to `A`.
+
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` | Binary selector | Pairs to arrange. |
+| `directions` | List of directions below | Where to place the second node. |
+| `hold` (optional) | `always`, `never` | Require the relationship (default), or forbid it. |
+
+| Direction | Position of the second node |
 |---|---|
-| `<label>` | edges carrying that label. `A -> B : left` gives `left` |
-| `_` | the unlabeled edges (plain `A -> B`) |
-| `_links` | every edge, labeled or not; does not draw additional edges |
-| `<type>` | nodes of that type. `cs:::Course` gives `Course`; a plain node is untyped |
-| `<class>` | nodes carrying that class. `class A,B team` gives `team` |
-| `univ` | every node, whatever its type. The universal set |
+| `above`, `below` | Above or below the first node. |
+| `left`, `right` | Left or right of the first node. |
+| `directlyAbove`, `directlyBelow` | Above or below, on the same vertical line. |
+| `directlyLeft`, `directlyRight` | Left or right, on the same horizontal line. |
 
-The first three select edges and the last three select nodes. A rule that
-places edges, like `@orientation`, takes an edge selector; one that acts on nodes,
-like `@group` or `@atomStyle`, takes a node selector.
+Combine directions: `[below, right]` means below and to the right.
 
-### Edge selectors
+```spytial-gdl-editable
+A -> B : child
+A -> C : child
 
-The label after a colon is the relation name. Target it directly:
-
-```spytial-gdl
-A -> B : reports_to
-C -> B : reports_to
-B -> D : owns
-
-@orientation(selector=reports_to, directions=[above])
-@orientation(selector=owns, directions=[right])
+@orientation(selector=child, directions=[below])
 ```
 
-`_` is the relation that unlabeled edges carry, and `_links` is the union of all
-edges. Use `_links` for a baseline that applies to everything, then refine per
-label:
+### align: line nodes up { #align }
 
-```spytial-gdl
-root -> a : left
-root -> b : right
-a -> a1
-b -> b1
+Put the two nodes in each selected pair on the same horizontal or vertical line.
 
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` | Binary selector | Pairs to align. |
+| `direction` | `horizontal`, `vertical` | Line to share. |
+| `hold` (optional) | `always`, `never` | Require alignment (default), or forbid it. |
+
+```spytial-gdl-editable
+A -> B : next
+B -> C : next
+
+@align(selector=next, direction=horizontal)
 ```
 
-`_links` puts all four targets below their sources. The `left` and `right`
-requirements also place those labeled targets to either side. The unlabeled
-edges match only `_links`.
+### cyclic: arrange a cycle in a ring { #cyclic }
 
-### Node selectors: types and classes
+Arrange a cycle as a ring.
 
-A type comes from `:::Type` and a class comes from `class … tag`. Both select node
-sets, and you can use either wherever a node selector is expected:
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` | Binary selector | Pairs that form the cycle. |
+| `direction` (optional) | `clockwise`, `counterclockwise` | Order around the ring. |
+| `hold` (optional) | `always`, `never` | Require the relationship (default), or forbid it. |
 
-```spytial-gdl
-db[DB]:::Service
-api[API]:::Service -> db
-web[Web]:::Client -> api
-
-class db critical
-
-@atomStyle(selector=Service, borderStyle(color='#795db4', width=2))
-@atomStyle(selector=Client, borderStyle(color='#b85c38', width=2))
-@group(selector=critical, name='Critical')
-@orientation(selector=_links, directions=[left])
-```
-
-The types `Service` and `Client` tint nodes by role, and the class `critical` draws
-a region around the one node tagged with it. A type says what a node is; a class is
-a tag you can apply across types.
-
-A node with no `:::Type` is untyped. It belongs to no named type, so a named
-selector never touches it by accident. To reach every node regardless of type,
-typed or classed or plain, use `univ`:
-
-```spytial-gdl
-a[Root] -> b:::Service
-a -> c:::Client
-
-@atomStyle(selector=univ, borderStyle(width=3))
-@orientation(selector=_links, directions=[below])
-```
-
-`univ` gives all three nodes a thicker outline, including the untyped `Root`.
-
-### Advanced: comprehensions
-
-A set comprehension can select nodes by a condition. Quote the expression so
-GDL passes it to Simple Graph Query intact:
-
-```text
-@group(selector='{p: Person | some p.reports_to}', name='Managers')
-```
-
-## Layout requirements
-
-| requirement | effect |
-|---|---|
-| `orientation` | place each edge's target relative to its source |
-| `align` | line the endpoints of a relation up on an axis (horizontal/vertical) |
-| `cyclic` | arrange a cycle as a ring |
-| `group` | draw a labeled region around a set of nodes |
-| `size` | fix the width and height of matching nodes |
-| `hideAtom` | hide matching nodes |
-
-`size` and `hideAtom` also affect layout solving.
-
-### orientation
-
-`directions` places each selected edge's target `above`, `below`, `left`, or
-`right` of its source. Combine directions in a list:
-
-```spytial-gdl
-A -> B : left
-A -> C : right
-B -> D
-C -> E
-
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])
-```
-
-Stacking directions combines them, so `[below, right]` puts the target
-down-and-to-the-right.
-
-Each direction has a `directly` form (`directlyAbove`, `directlyBelow`,
-`directlyLeft`, `directlyRight`) that also pins the two nodes to a shared axis, so
-the target lands squarely on the source rather than merely on that side of it.
-`directions=[directlyBelow]` is `[below]` plus the vertical `align` you would
-otherwise write by hand:
-
-```text
-@orientation(selector=stands_for, directions=[directlyBelow])
-```
-
-### cyclic
-
-Arrange the nodes of a cycle as a ring. `direction` is `clockwise` or
-`counterclockwise`:
-
-```spytial-gdl
+```spytial-gdl-editable
 A -> B
 B -> C
 C -> D
@@ -158,110 +86,127 @@ D -> A
 @cyclic(selector=_links, direction=clockwise)
 ```
 
-### group
+### group: enclose nodes in a region { #group }
 
-Draw a labeled region around the nodes a selector matches. `name` is the region's
-caption:
+Draw a labeled region around selected nodes. A unary selector makes one group;
+a binary selector makes one group for each distinct first node in its pairs.
 
-```spytial-gdl
-api -> db : reads
-web -> api : calls
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` | Unary or binary selector | A set of members, or pairs of `(group, member)`. |
+| `name` | Text | Region label; required unless `hold=never`. |
+| `hold` (optional) | `always`, `never` | Require grouping (default), or forbid it. |
+| `showLabel` (optional) | `true`, `false` | Show or hide the label. |
+| `textStyle(...)` (optional) | [Style block](#style-blocks) | Label appearance. |
+| `addEdge` (optional) | `none`, `togroup`, `fromgroup`, or a style block | Connector to or from the group. |
 
-class api,db backend
-class web frontend
+#### Unary: apples in one bag
 
-@group(selector=backend, name='Backend')
-@group(selector=frontend, name='Frontend')
-@orientation(selector=_links, directions=[below])
+`Apple` selects all the apples. They go into one bag.
+
+```spytial-gdl-editable
+gala[🍎 Gala]:::Apple
+fuji[🍎 Fuji]:::Apple
+honeycrisp[🍎 Honeycrisp]:::Apple
+
+@group(selector=Apple, name='Bag')
 ```
 
-### align
+#### Binary: several bags of apples
 
-Line the two endpoints of each edge in a relation up on a shared axis. `direction`
-is `horizontal` or `vertical`. Unlike `group`, `align` takes a binary (edge)
-selector, because it aligns pairs rather than a node set:
+`contains` selects pairs such as `(bag1, gala)` and `(bag2, honeycrisp)`.
+The first node identifies the bag; the second is an apple in that bag.
+Apples with the same first node go into the same bag.
 
-```spytial-gdl
-a -> b : sib
-b -> c : sib
-c -> d : sib
+```spytial-gdl-editable
+bag1[1]:::Bag -> gala[🍎 Gala]:::Apple : contains
+bag1 -> fuji[🍎 Fuji]:::Apple : contains
+bag2[2]:::Bag -> honeycrisp[🍎 Honeycrisp]:::Apple : contains
+bag2 -> pinklady[🍎 Pink Lady]:::Apple : contains
+bag2 -> braeburn[🍎 Braeburn]:::Apple : contains
 
-@align(selector=sib, direction=horizontal)
+@group(selector=contains, name='Bag')
+@hideAtom(selector=Bag)
+@hideField(field=contains)
 ```
 
-Each `sib` edge keeps its source and target on the same horizontal line, so the
-whole chain settles into a row.
+The last two rules hide the bag nodes and their arrows, leaving the labeled
+regions and apples visible.
 
-## Directives (styling)
+### size: set node dimensions { #size }
 
-| directive | what it does |
+Set the width and height of selected nodes.
+
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` (optional) | Unary selector | Nodes to resize; omit for all nodes. |
+| `width` | Positive number | Node width in pixels. |
+| `height` | Positive number | Node height in pixels. |
+
+```spytial-gdl-editable
+alice[Alice]:::Person -> acme[Acme]
+
+@size(selector=Person, width=140, height=60)
+```
+
+### hideAtom: hide nodes { #hideatom }
+
+Hide selected nodes.
+
+| Option | Values | Meaning |
+|---|---|---|
+| `selector` | Unary selector | Nodes to hide. |
+
+```spytial-gdl-editable
+A -> B
+A -> helper:::Helper
+
+@hideAtom(selector=Helper)
+```
+
+`helper` is declared in the source but hidden in the diagram.
+
+## Directives { #styling }
+
+Use directives to change how nodes and edges are drawn.
+
+| Directive | What it does |
 |---|---|
-| `atomStyle` | how matching nodes look: outline, fill, icon, label ([style blocks](#style-blocks)) |
-| `edgeStyle` | how matching edges look: line, label ([style blocks](#style-blocks)) |
-| `attribute` | show a field as a node attribute instead of an edge |
-| `hideField` | hide a relation from drawing (still selectable) |
-| `inferredEdge` | draw a derived/virtual edge |
-| `tag` | annotate nodes with a tag |
-| `flag` | a layout flag, e.g. `flag(name=hideDisconnected)` |
+| `atomStyle` | Style nodes selected by a unary `selector`; omit it for all nodes. |
+| `edgeStyle` | Style edges named by `field`. Use `field=_` for unlabeled edges. |
+| `attribute` | Show a field as a node attribute instead of an edge. |
+| `hideField` | Hide a field's edges; the field can still be selected. |
+| `inferredEdge` | Draw a derived edge from a binary selector. |
+| `tag` | Add a tag to nodes. |
+| `flag` | Set `name=hideDisconnected` or `name=hideDisconnectedBuiltIns`. |
 
-For example, style node types and their connecting edges:
+For `edgeStyle`, `selector` narrows the **source nodes**, while `field` chooses
+the edge name. `_links` is for selecting pairs; use the actual edge name to style them.
 
-```spytial-gdl
-alice[Alice]:::Person -> acme[Acme]:::Company
-bob[Bob]:::Person     -> acme
+```spytial-gdl-editable
+alice[Alice]:::Person -> acme[Acme] : works_at
 
-@atomStyle(selector=Person, borderStyle(color='#795db4', width=2))
-@atomStyle(selector=Company, borderStyle(color='#b85c38', width=2))
-@edgeStyle(field=_, lineStyle(color='#795db4'))
-@orientation(selector=_links, directions=[left])
+@atomStyle(selector=Person, borderStyle(color=steelblue, width=2))
+@edgeStyle(field=works_at, lineStyle(pattern=dashed))
 ```
 
-`atomStyle` takes a node selector: a type, a class, or `univ`.
-`edgeStyle` takes a `field`, meaning the relation's name. Unlabeled edges are all
-named `_`, so `field=_` means every
-plain edge, and a labeled edge is styled by its label, as in `field=works_at`. Its
-optional `selector=` does not choose the edges; it only narrows which source nodes'
-edges match.
+### Style blocks
 
-`_links` selects edges for layout rules such as `@orientation`, but is hidden
-from drawing. To style unlabeled edges, use `field=_`.
+Put appearance options inside a named block, such as `lineStyle(pattern=dashed)`.
 
-### Recipes
-
-In the examples below, `rel` is an edge label (`a -> b : rel`) and `Person` is
-a node type (`a[Ann]:::Person`). A class from `class a,b tag` can also be used
-as a node selector.
-
-| to do this | write |
+| Block | Options |
 |---|---|
-| draw `rel` dotted | `@edgeStyle(field=rel, lineStyle(pattern=dotted))` |
-| draw `rel` dashed | `@edgeStyle(field=rel, lineStyle(pattern=dashed))` |
-| color `rel` | `@edgeStyle(field=rel, lineStyle(color=crimson))` |
-| thicken `rel` | `@edgeStyle(field=rel, lineStyle(weight=3))` |
-| drop `rel`'s label | `@edgeStyle(field=rel, showLabel=false)` |
-| restyle `rel`'s label | `@edgeStyle(field=rel, textStyle(size=small))` |
-| style the unlabeled edges | `@edgeStyle(field=_, lineStyle(color='#795db4'))` |
-| stop drawing `rel` entirely | `@hideField(field=rel)` |
-| tint a node's outline | `@atomStyle(selector=Person, borderStyle(color=steelblue, width=2))` |
-| fill a node's interior | `@atomStyle(selector=Person, fillStyle(color='#795db4'), textStyle(color=white))` |
-| restyle a node's label | `@atomStyle(selector=Person, textStyle(size=large))` |
-| resize nodes | `@size(selector=Person, width=140, height=60)` |
-| hide nodes | `@hideAtom(selector=Person)` |
-
-Combine style fields in one rule:
-
-```spytial-gdl
-concept[blood pressure] -> measure[BP@6mo] : stands_for
-
-@edgeStyle(field=stands_for, lineStyle(pattern=dotted, color='#795db4'), showLabel=false)
-@orientation(selector=stands_for, directions=[below])
-```
-
-An `atomStyle` without `selector` styles every node.
+| `lineStyle(...)` | `color`, `pattern` (`solid`, `dashed`, `dotted`), `weight`, `highlight` |
+| `textStyle(...)` | `size` (`small`, `normal`, `large`), `color` |
+| `borderStyle(...)` | `color`, `width` |
+| `fillStyle(...)` | `color` |
 
 ### Argument reference
 
-`?` means optional; `(…)` marks a [style block](#style-blocks).
+<details markdown="1">
+<summary>All rule arguments</summary>
+
+`?` means optional; `(…)` means a style block.
 
 | rule | kind | arguments |
 |---|---|---|
@@ -282,65 +227,7 @@ An `atomStyle` without `selector` styles every node.
 `hold=never` requires a relationship to be false. It applies to `orientation`,
 `align`, `cyclic`, and `group`.
 
-## Style blocks
+</details>
 
-Use nested style blocks for outlines, fills, lines, and labels:
-
-```spytial-gdl
-@edgeStyle(field=next,
-  lineStyle(color=crimson, pattern=dashed, weight=2),
-  textStyle(size=small),
-  showLabel=true)
-
-@atomStyle(selector=Person,
-  borderStyle(color='#b85c38', width=2),
-  fillStyle(color='#795db4'),
-  textStyle(size=large, color=white))
-```
-
-Common style blocks:
-
-| block | fields | styles |
-|---|---|---|
-| `lineStyle` | `color`, `pattern` (`solid`/`dashed`/`dotted`), `weight`, `highlight` | a drawn line |
-| `textStyle` | `size` (`small`/`normal`/`large`), `color` | a label |
-| `borderStyle` | `color`, `width` | a node's outline |
-| `fillStyle` | `color` | a node's interior |
-
-`inferredEdge`, `attribute`, `tag`, and a group's `addEdge` connector take them
-too:
-
-```spytial-gdl
-@inferredEdge(name=parent, selector='~children', lineStyle(pattern=dotted))
-@attribute(field=weight, textStyle(size=small))
-@group(selector=Team.members, name=Team,
-  addEdge(points=togroup, lineStyle(pattern=dashed)),
-  textStyle(size=small))
-```
-
-> **Note.** A node's `borderStyle(color=…)` is what tints it in the default
-> rendering. `fillStyle` paints the interior. Set `textStyle(color=…)` with a
-> fill so the label remains readable in both themes.
-
-## Mermaid-safe rules
-
-A `%%@name(...)` form is also accepted. It is a Mermaid comment guard, so a block
-survives being pasted into a vanilla Mermaid renderer, which ignores `%%` lines,
-while still compiling here:
-
-```text
-%% @orientation(selector=_links, directions=[below])
-```
-
-The bare `@…` and the guarded `%% @…` forms compile identically.
-
-## Composing with raw rules
-
-Inline requirements and styling rules combine with raw spytial-core YAML in
-`opts.rules` and class rules in the `registerSpec` registry. See
-[Programmatic API → composing rules](embedding.md#composing-rules-registry-and-yaml).
-
-## Next
-
-- [Embedding & API](embedding.md): putting the diagram in a page, or driving it from JavaScript.
-- [Graph description](notation.md): where edge labels, types, and classes are declared.
+`%% @name(...)` also works when rules need to survive as comments in Mermaid.
+For use from JavaScript, see [composing rules](embedding.md#composing-rules-registry-and-yaml).

@@ -14,13 +14,11 @@ and links to the relevant authoring, integration, and validation references.
 - GDL language manifest: https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json
 - Core layout manifest: https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/docs/spytial-language.json
 - Selector language manifest: https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json
-- Introduction: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/introduction.md
 - Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md
 - Requirements: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/requirements.md
 - Embedding and API: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md
 - Platform recipes: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/embedding.md#platform-setup
 - Playground: https://www.siddharthaprasad.com/spytial-gdl/playground/
-- Examples: https://www.siddharthaprasad.com/spytial-gdl/examples/
 - Source: https://github.com/sidprasad/spytial-gdl
 
 ## Minimal integration

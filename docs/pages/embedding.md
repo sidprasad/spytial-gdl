@@ -19,8 +19,8 @@ A -> B
 ````
 
 The script renders each `spytial-gdl` block after Markdown becomes HTML.
-Serve the page over HTTP; ES modules cannot run from a `file://` URL. See the
-[drop-in example](../examples/drop-in.html) or [platform setup](#platform-setup).
+ES modules cannot run from a `file://` URL, so serve the page over HTTP(S). See
+[platform setup](#platform-setup).
 
 ## Platform setup
 
@@ -125,7 +125,7 @@ Without `#:exclude-tags`, `decode-paragraphs` changes the block structure and
 
 Pollen requires balanced braces. Use `◊spytial-gdl|{ … }|` for unbalanced braces.
 
-### Platform issues
+### Potential Platform issues
 
 #### Smart punctuation
 
@@ -143,194 +143,26 @@ a `<td>` without its language marker. The block then stays as code. Use the
 
 Docusaurus, VitePress, and Starlight replace page content without reloading.
 `autoRender` renders blocks added after navigation. To use a custom route hook,
-set `observe: false` and call [`renderSpytialGdls`](#the-functions).
+set `observe: false` and call `renderSpytialGdls(root)` from `src/markdown.js`.
 
 #### Content Security Policy
 
 The drop-in tag loads spytial-core, d3, and WebCola from jsDelivr. If your CSP
-blocks the CDN, [self-host the engine](#self-hosting-the-engine). If loading
+blocks the CDN, load spytial-core yourself and call
+`autoRender({ injectEngine: false })`. If loading
 fails, the source remains visible and a notice appears above the block and in
 the console.
 
 #### Static Markdown hosts
 
 GitHub, GitLab, and npm do not run JavaScript in rendered Markdown. They show
-the source block. To view the diagram, open the file through
-[`examples/md-viewer.html`](../examples/md-viewer.html).
-
-### Other generators
-
-The renderer also detects other generators that retain the language on `<pre>`,
-`<code>`, a wrapping `<div>`, or `data-language`; see
-[What gets detected](#what-gets-detected).
-For other output, use an HTML container:
-
-```html
-<div class="spytial-gdl">
-A -> B : left
-A -> C : right
-</div>
-```
-
-## Choose how your diagrams appear
-
-Each diagram gets a 360px frame. Zoom, fit, and **View source** controls sit at
-the bottom right. Editable diagrams open with their source editor visible.
-
-To match a dark page, put `data-theme="dark"` on a parent element such as your
-site's `<body>`. All diagrams inside it then use the dark graph and frame theme:
-
-```html
-<body data-theme="dark">
-  <!-- Your Markdown content is rendered here. -->
-</body>
-```
-
-If your site already sets CSS `color-scheme: dark`, the embed picks that up too.
-For a single diagram with its own theme or height, use a hand-authored HTML block
-in the page:
-
-```html
-<div class="spytial-gdl" data-theme="light" data-height="420">
-A[Author] -> B[Reader]
-</div>
-```
-
-`data-theme` overrides the page theme for that block; `data-height` sets its
-frame height in pixels. Some Markdown processors let you put these attributes
-on a fenced code block instead. If yours allows raw HTML, use the HTML block
-without needing special fence syntax. Add `data-editable` to make that block
-editable.
-
-To change controls or the default height for every diagram, replace the drop-in
-`auto.js` tag with this module script in your template (include only one of them):
-
-```html
-<script type="module">
-  import { autoRender } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
-
-  autoRender({
-    height: 420,
-    viewOptions: { toolbar: 'full' },
-  });
-</script>
-```
-
-spytial-core also accepts `toolbar: 'compact'` or `'none'`, and switches such as
-`controls: { zoom: false, fit: false }`. An explicit `toolbar` setting uses its
-usual placement; **View source** stays available. A block's `data-height` takes
-precedence over the page-wide `height` option. See the [options table](#options).
-
-## What gets detected
-
-The renderer recognizes markup from common generators and HTML pages. It checks
-several places for the language marker:
-
-| markup | source |
-|---|---|
-| `<pre><code class="language-spytial-gdl">` | marked · markdown-it · kramdown · Prism · highlight.js |
-| `<pre class="language-spytial-gdl">`, `<pre class="spytial-gdl">` | pymdownx · Pandoc · MkDocs custom fences |
-| `<code class="language-spytial-gdl">`, `<code class="spytial-gdl">` | Hugo (Chroma) · Quarto |
-| `<div class="language-spytial-gdl">`, `<div class="highlight-spytial-gdl">` | Jekyll · MkDocs Material · Docusaurus · VitePress · Sphinx |
-| `data-language` / `data-lang` attribute | Astro · Starlight · Hugo |
-| `<div class="spytial-gdl">` | hand-authored HTML |
-
-`spytial` is accepted as an alias for `spytial-gdl`. Editable blocks use the
-dedicated languages `spytial-gdl-editable` and `spytial-editable`, or a
-`data-editable` attribute on the host. See [Editable diagrams](#editable-diagrams).
-
-The source is read back with the line structure restored, because several
-pipelines rebuild a block one element per line (a `<div>` or a `<br>` where a
-newline used to be) and the theme's copy button often sits inside the block.
-When the block is wrapped in a container that holds nothing else, the container
-is replaced along with it, so no empty themed box is left behind.
-
-## The functions
-
-Import from `src/markdown.js`, or from the CDN URL:
-
-```js
-import {
-  autoRender, renderSpytialGdls, ensureEngineLoaded, whenEngineReady,
-} from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/markdown.js';
-```
-
-| export | what it does |
-|---|---|
-| `autoRender(opts)` | render every block on the page once the DOM is ready, injecting the engine if absent. The one-liner the drop-in tag calls. |
-| `renderSpytialGdls(root = document, opts)` | render blocks under `root`; returns a per-block results array. Use it after you inject HTML yourself. |
-| `ensureEngineLoaded(opts)` | inject the spytial-core browser bundle if it is absent from the page. |
-| `whenEngineReady(ms)` | resolve once the engine global is available (polls, with a timeout). |
-| `observeBlocks(opts)` | watch for blocks added later and render them; returns a stop function. `autoRender` calls it for you. |
-
-`src/auto.js` is `autoRender()` wrapped in a module, so the drop-in tag
-`<script type="module" src=".../src/auto.js">` needs no code of your own.
-
-## Options
-
-`opts` is shared by `autoRender` and `renderSpytialGdls`:
-
-| option | default | meaning |
-|---|---|---|
-| `height` | `360` | diagram height: a number of pixels, or any CSS length. A block overrides it with `data-height`. |
-| `theme` | page theme, otherwise `'light'` | spytial-core theme name. `data-theme` on a block takes precedence; the nearest page `data-theme="light"` or `"dark"` is used when no theme is passed. |
-| `viewOptions` | spytial-core zoom and fit buttons floated beside Source; editing controls on editable blocks | spytial-core presentation options. Pass `{ toolbar: 'none' }` to hide zoom and fit, `{ toolbar: 'compact' }` for the usual compact toolbar, or `{ toolbar: 'full' }` for every control. |
-| `sourceOpen` | `false` | start read-only blocks with the source panel visible. Editable blocks already open with their source editor visible. |
-| `editable` | `false` | render every block as the editor (see [Editable diagrams](#editable-diagrams)). |
-| `observe` | `true` | (`autoRender` only) keep watching for blocks added after the first pass, so client-side navigation renders too. |
-| `injectEngine` | `true` | inject the CDN engine scripts if absent. Set it to `false` if you load spytial-core yourself. |
-| `deps` | built-in | override the engine bundle URL, to self-host or pin. |
-| `timeoutMs` | `10000` | how long `whenEngineReady` polls before giving up. |
-
-```js
-// Render a fragment you built at runtime, dark, 420px tall:
-await renderSpytialGdls(document.getElementById('panel'), { theme: 'dark', height: 420 });
-```
-
-For a copyable page example, see [Choose how your diagrams appear](#choose-how-your-diagrams-appear).
-
-## The results array
-
-`renderSpytialGdls` returns one entry per block, so you can react to failures:
-
-```js
-const results = await renderSpytialGdls(document);
-const failed = results.filter((r) => r.error);
-// each entry: { host, applied?, result?, error?, editable?, handle? }
-```
-
-`result` is the full [`renderSpytialGdl`](#renderspytialgdl) return for a read-only
-block, and `handle` is the [editable handle](#the-handle) for an editable one.
-
-## View and edit source
-
-Every embed can show its source below the diagram. Read-only embeds start with it
-hidden by default; click **View source** beside the zoom and fit controls to reveal
-and copy it. The examples on this documentation site start with source open.
-Editable blocks also open with their source editor visible: drag the graph or edit
-the text and press **Update diagram** (⌘⏎). Use **Hide source** to close either panel.
-
-## Self-hosting the engine
-
-For an offline or version-pinned deploy, host the complete spytial-core browser
-bundle yourself and pass its URL as `deps`. It includes d3 and WebCola.
-
-```js
-autoRender({
-  deps: ['/vendor/spytial-core-complete.global.js'],
-});
-```
-
-Or load spytial-core on the page yourself and call
-`autoRender({ injectEngine: false })`.
+the source block. Link to a live diagram instead; the playground's **Share**
+button creates one.
 
 ## Editable diagrams
 
-A read-only block draws the notation. An editable block renders the same graph onto
-Spytial's `<structured-input-graph>` editor instead, so readers can add and delete
-nodes, drag to connect edges, and rename relations, with constraints re-solving as
-they go. They can copy the current notation at any point. Try it by dragging the
-picture or by editing the text and pressing **Update diagram** (⌘⏎):
+Use the `spytial-gdl-editable` fence to let readers edit the graph as well as
+drag it:
 
 ```spytial-gdl-editable
 A -> B : left
@@ -340,110 +172,6 @@ A -> C : right
 @orientation(selector=right, directions=[right])
 @orientation(selector=_links, directions=[below])
 ```
-
-The source editor below the diagram is live in both directions: edit the graph and
-the text re-derives, edit the text and **Update diagram** pushes it back into the diagram.
-**Copy source** copies the graph and its requirements. Graph edits preserve the
-`@` rules verbatim.
-
-### Turning a block editable
-
-Three equivalent ways, in order of locality:
-
-````markdown
-```spytial-gdl-editable
-A -> B
-```
-````
-
-```html
-<div class="spytial-gdl" data-editable>A -> B</div>
-```
-
-```js
-autoRender({ editable: true });   // every block on the page becomes an editor
-```
-
-### Driving the editor from JavaScript
-
-Outside Markdown, render onto an element and get a handle back:
-
-```js
-import { renderSpytialGdlEditable } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/index.js';
-
-const h = await renderSpytialGdlEditable(document.getElementById('out'), `
-A -> B : left
-A -> C : right
-
-@orientation(selector=left, directions=[left])
-`);
-
-h.onChange(({ source, value }) => {
-  console.log(source); // spytial-gdl notation, re-derived from the edited graph
-  console.log(value);  // its reified value: { atoms, relations } JSON
-});
-```
-
-### renderSpytialGdlEditable
-
-```text
-renderSpytialGdlEditable(container, source, opts?) → Promise<handle>
-```
-
-- `container`: an `Element` to mount into, or a `<structured-input-graph>` itself.
-- `source`: spytial-gdl text with inline requirements, same as the read-only path.
-- `opts`: `{ rules?, extraSpec?, width?, height?, theme?, ariaLabel?, viewOptions? }`.
-
-Editable diagrams use compact spytial-core controls with graph editing actions enabled.
-Use `viewOptions` to customize them, for example `{ toolbar: 'full' }` or
-`{ controls: { editing: false } }`.
-
-Returns `{ applied: false, reason, … }` if the source has no nodes; otherwise the
-handle below.
-
-### The handle
-
-| member | what it gives you |
-|---|---|
-| `getSource()` | get the edited graph as spytial-gdl source, with its `@` rules preserved |
-| `getValue()` | the reified value: `{ atoms, relations }` JSON |
-| `onChange(cb)` | runs `cb({ source, value, error })` after every edit; returns an unsubscribe function |
-| `element` | the live `<structured-input-graph>` |
-| `dataInstance` | the backing data instance |
-| `diagnostics` | every problem found in the initial source, in the same shape as on the [read-only result](#the-result-object) |
-| `applied`, `parsed`, `annotationErrors`, `parseErrors`, `hiddenRelations`, `rules` | render metadata, as on the read-only result |
-
-`onChange` coalesces a burst of synchronous mutations (an edge rename is a remove
-plus an add, for instance) into a single callback, and rebinds automatically if the
-editor's "clear all" swaps in a fresh data instance. You get one clean event per
-logical edit.
-
-`diagnostics` describes the text that was applied (the initial source, or the last
-**Update diagram**). The editor element itself reports only a constraint clash as you edit;
-update the diagram again to refresh the rest.
-
-### The serializer on its own
-
-`getSource()` is built on `serializeToSpytialGdl`, the inverse of the render
-pipeline. You can call it directly on any `{ atoms, relations }` object, or on
-anything with a `reify()` method:
-
-```js
-import { serializeToSpytialGdl } from 'https://cdn.jsdelivr.net/npm/spytial-gdl/src/index.js';
-
-const notation = serializeToSpytialGdl(value, { annotations: annotationLines });
-```
-
-The playground's **Edit** toggle and
-[`examples/editable.html`](https://github.com/sidprasad/spytial-gdl/blob/main/examples/editable.html)
-use this serializer.
-
-### Why source changes need a click
-
-Text to diagram is an explicit apply (**Update diagram** / ⌘⏎) rather than continuous
-binding. Continuous binding would fight the normalizing serializer mid-keystroke,
-producing caret jumps, dropped `%%` comments, and lost node positions. Diagram to
-text is live because the user is not editing that text.
 
 ## Programmatic API
 
@@ -469,7 +197,7 @@ The full export surface:
 | `mountGraph(container, opts)` | create/return a read-only `<webcola-cnd-graph>` |
 | `renderSpytialGdl(graphEl, source, opts)` | render source onto it |
 | `mountInputGraph(container, opts)` | create/return an editable `<structured-input-graph>` |
-| `renderSpytialGdlEditable(container, source, opts)` | render onto the editor, returning a [handle](#the-handle) |
+| `renderSpytialGdlEditable(container, source, opts)` | render onto the editor, returning a handle with `getSource()` and `onChange(cb)` |
 | `serializeToSpytialGdl(value, opts)` | the notation serializer, inverse of render |
 | `extractAnnotations(rawSource)` | extract inline `@` rules from source |
 | `registerSpec`, `clearRegistry`, `mergeSpecStrings`, `mergeSpecsForClasses` | the rule registry and merge helpers |
@@ -603,8 +331,7 @@ The two ends of the pipeline, usable standalone:
   `{ source, specYaml, annotationLines, errors }`, lifting the `@…` lines out and
   compiling them to authoring YAML.
 - `serializeToSpytialGdl(value, { annotations })` returns notation text, turning a
-  `{ atoms, relations }` value back into spytial-gdl source. This is what powers
-  the editable handle's [`getSource()`](#the-serializer-on-its-own).
+  `{ atoms, relations }` value back into spytial-gdl source.
 
 ### compileSpytialGdl
 

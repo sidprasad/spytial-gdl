@@ -8,31 +8,15 @@
   <link rel="canonical" href="https://www.siddharthaprasad.com/spytial-gdl/" />
   <link rel="stylesheet" href="./assets/site.css" />
   <style>
-    main { max-width: 900px; margin: 0 auto; padding: 36px 28px 88px; }
-    .name { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 84px; }
-    .hero { max-width: 760px; }
-    h1 { max-width: 16ch; margin: 0 0 24px; font-size: clamp(42px, 6vw, 64px); line-height: 1.08; }
-    .lede { max-width: 640px; margin: 0; font-size: clamp(20px, 2.4vw, 23px); line-height: 1.4; }
-    .hero-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; max-width: 680px; margin: 42px 0 92px; }
-    .hero-actions a { color: var(--ink); text-decoration: none; }
-    .hero-actions strong { display: block; margin-bottom: 5px; font: 500 20px/1.3 var(--display); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 4px; }
-    .hero-actions span { display: block; max-width: 29ch; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
-    .hero-actions a:hover strong { text-decoration: underline; text-underline-offset: 3px; }
-    .model h2 { font-size: clamp(27px, 3vw, 32px); line-height: 1.2; }
-    .model { max-width: 760px; }
-    .model h2 { margin-bottom: 28px; }
-    .steps { list-style: none; margin: 0; padding: 0; }
-    .steps li { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: baseline; margin: 0 0 19px; }
-    .steps h3 { font-size: 19px; }
-    .steps p { margin: 0; color: var(--ink-2); font-size: 16px; }
-    .next { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 64px; font-size: 15px; }
-    @media (max-width: 700px) {
-      main { padding: 28px 22px 64px; }
-      .name { margin-bottom: 56px; }
-      .hero-actions { grid-template-columns: 1fr; gap: 22px; margin-bottom: 68px; }
-      .steps li { display: block; margin-bottom: 22px; }
-      .steps h3 { margin-bottom: 3px; }
-    }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 24px 72px; }
+    .name { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 24px; margin-bottom: 56px; }
+    h1 { margin-bottom: 20px; }
+    .lede { margin: 0 0 40px; font-size: 20px; line-height: 1.45; }
+    .features { margin: 0 0 40px; padding-left: 1.2em; }
+    .features li { margin-bottom: 10px; color: var(--ink-2); }
+    .features strong { color: var(--ink); font-weight: 600; }
+    h2 { margin-bottom: 16px; }
+    .more { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 16px; }
   </style>
 </head>
 <body>
@@ -46,46 +30,30 @@
       </nav>
     </header>
 
-    <section class="hero" aria-labelledby="page-title">
-      <h1 id="page-title">Graph diagrams with layout requirements.</h1>
-      <p class="lede">Have you ever described a Mermaid or DOT graph, only to have it laid out all wrong? Spytial-GDL pairs the
-        familiar node-and-edge syntax of these graph description languages with lightweight layout requirements.
-        Its layout requirements keep spatial relationships in place as readers move nodes.
-    </p>
-      <nav class="hero-actions" aria-label="Get started">
-        <a href="./playground/"><strong>Examples</strong><span>Try out some examples online.</span></a>
-        <a href="./docs/#/embedding"><strong>Web Native</strong><span>Easy to embed in HTML, Markdown, MkDocs, Jekyll, 
-          Hugo, Pollen, Docusaurus, ...</span></a>
-      </nav>
-    </section>
+    <h1 id="page-title">Graph diagrams with layout requirements.</h1>
+    <p class="lede">Have you ever described a Mermaid or DOT graph, only to have it laid out all wrong? Spytial-GDL pairs the
+      familiar node-and-edge syntax of these graph description languages with lightweight layout requirements.
+      Its layout requirements keep spatial relationships in place as readers move nodes.</p>
 
-    <section class="model" aria-labelledby="model-title">
-      <h2 id="model-title">Add requirements where they matter.</h2>
-      <ol class="steps">
-        <li>
-          <h3>Describe the graph.</h3>
-          <p>Start with nodes and edges. Leave layout unspecified when it does not matter.</p>
-        </li>
-        <li>
-          <h3>Add layout requirements.</h3>
-          <p>Specify only the spatial relationships that matter.</p>
-        </li>
-        <li>
-          <h3>Enforced in real time</h3>
-          <p>Generated graphs are interactive! You can drag elements around, with confidence that
-          the layout requirements will always hold.
-          </p>
-        </li>
-        <li>
-          <h3>Inspect conflicts.</h3>
-          <p>If requirements conflict, the diagram identifies the affected rules and shows a feasible layout.</p>
-        </li>
-      </ol>
-      <nav class="next" aria-label="More about Spytial GDL">
-        <a href="https://github.com/sidprasad/spytial-gdl">View on GitHub</a>
-        <a href="./SKILL.md">Using an agent or workflow? Get the skill</a>
-      </nav>
-    </section>
+    <ul class="features">
+      <li><strong><a href="./playground/">Examples</a></strong> Try out some examples online.</li>
+      <li><strong><a href="./docs/#/embedding">Web Native</a></strong> Easy to embed in HTML, Markdown, MkDocs, Jekyll,
+        Hugo, Pollen, Docusaurus, ...</li>
+    </ul>
+
+    <h2>Add requirements where they matter.</h2>
+    <ul class="features">
+      <li><strong>Describe the graph.</strong> Start with nodes and edges. Leave layout unspecified when it does not matter.</li>
+      <li><strong>Add layout requirements.</strong> Specify only the spatial relationships that matter.</li>
+      <li><strong>Enforced in real time</strong> Generated graphs are interactive! You can drag elements around, with confidence that
+        the layout requirements will always hold.</li>
+      <li><strong>Inspect conflicts.</strong> If requirements conflict, the diagram identifies the affected rules and shows a feasible layout.</li>
+    </ul>
+
+    <nav class="more" aria-label="More about Spytial GDL">
+      <a href="https://github.com/sidprasad/spytial-gdl">View on GitHub</a>
+      <a href="./SKILL.md">Using an agent or workflow? Get the skill</a>
+    </nav>
   </main>
 </body>
 </html>

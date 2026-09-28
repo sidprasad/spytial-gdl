@@ -125,15 +125,13 @@ function resolveRules(parsed, opts, annoYaml) {
   ]);
 }
 
-// Express the selector-only relations as `hideField` directives in authoring
-// YAML, so they stay queryable in selectors but are not drawn as duplicate
-// edges. parseLayoutSpec folds these into `directives.hiddenFields`, which is
-// where both the read-only and editable paths need them. Field names are
-// single-quoted so `_links` / hyphenated classes stay valid scalars.
-function hideFieldsYaml(hiddenRelations) {
-  if (!hiddenRelations || hiddenRelations.length === 0) return '';
-  let out = 'directives:\n';
-  for (const field of hiddenRelations) {
+// Keep GDL's internal relation names out of the drawing. The editable element
+// solves again after every edit, so these defaults must travel in its spec,
+// not just be applied to the read-only renderer's first layout. Include the
+// unlabeled-edge rule even before an edge exists, for edges added in the editor.
+function presentationRulesYaml(hiddenRelations) {
+  let out = `directives:\n  - edgeStyle: { field: '${DEFAULT_RELATION}', showLabel: false }\n`;
+  for (const field of hiddenRelations || []) {
     out += `  - hideField: { field: '${String(field).replace(/'/g, "''")}' }\n`;
   }
   return out;
@@ -172,13 +170,11 @@ export function compileSpytialGdl(source, opts = {}) {
   }
 
   const { atoms, relations, hiddenRelations } = relationalize(parsed);
-  // The selector-only relations are hidden in the spec text itself rather than
-  // by mutating the parsed spec afterwards, so `rules` is the whole spec: there
-  // is nothing added downstream that could change what it entails. Both land in
-  // `directives.hiddenFields` either way.
+  // Put presentation defaults in the spec itself so they also apply when the
+  // editable element solves again after a change to the graph.
   const rules = mergeSpecStrings([
     resolveRules(parsed, opts, annoYaml),
-    hideFieldsYaml(hiddenRelations),
+    presentationRulesYaml(hiddenRelations),
   ]);
 
   return {
@@ -227,7 +223,7 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
 
   // 2. layout rules → parsed spec. The engine's parser throws on a spec it
   //    refuses, and every rule goes with it; say so, and solve under only the
-  //    hideField directives so the graph is still drawn once, with the reason
+  //    presentation defaults so the graph is still drawn once, with the reason
   //    beside it, rather than not at all.
   let rules = compiled.rules;
   let spec;
@@ -239,7 +235,7 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
       message: 'the engine rejected the layout rules, so the diagram is drawn without them: ' +
         (err && err.message ? err.message : String(err)),
     });
-    rules = hideFieldsYaml(compiled.hiddenRelations);
+    rules = presentationRulesYaml(compiled.hiddenRelations);
     spec = parseLayoutSpec(rules || '');
   }
 

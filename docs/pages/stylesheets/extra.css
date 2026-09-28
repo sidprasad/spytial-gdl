@@ -1,0 +1,6 @@
+/* Keep the standard Material layout; give embedded diagrams room to breathe. */
+.md-typeset .spytial-gdl-device { margin: 1.25em 0 2em; font-size: 16px; }
+.md-typeset .spytial-gdl-device pre { margin: 0; }
+.md-typeset .spytial-gdl-device button { cursor: pointer; }
+.md-typeset table:not([class]) { font-size: .8rem; }
+.md-typeset h3 code { font-size: 1em; }
