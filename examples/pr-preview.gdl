@@ -1,0 +1,8 @@
+source[GDL source] -> image[PNG preview] : render
+source -> live[Live playground] : share
+image -> pr[PR comment] : embed
+live -> pr : link
+
+@orientation(selector=render, directions=[right])
+@orientation(selector=share, directions=[below])
+@orientation(selector=embed, directions=[below])
