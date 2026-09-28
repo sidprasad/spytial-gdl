@@ -1,0 +1,53 @@
+site_name: Spytial GDL
+site_description: Graph notation, layout rules, and live diagrams.
+site_url: https://www.siddharthaprasad.com/spytial-gdl/docs/
+repo_url: https://github.com/sidprasad/spytial-gdl
+repo_name: sidprasad/spytial-gdl
+edit_uri: edit/main/docs/pages/
+docs_dir: docs/pages
+site_dir: site/docs
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  font: false
+  features:
+    - navigation.sections
+    - navigation.footer
+    - content.code.copy
+    - search.suggest
+  palette:
+    scheme: default
+    primary: indigo
+
+nav:
+  - Documentation: index.md
+  - Graph description: notation.md
+  - Layout requirements: requirements.md
+  - Embed in a document: embedding.md
+  - Examples: https://www.siddharthaprasad.com/spytial-gdl/playground/
+
+plugins:
+  - search
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: spytial-gdl
+          class: spytial-gdl
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: spytial-gdl-editable
+          class: spytial-gdl-editable
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_javascript:
+  - path: javascripts/diagrams.js
+    type: module
+extra_css:
+  - stylesheets/extra.css

@@ -49,8 +49,21 @@ GitHub does not run the renderer in READMEs, so the block above shows as source.
 ```sh
 npm install
 npm test
-npm run serve   # site, docs, and playground at localhost:8100
+npm run serve   # site and playground at localhost:8100
 ```
+
+The documentation uses Material for MkDocs. To build it with the live examples:
+
+```sh
+python3 -m venv .venv-docs
+source .venv-docs/bin/activate
+pip install -r requirements-docs.txt
+npm run docs:build
+npm run serve   # includes the built docs at localhost:8100/docs/
+```
+
+Edit Markdown in `docs/pages/`, then rebuild to preview changes. GitHub Pages
+builds and publishes the same site automatically on pushes to `main`.
 
 ## License
 

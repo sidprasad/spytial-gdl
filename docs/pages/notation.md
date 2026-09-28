@@ -75,7 +75,7 @@ one type.
 
 ## Machine-readable reference
 
-The [language manifest](../spytial-gdl-language.json) lists authoring forms,
+The [language manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json) lists authoring forms,
 requirement arguments, style blocks, and allowed values. It links to the upstream
 selector manifest. The same file is exported as `spytial-gdl/language.json`.
 Run `npm run manifest` to regenerate it; `npm test` checks that it is current.

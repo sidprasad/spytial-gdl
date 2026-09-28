@@ -10,3 +10,8 @@ package-lock.json
 *.log
 dist/
 .cache/
+
+# Generated documentation and local Python environment.
+site/
+.venv-docs/
+__pycache__/

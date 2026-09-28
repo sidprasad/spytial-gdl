@@ -1,12 +1,6 @@
 name: Deploy docs to GitHub Pages
 
-# The site is fully static (zero build): the docs shell renders Markdown
-# client-side and the engine loads from CDN. We deploy the whole repo so that
-# /docs can import ../src/* and the existing /examples and /playground come
-# along as runnable integration examples.
-#
-# One-time setup: repo Settings → Pages → Build and deployment → Source =
-# "GitHub Actions". After that, every push to main publishes.
+# Build Material for MkDocs, then publish it with the landing page and playground.
 
 on:
   push:
@@ -31,9 +25,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-docs.txt
+      - run: python scripts/build-site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4

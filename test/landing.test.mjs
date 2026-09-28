@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import * as core from 'spytial-core';
 import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
+import { legacyTarget } from '../docs/pages/javascripts/legacy-routes.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const landing = read('index.html');
-const docs = read('docs/index.html');
 const playground = read('playground/index.html');
-const docsNav = JSON.parse(read('docs/nav.json'));
+const docsConfig = read('mkdocs.yml');
 
 assert.match(landing, /<h1 id="page-title">Graph diagrams with layout requirements\.<\/h1>/);
 assert.match(landing, /<p class="lede">Have you ever described a Mermaid or DOT graph/);
@@ -15,7 +15,6 @@ assert.ok(!landing.includes('board-graph'), 'The landing page should lead with t
 
 for (const [page, examples, embed, docsLink] of [
   [landing, './playground/', './docs/#/embedding', './docs/'],
-  [docs, '../playground/', '#/embedding', '#/notation'],
   [playground, '../playground/', '../docs/#/embedding', '../docs/'],
 ]) {
   const mainNav = page.match(/<nav class="[^"]*" aria-label="Main navigation">([\s\S]*?)<\/nav>/)?.[1];
@@ -26,11 +25,28 @@ for (const [page, examples, embed, docsLink] of [
   }
 }
 
-const syntax = docsNav.find((entry) => entry.section === 'Syntax reference');
-assert.deepEqual(syntax.pages.map((page) => page.slug), ['notation', 'requirements']);
 for (const slug of ['embedding', 'notation', 'requirements']) {
-  assert.ok(docsNav.flatMap((entry) => entry.pages || [entry]).some((page) => page.slug === slug));
+  assert.ok(docsConfig.includes(`${slug}.md`));
   assert.ok(existsSync(new URL(`../docs/pages/${slug}.md`, import.meta.url)));
+  for (const base of ['https://example.com/docs/', 'https://example.com/spytial-gdl/docs/']) {
+    assert.equal(legacyTarget(`#/${slug}`, base), `${base}${slug}/`);
+    assert.equal(legacyTarget(`#/${slug}/style-blocks`, base), `${base}${slug}/#style-blocks`);
+  }
+}
+assert.equal(legacyTarget('#orientation', 'https://example.com/docs/'), null);
+assert.equal(legacyTarget('#/unknown', 'https://example.com/docs/'), null);
+assert.equal(legacyTarget('#//example.net', 'https://example.com/docs/'), null);
+
+const reference = read('docs/pages/requirements.md');
+const referenceExamples = [...reference.matchAll(/```spytial-gdl(?:-editable)?\n([\s\S]*?)```/g)];
+assert.ok(referenceExamples.length >= 6, 'Every layout rule has a live example');
+for (const [, source] of referenceExamples) {
+  const compiled = compileSpytialGdl(source);
+  assert.equal(compiled.ok, true, source);
+  const solved = solveSpytialGdl(core, compiled);
+  assert.equal(solved.error, null, source);
+  assert.deepEqual(solved.diagnostics, [], source);
+  assert.ok(solved.layout);
 }
 assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/spytial-gdl\/src\/auto\.js"/);
 const exampleMenu = playground.match(/<select id="example-select"[\s\S]*?<\/select>/)?.[0];

@@ -54,7 +54,8 @@
     "test:conformance": "node test/conformance.test.mjs",
     "test:diagnostics": "node test/engine-diagnostics.test.mjs",
     "test:integration": "node test/sgq-integration.test.mjs",
-    "test:pins": "node test/pins.test.mjs"
+    "test:pins": "node test/pins.test.mjs",
+    "docs:build": "python3 scripts/build-site.py"
   },
   "devDependencies": {
     "spytial-core": "^6.3.0"

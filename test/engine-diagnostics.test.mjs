@@ -181,6 +181,30 @@ const engineOnly = (d) => d.source === 'engine';
     d[1].severity === 'warning' && d[1].source === 'parse' && d[2].severity === 'error', j(d));
 }
 
+// The editor consumes the compiled rules and solves again on every mutation.
+// Hiding the synthetic label only on a read-only render misses that path.
+{
+  const { compiled, solved } = solve('a -> b\nb -> c : next\n@edgeStyle(field=_, lineStyle(color=red))\n@orientation(selector=_, directions=[right])');
+  const plain = solved.layout.edges.find(e => e.relationName === '_');
+  const named = solved.layout.edges.find(e => e.relationName === 'next');
+  check('unnamed edges are drawn without the synthetic label',
+    !!plain && plain.showLabel === false && plain.color === 'red', j(plain));
+  check('named edges keep their visible label',
+    !!named && named.label === 'next' && named.showLabel !== false, j(named));
+  check('the hidden label does not stop _ from selecting or styling edges',
+    solved.error === null && solved.diagnostics.length === 0 && solved.layout.constraints.length > 0,
+    j(solved.diagnostics));
+  check('display defaults are not added to authored annotations',
+    compiled.annotationLines.length === 2, j(compiled.annotationLines));
+
+  const empty = compileSpytialGdl('a\nb');
+  const edited = compileSpytialGdl('a -> b');
+  const afterEdit = solveSpytialGdl(core, { ...edited, rules: empty.rules });
+  check('edges added later also hide _ under the original editor spec',
+    afterEdit.layout.edges.filter(e => e.relationName === '_').every(e => e.showLabel === false) &&
+    afterEdit.layout.edges.some(e => e.relationName === '_'), j(afterEdit.layout.edges));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 // exitCode rather than exit(): exit() can truncate stdout when it is a pipe,
 // which is how the summary line goes missing under `npm test | grep`.
