@@ -105,8 +105,8 @@ const j = (v) => JSON.stringify(v);
 {
   // Regression: valid label/paren/brace node forms must NOT be flagged.
   const g = parseGraph('A[Alice Smith] -> B(Bob)\nC((deep)):::Role\nsolo[Just here]');
-  check('valid label/paren/brace forms → no false-positive trailing errors',
-    g.errors.length === 0, j(g.errors));
+  check('valid label/paren/brace forms → shapes warn, with no trailing errors',
+    g.errors.length === 2 && g.errors.every((e) => e.severity === 'warning' && /shape/.test(e.message)), j(g.errors));
 }
 
 // ── names that can never be selected are said so, not passed through ─────────

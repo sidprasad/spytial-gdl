@@ -68,9 +68,11 @@ needs them. Use the user's actual relationships in the deliverable.
   or use a suitable cyclic arrangement.
 - Node styles use `@atomStyle(selector=...)`; edge styles use
   `@edgeStyle(field=...)`. Consult the reference for style blocks. Mermaid shapes,
-  arrow styles, and `classDef` do not retain their appearance automatically.
-- DOT requires translation. Mermaid sequence diagrams, Gantt charts, pie charts,
-  and state-diagram syntax are outside this language's scope.
+  dotted/thick/open link styles, and `classDef` do not retain their appearance;
+  the parser reports these losses as warnings.
+- DOT requires translation. Mermaid subgraphs and non-flowchart diagram types,
+  including sequence diagrams, Gantt charts, pie charts, and state diagrams,
+  are rejected with a hard error.
 
 ## Integrate for the requested output
 

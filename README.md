@@ -44,6 +44,10 @@ GitHub does not run the renderer in READMEs, so the block above shows as source.
 - [Agent skill](https://www.siddharthaprasad.com/spytial-gdl/SKILL.md)
 - [Changelog](CHANGELOG.md)
 
+Mermaid flowcharts can be pasted into GDL. Unsupported Mermaid subgraphs and
+non-flowchart diagrams produce an error instead of a partial diagram. Flowchart
+features that lose styling or behavior produce line-specific warnings.
+
 ## Development
 
 ```sh

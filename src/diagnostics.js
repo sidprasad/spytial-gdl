@@ -32,6 +32,21 @@ export function sourceDiagnostics(annotationErrors, parseErrors) {
   return out;
 }
 
+// The WebCola element renders layout.warnings in its built-in warning panel.
+// Parser and annotation warnings arise before the engine sees the layout, so
+// adapt them to that channel while keeping their source line in the label.
+export function sourceLayoutWarnings(diagnostics) {
+  return (diagnostics || [])
+    .filter((d) => d && d.severity === 'warning')
+    .map((d) => ({
+      severity: 'warning',
+      code: `gdl-${d.source || 'source'}`,
+      context: 'spytial-gdl source',
+      label: d.line == null ? 'spytial-gdl' : `spytial-gdl · line ${d.line}`,
+      message: d.message,
+    }));
+}
+
 // The annotation line an engine diagnostic about `selector` came from, or
 // undefined. `meta` is extractAnnotations' annotationMeta. Matching is on the
 // selector text, the one field the engine echoes exactly as we sent it; when
