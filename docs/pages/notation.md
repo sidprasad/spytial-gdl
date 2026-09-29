@@ -62,14 +62,24 @@ one type.
 
 ## Mermaid compatibility
 
+These Mermaid flowchart forms parse, with the changes shown below. Unsupported
+diagram types and subgraphs stop compilation rather than showing a partial or
+misleading diagram. Other lost appearance or behavior is reported as a warning
+on the source line.
 
 | Mermaid form | read as |
 |---|---|
 | leading `graph TD` / `flowchart LR` | ignored (no layout direction here) |
-| `A --> B`, `A -.-> B`, `A ==> B`, `A --- B` | an edge (arrow style is not significant) |
+| `A --> B` | an edge |
+| `A -.-> B`, `A ==> B`, `A --- B` | an edge, with a warning that dotted, thick, or open-link styling was lost |
 | `A -->\|left\| B` | a labeled edge, label `left` |
-| `cs[Algorithms]`, `cs(Algorithms)`, `cs{Algorithms}`, `cs((Algorithms))` | a node with display label `Algorithms` |
-| `classDef …` | ignored; use `@atomStyle` or `@edgeStyle` instead |
+| `cs[Algorithms]` | a node with display label `Algorithms` |
+| `cs(Algorithms)`, `cs{Algorithms}`, `cs((Algorithms))` | a node with display label `Algorithms`, with a warning that its shape was lost |
+| `classDef …`, `style …`, `linkStyle …`, `click …` | ignored with a warning |
+| `subgraph … end` | error; subgraphs are not supported |
+| non-flowchart headers such as `sequenceDiagram`, `gantt`, or `pie` | error; the diagram is not rendered |
+
+For edge and node styling, use [style directives](requirements.md#style-blocks).
 
 
 

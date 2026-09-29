@@ -162,6 +162,12 @@ export function compileSpytialGdl(source, opts = {}) {
 
   const parsed = parseGraph(cleanSource);
   const parseErrors = parsed.errors || [];
+  if (parsed.fatal) {
+    return {
+      ok: false, reason: parseErrors[0]?.message || 'unsupported diagram syntax',
+      parsed, annotationLines, annotationMeta, annotationErrors, parseErrors,
+    };
+  }
   if (parsed.nodes.size === 0) {
     return {
       ok: false, reason: 'no nodes parsed from source',
@@ -288,6 +294,9 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
   const { parsed, annotationErrors, parseErrors } = compiled;
   const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
+    // A previously rendered diagram must not remain visible after a rejected
+    // source is applied; it would look like the unsupported input rendered.
+    if (typeof graphEl.clear === 'function') graphEl.clear();
     return { applied: false, reason: compiled.reason, parsed, annotationErrors, parseErrors, diagnostics: own };
   }
   const { datum: data, hiddenRelations } = compiled;
@@ -437,6 +446,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   const { parsed, annotationLines, annotationErrors, parseErrors } = compiled;
   const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
+    if (typeof el.clear === 'function') el.clear();
     return { applied: false, reason: compiled.reason, element: el, parsed, annotationErrors, parseErrors, diagnostics: own };
   }
   const { datum, hiddenRelations } = compiled;

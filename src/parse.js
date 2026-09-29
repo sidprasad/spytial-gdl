@@ -48,6 +48,11 @@ const LABEL_BRACKET = /^[[({>]+(.+?)[\])}]+$/;
 const ARROW_TOKENS = ['-.->', '==>', '-->', '---', '->'];
 const ARROW_ALT = '-\\.->|==>|-->|---|->'; // same set, for the pipe-label regex
 
+// A pasted Mermaid diagram of another kind is not a graph we can render
+// faithfully. Check its header before parsing any lines: otherwise `gantt`,
+// `pie`, and `end` can become invented GDL nodes.
+const OTHER_MERMAID_HEADER = /^(?:[A-Za-z][\w-]*Diagram(?:-v\d+)?|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|C4(?:Context|Container|Component|Dynamic|Deployment)|sankey(?:-beta)?|xychart(?:-beta)?|block(?:-beta)?|packet(?:-beta)?|kanban|architecture(?:-beta)?|radar(?:-beta)?|treemap(?:-beta)?|venn(?:-beta)?|ishikawa|wardley|cynefin|treeView|zenuml)(?=\s|$)/i;
+
 // A `%%` at bracket depth 0 starts a comment. Inside a `[label]` it is text
 // (`A["50%% off"]`), which a bare indexOf would cut the line at.
 function stripComments(line) {
@@ -116,6 +121,7 @@ function parseNodeExpr(raw) {
   if (!m) return null;
   const id = m[1];
   const rest = m[2].trim();
+  const ignoredShape = /^(?:\(|\{|>|\[\[|\[\(|\[\/|\[\\)/.test(rest);
 
   // A [bracket] holds the display label (mermaid-style), not the type. If the
   // whole remainder is a label bracket, that's the label; if a label bracket is
@@ -140,7 +146,7 @@ function parseNodeExpr(raw) {
   }
 
   const type = sorts.length ? sorts[sorts.length - 1] : null;
-  return { id, type, label, trailing };
+  return { id, type, label, trailing, ignoredShape };
 }
 
 // The first arrow token in `line`, at bracket depth 0 and outside quotes — so an
@@ -233,6 +239,28 @@ export function parseGraph(source) {
   const classTexts = new Map();   // class → that line's text, for the report
   const edgeSeen = new Map();     // "src\0tgt\0label" → first line
 
+  const firstContent = rawLines.findIndex((raw) => stripComments(raw).trim() !== '');
+  if (firstContent >= 0) {
+    const header = stripComments(rawLines[firstContent]).trim();
+    const match = header.match(OTHER_MERMAID_HEADER);
+    const hasBody = rawLines.slice(firstContent + 1).some((raw) => stripComments(raw).trim() !== '');
+    if (match && hasBody && !findArrow(header) && !/^\S+(?:\[|:::)/.test(header)) {
+      errors.push({ line: firstContent + 1, text: header, severity: 'error',
+        message: `unsupported Mermaid diagram type "${match[0]}" — only flowcharts can be rendered` });
+      return { nodes, edges, classesPerNode, errors, labelLines, classLines, fatal: true };
+    }
+  }
+  const subgraphAt = rawLines.findIndex((raw) => {
+    const line = stripComments(raw).trim();
+    return /^subgraph(?:\s|$)/i.test(line) && !findArrow(line);
+  });
+  if (subgraphAt >= 0) {
+    const statement = stripComments(rawLines[subgraphAt]).trim();
+    errors.push({ line: subgraphAt + 1, text: statement, severity: 'error',
+      message: 'Mermaid subgraphs are not supported; the diagram was not rendered' });
+    return { nodes, edges, classesPerNode, errors, labelLines, classLines, fatal: true };
+  }
+
   const addClass = (id, c) => {
     if (!classesPerNode.has(id)) classesPerNode.set(id, new Set());
     classesPerNode.get(id).add(c);
@@ -278,6 +306,10 @@ export function parseGraph(source) {
     errors.push({ line: at, text, severity: 'error', message: problem.message });
     if (problem.drop) n.type = null;
   };
+  const warnShape = (n, at, text) => {
+    if (n?.ignoredShape) errors.push({ line: at, text, severity: 'warning',
+      message: `Mermaid shape for node "${n.id}" is not supported; its text is kept as a label` });
+  };
 
   rawLines.forEach((raw, idx) => {
     const line = stripComments(raw).trim();
@@ -295,6 +327,11 @@ export function parseGraph(source) {
     if (/^classDef\b/.test(line)) {
       errors.push({ line: at, text: line, severity: 'warning',
         message: 'ignored: Mermaid classDef is not used — style nodes with directives like @atomStyle / @size' });
+      return;
+    }
+    if (/^(?:(?:direction|style|linkStyle|click)\s+|(?:accTitle|accDescr)\s*:)/i.test(line)) {
+      errors.push({ line: at, text: line, severity: 'warning',
+        message: `ignored: unsupported Mermaid statement "${line.split(/\s|:/)[0]}"` });
       return;
     }
 
@@ -327,8 +364,16 @@ export function parseGraph(source) {
       if (left && right) {
         checkSort(left, at, line);
         checkSort(right, at, line);
+        warnShape(left, at, line);
+        warnShape(right, at, line);
         addNode(left, at, line);
         addNode(right, at, line);
+        if (edge.kind === '-.->' || edge.kind === '==>' || edge.kind === '---') {
+          const lost = edge.kind === '-.->' ? 'dotted line style'
+            : edge.kind === '==>' ? 'thick line style' : 'open link style';
+          errors.push({ line: at, text: line, severity: 'warning',
+            message: `Mermaid ${lost} is not supported yet; this edge uses the default style` });
+        }
         // The label is the relation name and a selector. A reserved one is
         // dropped (the edge stays, unlabeled); an unselectable one stays as the
         // edge's text and is reported.
@@ -366,6 +411,7 @@ export function parseGraph(source) {
     const node = parseNodeExpr(stripped);
     if (node) {
       checkSort(node, at, line);
+      warnShape(node, at, line);
       addNode(node, at, line);
       if (node.trailing) errors.push({ line: at, text: line, severity: 'error',
         message: `unexpected text after node "${node.id}": ${node.trailing}${typographyHint(line)}` });
