@@ -229,5 +229,5 @@ Put appearance options inside a named block, such as `lineStyle(pattern=dashed)`
 
 </details>
 
-`%% @name(...)` also works when rules need to survive as comments in Mermaid.
+Write each rule as a bare `@name(...)` line. Prefixing it with `%%` comments it out.
 For use from JavaScript, see [composing rules](embedding.md#composing-rules-registry-and-yaml).

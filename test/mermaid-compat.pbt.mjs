@@ -107,6 +107,49 @@ for (let i = 0; i < 100; i++) {
     /classDef/.test(parsed.errors[0].message));
 }
 
+for (let i = 0; i < 100; i++) {
+  const a = id();
+  const b = id();
+  const ignored = [
+    `%%{init: { 'theme': '${pick(['dark', 'forest', 'default'])}' }}%%`,
+    `classDef c${next() % 1000} fill:#fff`,
+    `style ${a} fill:#fff`,
+    `click ${a} "https://example.org"`,
+  ];
+  const source = `%% an ordinary comment\nflowchart TD\n${ignored.join('\n')}\n${a} --> ${b}`;
+  const compiled = compileSpytialGdl(source);
+  const warnedLines = compiled.parseErrors.filter((e) => e.severity === 'warning').map((e) => e.line);
+  check(source, 'each ignored Mermaid line warns while ordinary comments do not',
+    compiled.ok && compiled.parsed.edges.length === 1 &&
+    JSON.stringify(warnedLines) === JSON.stringify([2, 3, 4, 5, 6]));
+}
+
+for (let i = 0; i < 100; i++) {
+  const a = id();
+  const b = id();
+  const source = `flowchart LR; ${a} --> ${b}`;
+  const parsed = parseGraph(source);
+  check(source, 'a same-line Mermaid statement is diagnosed instead of silently dropped',
+    parsed.nodes.size === 0 && parsed.edges.length === 0 &&
+    parsed.errors.length === 2 && parsed.errors[0].severity === 'warning' &&
+    parsed.errors[1].severity === 'warning' && parsed.errors[1].line === 1);
+}
+
+for (let i = 0; i < 100; i++) {
+  const a = id();
+  const b = id();
+  const guard = pick(['%%@', '%% @', '  %%@', '  %% @']);
+  const source = `${a} --> ${b}\n${guard}orientation(selector=_links, directions=[right])`;
+  const compiled = compileSpytialGdl(source);
+  check(source, 'commented annotations never compile but always warn on their line',
+    compiled.ok && compiled.parsed.edges.length === 1 &&
+    compiled.annotationLines.length === 0 && compiled.annotationMeta.length === 0 &&
+    !compiled.rules.includes('orientation:') &&
+    compiled.parseErrors.length === 1 && compiled.parseErrors[0].line === 2 &&
+    compiled.parseErrors[0].severity === 'warning' &&
+    /remove %%/.test(compiled.parseErrors[0].message));
+}
+
 for (const word of ['pie', 'style', 'click', 'direction', 'linkStyle']) {
   const source = `${word}[Ordinary node] --> target`;
   const parsed = parseGraph(source);
@@ -226,6 +269,18 @@ try {
       shownLayout.warnings.some((w) => w.code === 'gdl-parse' &&
         w.label === 'spytial-gdl · line 1' && w.message === result.parseErrors[0].message));
   }
+
+  const commentedSource = 'A --> B\n%%@orientation(selector=_links, directions=[right])';
+  let commentedLayout;
+  const commentedGraph = {
+    async setViewOptions() {}, clear() {}, removeAttribute() {},
+    async renderLayout(layout) { commentedLayout = layout; },
+  };
+  const commentedResult = await renderSpytialGdl(commentedGraph, commentedSource);
+  check(commentedSource, 'commented annotation warning reaches the renderer warning panel',
+    commentedResult.applied && commentedResult.diagnostics.length === 1 &&
+    commentedLayout.warnings.some((w) => w.code === 'gdl-parse' &&
+      w.label === 'spytial-gdl · line 2' && /remove %%/.test(w.message)));
 
   const mixedSource = `A -.-> B\n@orientation(selector=missing, directions=[right])`;
   let mixedLayout;

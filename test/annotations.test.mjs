@@ -1,6 +1,6 @@
 // Tests for the inline-annotation parser (annotations.js). Run with `npm test`
 // (plain Node, no framework). Covers the single-line forms, multi-line (wrapped)
-// annotations, the `%%`-guarded variants, and the error channel — malformed,
+// annotations, commented-out annotation lookalikes, and the error channel — malformed,
 // unknown, and unterminated annotations all report a line number.
 
 import { extractAnnotations } from '../src/annotations.js';
@@ -66,19 +66,22 @@ const j = (v) => JSON.stringify(v);
     r.specYaml === 'constraints:\n  - orientation: { selector: x, directions: [below, left] }\n', j(r));
 }
 
-// ── %% mermaid-comment guard (degrades in a vanilla Mermaid renderer) ─────────
-{
-  const bare = extractAnnotations('@group(selector=Person, name=People)');
-  const guarded = extractAnnotations('%%@group(selector=Person, name=People)');
-  check('guarded single line parses like the bare form',
-    guarded.errors.length === 0 && guarded.specYaml === bare.specYaml, j(guarded));
-}
-{
-  const bare = extractAnnotations('@group(selector=Person, name=People)');
-  const guarded = extractAnnotations('%%@group(\n%%  selector=Person,\n%%  name=People,\n%%)');
-  check('guarded multi-line block parses like the bare form',
-    guarded.errors.length === 0 && guarded.specYaml === bare.specYaml,
-    `\n bare:    ${j(bare.specYaml)}\n guarded: ${j(guarded.specYaml)}\n errs: ${j(guarded.errors)}`);
+// ── %% is always a comment, including before annotation-shaped text ─────────
+for (const commented of [
+  '%%@group(selector=Person, name=People)',
+  '%% @group(selector=Person, name=People)',
+  '%%@group(\n%%  selector=Person,\n%%  name=People,\n%%)',
+]) {
+  const source = `Person\n${commented}`;
+  const extracted = extractAnnotations(source);
+  const parsed = parseGraph(extracted.source);
+  check('commented annotation is not extracted or compiled',
+    extracted.source === source && extracted.specYaml === '' &&
+    extracted.annotationLines.length === 0 && extracted.errors.length === 0, j(extracted));
+  check('commented annotation produces one migration warning',
+    parsed.nodes.has('Person') && parsed.errors.length === 1 &&
+    parsed.errors[0].line === 2 && parsed.errors[0].severity === 'warning' &&
+    /remove %%/.test(parsed.errors[0].message), j(parsed.errors));
 }
 
 // ── trailing `;` and inline `%%` comment after the close paren ───────────────
@@ -275,14 +278,12 @@ const body = (src) => extractAnnotations(src).specYaml.trim().split('\n')[1].tri
     'group: { selector: team, name: Team, addEdge: togroup }');
 }
 
-// Blocks compose with everything the scanner already did: wrapping, the %% guard,
-// trailing commas, and a trailing comment all track paren depth.
+// Blocks compose with wrapping, trailing commas, and a trailing comment.
 {
   const one = extractAnnotations('@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed))');
   const forms = {
     wrapped: '@edgeStyle(\n  field=next,\n  lineStyle(color=crimson, pattern=dashed)\n)',
     'wrapped + trailing comma': '@edgeStyle(\n  field=next,\n  lineStyle(color=crimson, pattern=dashed),\n)',
-    guarded: '%%@edgeStyle(\n%%  field=next,\n%%  lineStyle(color=crimson, pattern=dashed),\n%%)',
     'trailing ; and comment': '@edgeStyle(field=next, lineStyle(color=crimson, pattern=dashed)); %% the spine',
   };
   for (const [label, src] of Object.entries(forms)) {

@@ -5,7 +5,7 @@
 // highlights the wrong nodes; and a highlighter runs on half-typed lines, so
 // every malformed input here must come back as tokens rather than a throw.
 
-import { tokenize, tokenizeLine, toHtml, TOKEN_COLORS } from '../src/highlight.js';
+import { tokenize, tokenizeLine, toHtml, toHtmlWithDiagnostics, TOKEN_COLORS } from '../src/highlight.js';
 
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') {
@@ -66,8 +66,12 @@ check('%% comments out the rest of a graph line',
 check('a comment after a closed annotation is a comment, not an argument',
   of(line('@align(selector=spouse, direction=horizontal) %% why'), 'comment').join() === '%% why',
   shape(line('@align(selector=spouse, direction=horizontal) %% why')));
-check('a %%-guarded annotation is still an annotation',
-  of(line('%%@align(selector=spouse, direction=horizontal)'), 'annotation').join() === '@align');
+check('a %%@ line is a comment, not an annotation',
+  of(line('%%@align(selector=spouse, direction=horizontal)'), 'comment').join() ===
+    '%%@align(selector=spouse, direction=horizontal)' &&
+  of(line('%%@align(selector=spouse, direction=horizontal)'), 'annotation').length === 0);
+check('a commented annotation does not open a wrapped annotation',
+  of(tokenize('%%@group(\nA -> B')[1], 'node').join() === 'A,B');
 
 // ── an annotation that wraps ────────────────────────────────────────────────
 //
@@ -104,6 +108,23 @@ check('and nothing is lost — the tokens rebuild the line', (() => {
   check('html wraps each token in a class', /<span class="tok-selector">spouse<\/span>/.test(html), html);
   check('and escapes what would otherwise be markup',
     toHtml('A -> B').includes('-&gt;') && !toHtml('A -> B').includes('->'), toHtml('A -> B'));
+}
+
+{
+  const source = 'flowchart TD\nA --> B\n%%{init: {theme: "dark"}}%%';
+  const html = toHtmlWithDiagnostics(source, [
+    { line: 1, severity: 'warning' },
+    { line: 3, severity: 'warning' },
+    { line: 3, severity: 'error' },
+  ]);
+  const lines = html.split('\n');
+  check('diagnostics underline only their source lines',
+    lines[0].startsWith('<span class="source-issue source-issue-warning">') &&
+    !lines[1].includes('source-issue') &&
+    lines[2].startsWith('<span class="source-issue source-issue-error">'), html);
+  check('diagnostic markup keeps token content escaped and line count stable',
+    lines.length === 3 && lines[2].includes('%%{init: {theme: "dark"}}%%') &&
+    !toHtmlWithDiagnostics('<img src=x>', [{ line: 1, severity: 'warning' }]).includes('<img'), html);
 }
 
 check('both themes define a colour for every kind used', (() => {

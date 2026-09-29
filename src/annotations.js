@@ -21,10 +21,7 @@
 // list items under `constraints:` / `directives:`, which round-trip cleanly
 // through registry.js's extractBlocks merge.
 //
-// Two accepted line forms:
-//   @name(args)        — bare decorator (primary)
-//   %%@name(args)      — mermaid-comment-guarded, so the block still degrades
-//   %% @name(args)       gracefully if pasted into a vanilla Mermaid renderer.
+// An annotation starts with @name(args). A leading %% makes it a comment.
 
 // ── Vocabulary ──────────────────────────────────────────────────────────────
 // Everything about *what* core accepts — which annotations exist, which section
@@ -312,8 +309,7 @@ function validateItem(name, kwargs) {
   }
 }
 
-// An annotation is `@name( args )`, optionally behind a mermaid-comment `%%`
-// guard so the block still degrades gracefully in a vanilla Mermaid renderer.
+// An annotation is `@name( args )`.
 // The args may span multiple lines — extractAnnotations keeps consuming lines
 // until the `(` opened after `@name` is balanced, so all of these are legal:
 //
@@ -324,19 +320,11 @@ function validateItem(name, kwargs) {
 //       directions=[left],
 //     )
 //
-//     %%@group(                                        -- wrapped + %%-guarded
-//     %%  selector=Person,
-//     %%  name='People',
-//     %%)
-//
 // A cheap pre-check so we don't scan every ordinary diagram line.
-const LOOKS_LIKE_ANNOTATION = /^\s*(?:%%\s*)?@/;
+const LOOKS_LIKE_ANNOTATION = /^\s*@/;
 // The opening of an annotation: `@name(`. The `(` may be the last thing on the
 // line, with the args following on subsequent lines.
-const ANNOTATION_OPEN = /^\s*(?:%%\s*)?@([A-Za-z_]\w*)\s*\(/;
-// A per-line `%%` guard, stripped from each line before the args are parsed so a
-// fully guarded block parses the same as a bare one.
-const GUARD = /^\s*%%\s?/;
+const ANNOTATION_OPEN = /^\s*@([A-Za-z_]\w*)\s*\(/;
 // Typographic quotes, which only ever reach an annotation by way of a
 // smart-punctuation filter that rewrote the block on the way in.
 const SMART_QUOTE = /[‘’“”]/;
@@ -383,7 +371,7 @@ function bracketsMatched(s) {
   return stack.length === 0 && quote === null;
 }
 
-// Split a complete annotation block (already `%%`-guard-stripped) into its name
+// Split a complete annotation block into its name
 // and raw arg string: `@orientation(selector=left)` → { name, args: 'selector=left' }.
 // Returns null unless it's a well-formed `@name( … )` with type-matched brackets
 // and nothing but an optional `;` and trailing `%%` comment after the closing paren.
@@ -640,19 +628,18 @@ export function extractAnnotations(rawSource, opts = {}) {
     }
 
     // Accumulate lines until the annotation's `(` closes — the args may wrap over
-    // several lines. `block` holds the verbatim lines (for round-tripping);
-    // `stripped` drops each line's `%%` guard so a guarded block parses the same
-    // as a bare one. We re-scan `stripped` after each line: cheap, blocks are short.
+    // several lines. `block` holds the verbatim lines (for round-tripping).
+    // Re-scan the accumulated text after each line: blocks are short.
     const startLine = i;
     const block = [];
-    let stripped = '';
+    let blockText = '';
     let close = -1;
     while (i < lines.length) {
       block.push(lines[i]);
-      stripped += (stripped ? '\n' : '') + lines[i].replace(GUARD, '');
+      blockText += (blockText ? '\n' : '') + lines[i];
       i++;
-      const open = stripped.match(ANNOTATION_OPEN);
-      close = open ? findClose(stripped, open[0].length - 1) : -1;
+      const open = blockText.match(ANNOTATION_OPEN);
+      close = open ? findClose(blockText, open[0].length - 1) : -1;
       if (close !== -1) break;
     }
 
@@ -669,7 +656,7 @@ export function extractAnnotations(rawSource, opts = {}) {
       continue;   // consumed lines are dropped, so they can't confuse the graph parser
     }
 
-    const split = splitAnnotation(stripped);
+    const split = splitAnnotation(blockText);
     if (!split) {
       errors.push({ line: at, text: verbatim.trim(), message: 'malformed annotation' });
       continue;

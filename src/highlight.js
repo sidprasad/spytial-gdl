@@ -52,7 +52,7 @@ const SELECTOR_KEYS = new Set(['selector']);
 /** The kwargs whose values name a spatial direction. */
 const DIRECTION_KEYS = new Set(['direction', 'directions']);
 
-const ANNOTATION_HEAD = /^(\s*)(%%\s*)?(@[A-Za-z_]\w*)/;
+const ANNOTATION_HEAD = /^(\s*)(@[A-Za-z_]\w*)/;
 
 // ── the scanner ─────────────────────────────────────────────────────────────
 
@@ -346,12 +346,11 @@ export function tokenizeLine(line, open = 0) {
   const head = s.match(ANNOTATION_HEAD);
   if (head) {
     push(head[1], 'text');
-    push(head[2] || '', 'comment');
-    push(head[3], 'annotation');
+    push(head[2], 'annotation');
     return args(s.slice(head[0].length), 0);
   }
 
-  // A `%%` that is not guarding an annotation comments out the rest of the line.
+  // `%%` comments out the rest of the line, even when followed by `@name(...)`.
   const hash = s.indexOf('%%');
   if (hash !== -1) {
     scanGraphLine(s.slice(0, hash), push);
@@ -385,12 +384,27 @@ export function escapeHtml(text) {
  * a lot of nodes for no colour.
  */
 export function toHtml(source, prefix = 'tok-') {
+  return toHtmlWithDiagnostics(source, [], prefix);
+}
+
+/** Mark every diagnosed source line without changing its text or line breaks. */
+export function toHtmlWithDiagnostics(source, diagnostics = [], prefix = 'tok-') {
+  const severityAt = new Map();
+  for (const d of diagnostics) {
+    if (!Number.isInteger(d.line) || d.line < 1) continue;
+    if (d.severity === 'error' || !severityAt.has(d.line)) {
+      severityAt.set(d.line, d.severity === 'error' ? 'error' : 'warning');
+    }
+  }
   return tokenize(source)
-    .map((tokens) => tokens
-      .map((t) => (t.kind === 'text'
+    .map((tokens, index) => {
+      const line = tokens.map((t) => (t.kind === 'text'
         ? escapeHtml(t.text)
         : `<span class="${prefix}${t.kind}">${escapeHtml(t.text)}</span>`))
-      .join(''))
+        .join('');
+      const severity = severityAt.get(index + 1);
+      return severity && line ? `<span class="source-issue source-issue-${severity}">${line}</span>` : line;
+    })
     .join('\n');
 }
 
