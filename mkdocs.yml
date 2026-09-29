@@ -23,6 +23,7 @@ theme:
 nav:
   - Documentation: index.md
   - Graph description: notation.md
+  - Mermaid flowchart catalog: mermaid-flowchart-catalog.md
   - Layout requirements: requirements.md
   - Embed in a document: embedding.md
   - Examples: https://www.siddharthaprasad.com/spytial-gdl/playground/

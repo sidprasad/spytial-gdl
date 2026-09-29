@@ -80,6 +80,9 @@ on the source line.
 | non-flowchart headers such as `sequenceDiagram`, `gantt`, or `pie` | error; the diagram is not rendered |
 
 For edge and node styling, use [style directives](requirements.md#style-blocks).
+The [Mermaid flowchart catalog](mermaid-flowchart-catalog.md) records the target
+policy for the full flowchart syntax, including forms this parser does not yet
+recognize.
 
 
 

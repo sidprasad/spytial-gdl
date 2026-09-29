@@ -39,6 +39,7 @@ GitHub does not run the renderer in READMEs, so the block above shows as source.
 ## Documentation
 
 - [Graph description](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation)
+- [Mermaid flowchart catalog](https://www.siddharthaprasad.com/spytial-gdl/docs/mermaid-flowchart-catalog/)
 - [Layout requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/#/requirements)
 - [Embedding and JavaScript API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding)
 - [Agent skill](https://www.siddharthaprasad.com/spytial-gdl/SKILL.md)
