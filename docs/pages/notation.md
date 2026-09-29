@@ -58,7 +58,8 @@ one type.
 
 ## Comments
 
-`%%` starts a line comment. One exception to this is `%%@name(...)` which is read as a requirement.
+`%%` starts a line comment. Write requirements as bare `@name(...)` lines;
+`%%@name(...)` is a comment and does not apply a rule.
 
 ## Mermaid compatibility
 

@@ -80,6 +80,15 @@
         }
         textarea.code::placeholder { color: var(--ink-faint); }
         textarea.code::selection { background: var(--sel); }
+        .source-issue { text-decoration: underline wavy; text-underline-offset: 3px; }
+        .source-issue-warning { text-decoration-color: #b45309; }
+        .source-issue-error { text-decoration-color: var(--red); }
+        .source-diagnostics { flex: 0 0 auto; max-height: 150px; overflow: auto; border-top: 1px solid var(--hair); background: var(--chrome-2); }
+        .source-diagnostics[hidden] { display: none; }
+        .source-diagnostic { display: block; width: 100%; padding: 6px 14px; border: 0; border-bottom: 1px solid var(--hair); background: transparent; color: var(--ink-soft); font: 12px/1.4 var(--sans); text-align: left; cursor: pointer; }
+        .source-diagnostic:hover, .source-diagnostic:focus-visible { background: var(--sunken); }
+        .source-diagnostic.warning::before { content: '⚠ '; color: #b45309; }
+        .source-diagnostic.error::before { content: '● '; color: var(--red); }
 
         .editor-bar {
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
@@ -215,6 +224,7 @@
                         <textarea id="source-input" class="code" spellcheck="false"
                             placeholder="A -> B : left&#10;A -> C : right&#10;&#10;@orientation(selector=_links, directions=[below])"></textarea>
                     </div>
+                    <div id="source-diagnostics" class="source-diagnostics" aria-label="Source diagnostics" hidden></div>
                 </div>
             </div>
         </section>
@@ -252,7 +262,7 @@
 
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
-        import { toHtml, toCss } from '../src/highlight.js';
+        import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
 
         // ─── Examples (one combined source: graph + inline requirements) ──────
         // Selectors below match what relationalize.js emits:
@@ -313,6 +323,7 @@ c -> a : r3
         const sourceEl = document.getElementById('source-input');
         const exampleSelect = document.getElementById('example-select');
         const ghostEl = document.getElementById('source-ghost');
+        const sourceDiagnosticsEl = document.getElementById('source-diagnostics');
         const codeWrapEl = ghostEl.parentElement;
         const graphEl = document.getElementById('graph');
         const inputGraphEl = document.getElementById('input-graph');
@@ -328,6 +339,7 @@ c -> a : r3
         let mode = 'view';
         let editHandle = null;   // handle from renderSpytialGdlEditable
         let editUnsub = null;    // its onChange unsubscribe
+        let sourceDiagnostics = [];
 
         // Show, don't tell. Lives in View, where the diagram is the solver's own
         // answer and rearranging it is a way of disagreeing with it. Edit mode is
@@ -344,20 +356,40 @@ c -> a : r3
         // set from script, and a stale ghost is a diagram of text that is no
         // longer there. Hence `setSource`: the one way to write to the box.
         function paintSource() {
-            ghostEl.innerHTML = toHtml(sourceEl.value) + '\n';
+            ghostEl.innerHTML = toHtmlWithDiagnostics(sourceEl.value, sourceDiagnostics) + '\n';
             ghostEl.scrollTop = sourceEl.scrollTop;
             ghostEl.scrollLeft = sourceEl.scrollLeft;
         }
+        function showSourceDiagnostics(diagnostics) {
+            sourceDiagnostics = diagnostics;
+            sourceDiagnosticsEl.replaceChildren();
+            for (const diagnostic of diagnostics) {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = `source-diagnostic ${diagnostic.severity === 'warning' ? 'warning' : 'error'}`;
+                row.textContent = `${diagnostic.line ? `line ${diagnostic.line}: ` : ''}${diagnostic.message}`;
+                if (diagnostic.line) row.addEventListener('click', () => {
+                    const lines = sourceEl.value.split('\n');
+                    const start = lines.slice(0, diagnostic.line - 1).reduce((n, line) => n + line.length + 1, 0);
+                    sourceEl.focus();
+                    sourceEl.setSelectionRange(start, start + (lines[diagnostic.line - 1] || '').length);
+                });
+                sourceDiagnosticsEl.appendChild(row);
+            }
+            sourceDiagnosticsEl.hidden = diagnostics.length === 0;
+            paintSource();
+        }
         function setSource(text) {
             sourceEl.value = text;
-            paintSource();
+            showSourceDiagnostics([]);
             syncExampleSelection();
         }
         function syncExampleSelection() {
             exampleSelect.value = Object.keys(EXAMPLES).find((key) => EXAMPLES[key] === sourceEl.value) || '';
         }
         sourceEl.addEventListener('input', () => {
-            paintSource();
+            showSourceDiagnostics([]);
+            setStatus('Changes not applied — press Apply.', 'info');
             syncExampleSelection();
         });
         sourceEl.addEventListener('scroll', () => {
@@ -380,7 +412,12 @@ c -> a : r3
         function setStatus(msg, kind = 'info') {
             statusEl.hidden = !msg;
             statusEl.className = `status ${kind}`;
-            statusEl.innerHTML = msg ? `<span class="pulse"></span>${msg}` : '';
+            statusEl.replaceChildren();
+            if (msg) {
+                const pulse = document.createElement('span');
+                pulse.className = 'pulse';
+                statusEl.append(pulse, document.createTextNode(msg));
+            }
         }
 
         // The graph component only auto-fits on first connect; re-fit after render.
@@ -530,8 +567,8 @@ c -> a : r3
             document.getElementById('conflict-hint').style.display = 'none';
             writeHash();
 
-            const src = sourceEl.value.trim();
-            if (!src) { setStatus('Write a graph to render.', 'error'); return; }
+            const src = sourceEl.value;
+            if (!src.trim()) { setStatus('Write a graph to render.', 'error'); return; }
 
             let result;
             try {
@@ -560,12 +597,14 @@ c -> a : r3
             // annotation compiler's, and the engine's (a selector it could not
             // use, one that matched nothing, a rule it refused), each with its
             // line. The status line shows the first and counts the rest; the
-            // whole list goes to the console.
+            // list below the source lets authors inspect every diagnostic.
             const diagnostics = result.diagnostics || [];
+            if (src !== sourceEl.value) return; // an edit during the render superseded these line numbers
+            showSourceDiagnostics(diagnostics);
             const problems = diagnostics.filter((d) => d.severity !== 'warning');
             const warnings = diagnostics.filter((d) => d.severity === 'warning');
             const where = (d) => (d.line ? `line ${d.line}: ` : '');
-            const rest = (list) => (list.length > 1 ? ` (+${list.length - 1} more, listed in the console)` : '');
+            const rest = (list) => (list.length > 1 ? ` (+${list.length - 1} more below)` : '');
             if (diagnostics.length) console.warn('[spytial-gdl] diagnostics:', diagnostics);
 
             if (result.reason) {
@@ -625,6 +664,7 @@ c -> a : r3
             } catch (err) {
                 console.error(err); setStatus('Edit error: ' + err.message, 'error'); return;
             }
+            showSourceDiagnostics(handle.diagnostics || []);
             if (handle.applied === false) { setStatus(handle.reason || 'Nothing to edit.', 'error'); return; }
             editHandle = handle;
             // Live notation mirror: every edit re-serializes back into the textarea.

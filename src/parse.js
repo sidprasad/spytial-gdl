@@ -312,6 +312,18 @@ export function parseGraph(source) {
   };
 
   rawLines.forEach((raw, idx) => {
+    if (/^\s*%%\s*@/.test(raw)) {
+      errors.push({ line: idx + 1, text: raw.trim(), severity: 'warning',
+        message: 'ignored: annotations prefixed with %% are comments; remove %% to use @name(...)' });
+      return;
+    }
+    // Mermaid config directives look like comments to stripComments, but they
+    // change a Mermaid render. Report the loss instead of silently discarding it.
+    if (/^\s*%%\s*\{/.test(raw)) {
+      errors.push({ line: idx + 1, text: raw.trim(), severity: 'warning',
+        message: 'ignored: Mermaid %%{...}%% directive is not supported' });
+      return;
+    }
     const line = stripComments(raw).trim();
     if (!line) return;                       // blank or comment-only — nothing to do
     const at = idx + 1;
@@ -319,9 +331,12 @@ export function parseGraph(source) {
     // Tolerated-but-ignored Mermaid constructs. We accept them so pasted diagrams
     // render, but flag them (as warnings) so authors learn the native notation:
     // there is no layout direction here, and styling is a directive, not CSS.
-    if (/^(?:graph|flowchart)\b/i.test(line)) {
+    const header = line.match(/^(?:graph|flowchart)(?:\s+(?:TD|TB|BT|LR|RL))?\s*(?:;\s*(.*))?$/i);
+    if (header) {
       errors.push({ line: at, text: line, severity: 'warning',
         message: "ignored: spytial-gdl has no 'graph'/'flowchart' header — layout comes from @annotations" });
+      if (header[1]) errors.push({ line: at, text: line, severity: 'warning',
+        message: 'ignored: Mermaid statement after the header was not read; put it on its own line' });
       return;
     }
     if (/^classDef\b/.test(line)) {
