@@ -274,7 +274,20 @@ customizations. Pass `viewOptions` again to update them on a subsequent render.
 | `rules` | the layout YAML actually solved: the merged spec, or only the hidden-field directives if the engine refused it |
 | `hiddenRelations` | selector-only relations hidden from drawing (`_links`, types, classes) |
 
-When `source` has no nodes, you get
+#### Where diagnostics appear
+
+For `spytial-gdl` Markdown fences and HTML blocks handled by `autoRender`, errors
+and warnings appear in a band below the diagram, with source line numbers. The
+playground shows the first diagnostic in its status line and logs the full list
+to the browser console.
+
+Direct calls to `renderSpytialGdl` or `renderSpytialGdlEditable` return the full
+list in `result.diagnostics`; they do not add a diagnostics panel or print to the
+console. A host using these APIs should display or log that list. Mermaid syntax
+warnings from the parser are in `diagnostics` and `parseErrors`; the separate
+`warnings` field contains only raw warnings from spytial-core.
+
+When `source` has no nodes or contains unsupported Mermaid diagram syntax, you get
 `{ applied: false, reason, parsed, annotationErrors, parseErrors, diagnostics }` instead.
 
 #### Re-rendering
