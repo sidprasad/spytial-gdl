@@ -173,29 +173,90 @@ try {
       `flowchart TD\nsubgraph cluster\n${id()} --> ${id()}\nend`,
     ]);
     let readCleared = 0;
+    let readWarningsCleared = 0;
     const readGraph = {
       async setViewOptions() {},
       clear() { readCleared++; },
+      renderLayoutWarnings(warnings) { if (warnings.length === 0) readWarningsCleared++; },
       renderLayout() { throw new Error('renderLayout should not be called'); },
     };
     const readResult = await renderSpytialGdl(readGraph, source);
     check(source, 'read-only renderer refuses and clears a rejected diagram',
-      !readResult.applied && readCleared === 1 &&
+      !readResult.applied && readCleared === 1 && readWarningsCleared === 1 &&
       readResult.diagnostics.length === 1 && readResult.diagnostics[0].severity === 'error');
 
     let editableCleared = 0;
+    let editableWarningsCleared = 0;
     const editor = {
       tagName: 'STRUCTURED-INPUT-GRAPH',
       async setViewOptions() {},
       clear() { editableCleared++; },
+      renderLayoutWarnings(warnings) { if (warnings.length === 0) editableWarningsCleared++; },
       setDataInstance() { throw new Error('setDataInstance should not be called'); },
       setCnDSpec() { throw new Error('setCnDSpec should not be called'); },
     };
     const editableResult = await renderSpytialGdlEditable(editor, source);
     check(source, 'editable renderer refuses and clears a rejected diagram',
-      !editableResult.applied && editableCleared === 1 &&
+      !editableResult.applied && editableCleared === 1 && editableWarningsCleared === 1 &&
       editableResult.diagnostics.length === 1 && editableResult.diagnostics[0].severity === 'error');
   }
+} finally {
+  if (previousCore === undefined) delete globalThis.spytialcore;
+  else globalThis.spytialcore = previousCore;
+}
+
+// Accepted Mermaid syntax is handed to core's built-in warning panel through
+// layout.warnings, alongside any warnings produced by the engine itself.
+globalThis.spytialcore = await import('spytial-core');
+try {
+  for (let i = 0; i < 20; i++) {
+    const a = id();
+    const b = id();
+    const source = `${a} ${pick(['-.->', '==>', '---'])} ${b}`;
+    let shownLayout;
+    const graph = {
+      async setViewOptions() {},
+      clear() {},
+      removeAttribute() {},
+      async renderLayout(layout) { shownLayout = layout; },
+    };
+    const result = await renderSpytialGdl(graph, source);
+    check(source, 'rendered Mermaid warning reaches WebCola layout warning panel',
+      result.applied && shownLayout === result.layout &&
+      shownLayout.warnings.some((w) => w.code === 'gdl-parse' &&
+        w.label === 'spytial-gdl · line 1' && w.message === result.parseErrors[0].message));
+  }
+
+  const mixedSource = `A -.-> B\n@orientation(selector=missing, directions=[right])`;
+  let mixedLayout;
+  const mixedGraph = {
+    async setViewOptions() {},
+    clear() {},
+    removeAttribute() {},
+    async renderLayout(layout) { mixedLayout = layout; },
+  };
+  const mixedResult = await renderSpytialGdl(mixedGraph, mixedSource);
+  check(mixedSource, 'Mermaid warning and engine warning share the layout panel without changing raw engine warnings',
+    mixedResult.applied && mixedResult.warnings.length > 0 &&
+    mixedResult.warnings.every((w) => mixedLayout.warnings.includes(w)) &&
+    mixedLayout.warnings.some((w) => w.code === 'gdl-parse') &&
+    mixedResult.warnings.every((w) => w.code !== 'gdl-parse'));
+
+  const source = `flowchart LR\n${id()} -.-> ${id()}`;
+  let shownWarnings;
+  const editor = {
+    tagName: 'STRUCTURED-INPUT-GRAPH',
+    sourceLayout: { warnings: [{ code: 'engine-warning', message: 'engine', context: 'spec' }] },
+    async setViewOptions() {},
+    setDataInstance() {},
+    async setCnDSpec() {},
+    renderLayoutWarnings(warnings) { shownWarnings = warnings; },
+  };
+  const handle = await renderSpytialGdlEditable(editor, source);
+  check(source, 'editable warning panel preserves engine warnings and adds Mermaid warnings',
+    handle.applied && shownWarnings.length === 3 &&
+    shownWarnings[0].code === 'engine-warning' &&
+    shownWarnings.slice(1).every((w) => w.code === 'gdl-parse'));
 } finally {
   if (previousCore === undefined) delete globalThis.spytialcore;
   else globalThis.spytialcore = previousCore;
