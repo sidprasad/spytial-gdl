@@ -7,13 +7,13 @@
 // twice: the examples sat on 2.9.1 and markdown.js on 2.10.1 while the manifest
 // asked for ^2.10.1.
 //
-// The cure is to not pin an exact patch. peerDependencies says `^6.3.0`
-// — any 6.3+ release will do — so the CDN tags use `spytial-core@^6.3.0` too.
+// The cure is to not pin an exact patch. peerDependencies says `^6.5.0`
+// — any 6.5+ release will do — so the CDN tags use `spytial-core@^6.5.0` too.
 // Nothing has to be rewritten on a compatible core release, and there is no
 // triple left to go stale. Two claims still have to agree with the manifest:
 //
 //   * every `spytial-core@<tag>` floats — the bare major (`@6`) or a caret range
-//     (`^6.3.0`). A patch-exact `@6.3.0` is the drift bug itself, so it fails here.
+//     (`^6.5.0`). A patch-exact `@6.5.0` is the drift bug itself, so it fails here.
 //   * every `need spytial-core ≥ X.Y.Z` message states the *floor* — the oldest
 //     core we work against, which is the peer range's floor, not whatever the
 //     CDN happens to serve today. That floor only moves when we actually rely on
@@ -69,7 +69,7 @@ const files = [
 
 // The two shapes a version claim takes. TAG is the one that ships an engine —
 // `spytial-core@6` in a CDN URL or in prose. FLOOR is the one that only states a
-// minimum — `spytial-core ≥ 6.3.0` in an error message. They answer different
+// minimum — `spytial-core ≥ 6.5.0` in an error message. They answer different
 // questions, so they're held to different rules.
 //
 // FLOOR tolerates text between the name and the comparator, because a floor

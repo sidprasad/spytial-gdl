@@ -15,7 +15,7 @@ authoring format. Do not add artificial data edges merely to influence layout.
 - [GDL manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json):
   use `annotations` and `styleBlocks` for accepted `@operation(...)` arguments,
   nested blocks, and allowed values. Installed export: `spytial-gdl/language.json`.
-- [Core layout manifest](https://cdn.jsdelivr.net/npm/spytial-core@6.3.1/docs/spytial-language.json):
+- [Core layout manifest](https://cdn.jsdelivr.net/npm/spytial-core@6.5.0/docs/spytial-language.json):
   use `items` to find an operation by `id`. Read its `sections`, `fields`,
   selector `accepts`, semantic notes, and `supportsHold`; use `blocks` for style
   fields and `deprecations` for obsolete forms. Installed export:

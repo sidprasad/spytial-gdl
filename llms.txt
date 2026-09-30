@@ -12,7 +12,7 @@ and links to the relevant authoring, integration, and validation references.
 - Operations skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md
 - Selectors skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md
 - GDL language manifest: https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json
-- Core layout manifest: https://cdn.jsdelivr.net/npm/spytial-core@^6.3.0/docs/spytial-language.json
+- Core layout manifest: https://cdn.jsdelivr.net/npm/spytial-core@^6.5.0/docs/spytial-language.json
 - Selector language manifest: https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json
 - Notation: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/notation.md
 - Requirements: https://www.siddharthaprasad.com/spytial-gdl/docs/pages/requirements.md

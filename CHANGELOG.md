@@ -7,14 +7,16 @@ is a fix.
 
 ## Unreleased
 
+- Require spytial-core 6.5.0 and start its error details collapsed in the
+  playground and Markdown embeds. Users can expand the details when needed.
 - Apply the shared compact graph controls to every GDL render path, including
   the playground and programmatic examples. Read-only diagrams use floating
   zoom/Fit controls; editable diagrams retain graph editing actions. Both render
   APIs accept `viewOptions` for explicit customization.
-- Refresh the vendored spytial-core schema and language manifest from 6.3.1;
+- Refresh the vendored spytial-core schema and language manifest from 6.5.0;
   the layout language version remains 2026-09-18.
-- Require spytial-core 6.3.0 or newer. Browser embeds now load its complete
-  bundle, and the vendored annotation schema includes `@group(showLabel=…)`.
+- Browser embeds load core's complete bundle, and the vendored annotation
+  schema includes `@group(showLabel=…)`.
 - Float core's own zoom and fit buttons beside View source in read-only embeds,
   without a toolbar strip. The source panel opens below the diagram; editable
   blocks keep their graph actions and source editor. `viewOptions` can restore

@@ -281,6 +281,7 @@ For a rendered diagram, Mermaid syntax warnings appear in the graph element's
 built-in, expandable warning panel alongside spytial-core's layout warnings.
 For `spytial-gdl` Markdown fences and HTML blocks handled by `autoRender`, a
 band below the diagram also shows warnings and errors with source line numbers.
+Constraint conflict details start collapsed; select Show details to expand them.
 The playground shows the first diagnostic in its status line and logs the full
 list to the browser console.
 

@@ -1,6 +1,6 @@
 {
   "name": "spytial-gdl",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A graph description language with layout requirements for live, interactive diagrams in Markdown or HTML.",
   "keywords": [
     "graph",
@@ -58,9 +58,9 @@
     "docs:build": "python3 scripts/build-site.py"
   },
   "devDependencies": {
-    "spytial-core": "^6.3.0"
+    "spytial-core": "^6.5.0"
   },
   "peerDependencies": {
-    "spytial-core": "^6.3.0"
+    "spytial-core": "^6.5.0"
   }
 }

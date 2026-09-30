@@ -22,7 +22,7 @@ package used by the host's engine. Syntax accepted by the grammar is not always
 implemented by the evaluator.
 
 Read the consuming operation's selector field in the
-[Core manifest](https://cdn.jsdelivr.net/npm/spytial-core@6.3.1/docs/spytial-language.json)
+[Core manifest](https://cdn.jsdelivr.net/npm/spytial-core@6.5.0/docs/spytial-language.json)
 (`items[].fields[].accepts`), or the installed `spytial-core/language.json`.
 For GDL, its [manifest](https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json)
 provides compatible upstream links and built-in selectors. Its

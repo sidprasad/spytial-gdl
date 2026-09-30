@@ -195,7 +195,7 @@ export function compileSpytialGdl(source, opts = {}) {
 function engineApi(spytial) {
   const { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance } = spytial || {};
   for (const [name, fn] of Object.entries({ JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance })) {
-    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 6.3.0`);
+    if (!fn) throw new Error(`spytial-gdl: spytial-core is missing ${name}; need spytial-core ≥ 6.5.0`);
   }
   return { JSONDataInstance, SGraphQueryEvaluator, parseLayoutSpec, LayoutInstance };
 }
@@ -449,7 +449,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   if (typeof el.setDataInstance !== 'function' || typeof el.setCnDSpec !== 'function') {
     throw new Error(
       'renderSpytialGdlEditable: <structured-input-graph> is not registered. ' +
-        'Load spytial-core ≥ 6.3.0 (its global build registers the element).'
+        'Load spytial-core ≥ 6.5.0 (its global build registers the element).'
     );
   }
   await configureGraphView(el, true, opts.viewOptions);
