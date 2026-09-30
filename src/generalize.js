@@ -495,6 +495,9 @@ function mergeDirectly(proposals, minCoverage) {
     if (demonstrated.length === 0 || coverage < minCoverage) continue;
 
     const holdsKeys = new Set(holds.map(([a, b]) => pairKey(a, b, false)));
+    const demonstratedKeys = new Set(demonstrated.map(([a, b]) => pairKey(a, b, false)));
+    const missedPairs = [...p.coveredPairs, ...p.missedPairs]
+      .filter(([a, b]) => !demonstratedKeys.has(pairKey(a, b, false)));
     const value = DIRECTLY[`${p.value}|${partner.value}`];
     merged.push({
       ...p,
@@ -503,8 +506,10 @@ function mergeDirectly(proposals, minCoverage) {
       coverage,
       covered: demonstrated.length,
       coveredPairs: demonstrated,
+      missed: missedPairs.length,
+      missedPairs,
       consistent: holds.length - demonstrated.length,
-      consistentPairs: holds.filter(([a, b]) => !alignDemonstrated.has(pairKey(a, b, true))),
+      consistentPairs: holds.filter(([a, b]) => !demonstratedKeys.has(pairKey(a, b, false))),
       // Accepting moves every pair of the denotation where the conjunction does
       // not already hold.
       predicts: denotation.filter(([a, b]) => !holdsKeys.has(pairKey(a, b, false))),

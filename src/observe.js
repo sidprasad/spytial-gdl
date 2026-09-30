@@ -262,7 +262,10 @@ export function observeArrangement(graphEl, opts = {}) {
     /** Credit several chosen rules together and announce the result once. */
     acceptMany(proposals) {
       for (const proposal of proposals) {
-        for (const [a, b] of (proposal && proposal.coveredPairs) || []) {
+        // Accepting explains the current arrangement, including moved nodes
+        // whose relationship already held before the demonstration began.
+        const fitting = [...(proposal?.coveredPairs || []), ...(proposal?.consistentPairs || [])];
+        for (const [a, b] of fitting) {
           explained.add(a); explained.add(b);
         }
         // `covered` is a count, not a list; when the caller has not supplied

@@ -183,6 +183,38 @@ edgar -> catherine : spouse
 }
 
 {
+  // A merged direction + alignment only explains pairs demonstrated on both
+  // axes. Its missed count must include the other demonstrated direction pair.
+  const data = dataFor('a -> b : parentOf\nc -> d : parentOf');
+  const groups = [
+    { kind: 'orientation', value: 'below', pairs: [['a', 'b'], ['c', 'd']] },
+    { kind: 'align', value: 'vertical', pairs: [['a', 'b']] },
+  ];
+  const merged = generalize(groups, data, { minCoverage: 0.5 })
+    .find((p) => p.selector === 'parentOf' && p.value === 'directlyBelow');
+  check('merged evidence counts only the demonstrated pairs it explains',
+    merged?.covered === 1 && merged?.missed === 1 &&
+    JSON.stringify(merged.missedPairs) === JSON.stringify([['c', 'd']]), JSON.stringify(merged));
+}
+
+{
+  // The direction already held for c/d; its alignment is newly demonstrated.
+  // The merged rule must retain that pair among its current matches.
+  const data = dataFor('a -> b : parentOf\nc -> d : parentOf');
+  const shown = [
+    { kind: 'orientation', value: 'below', a: 'a', b: 'b' },
+    { kind: 'align', value: 'vertical', a: 'a', b: 'b' },
+    { kind: 'align', value: 'vertical', a: 'c', b: 'd' },
+  ];
+  const satisfied = [...shown, { kind: 'orientation', value: 'below', a: 'c', b: 'd' }];
+  const merged = generalize(groupPredicates(shown), data, { satisfied })
+    .find((p) => p.selector === 'parentOf' && p.value === 'directlyBelow');
+  check('merged current matches retain pairs whose direction already held',
+    merged?.covered === 1 && merged?.consistent === 1 &&
+    JSON.stringify(merged.consistentPairs) === JSON.stringify([['c', 'd']]), JSON.stringify(merged));
+}
+
+{
   // The four-of-five case: a partial demonstration should still name the
   // relation, and report the pair it would additionally constrain rather than
   // inventing an expression that denotes exactly the four shown.
