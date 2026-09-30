@@ -268,8 +268,9 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
 //   graphEl  — a <webcola-cnd-graph> element (see mountGraph)
 //   source   — spytial-gdl text (nodes/edges) with inline `@orientation(...)`
 //              spatial annotations (see annotations.js)
-//   opts     — { rules?, extraSpec?, validator?, viewOptions? }
+//   opts     — { rules?, extraSpec?, validator?, viewOptions?, preservePositions? }
 //              viewOptions overrides GDL's compact core controls.
+//              preservePositions warm-starts from the displayed arrangement.
 //
 // Returns { applied, layout, error, selectorErrors, warnings, diagnostics,
 //           annotationErrors, parseErrors, parsed, data, instance, rules,
@@ -325,8 +326,15 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
       ...(Array.isArray(layout.warnings) ? layout.warnings : []),
       ...sourceLayoutWarnings(own),
     ];
-    if (typeof graphEl.clear === 'function') graphEl.clear();
-    await graphEl.renderLayout(layout);
+    // Core's renderLayout can warm-start from the current diagram. Inference
+    // acceptance uses this so the new rules settle the layout the user just
+    // demonstrated, while ordinary source replacement remains a fresh render.
+    const priorState = opts.preservePositions && typeof graphEl.getLayoutState === 'function'
+      ? graphEl.getLayoutState() : null;
+    const renderOptions = priorState && priorState.positions.length > 0
+      ? { priorPositions: priorState } : undefined;
+    if (!renderOptions && typeof graphEl.clear === 'function') graphEl.clear();
+    await graphEl.renderLayout(layout, renderOptions);
     applied = true;
   }
 

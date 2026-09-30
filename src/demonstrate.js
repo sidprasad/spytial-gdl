@@ -43,8 +43,10 @@ export function createDemonstration(graphEl, opts = {}) {
   let state = IDLE;
   let observer = null;
   let proposals = [];
+  let selected = new Set();
   let note = '';
   let accepted = null;
+  let accepting = false;
 
   const notify = () => {
     if (typeof opts.onChange !== 'function') return;
@@ -58,7 +60,8 @@ export function createDemonstration(graphEl, opts = {}) {
   // the offers and returns to arranging — the demonstration itself survives,
   // because the baseline is still the one declared at `begin`.
   const onObserved = () => {
-    if (state === OFFERING) { proposals = []; state = DEMONSTRATING; }
+    if (accepting) return;
+    if (state === OFFERING) { proposals = []; selected.clear(); state = DEMONSTRATING; }
     note = '';
     notify();
   };
@@ -67,6 +70,7 @@ export function createDemonstration(graphEl, opts = {}) {
     if (observer) observer.detach();
     observer = null;
     proposals = [];
+    selected.clear();
     note = '';
   };
 
@@ -83,6 +87,7 @@ export function createDemonstration(graphEl, opts = {}) {
         explained: s.explained,
         hasBaseline: s.hasBaseline,
         proposals,
+        selected: [...selected],
         note,
         accepted,
         canExplain: state !== IDLE && s.marked > 0,
@@ -97,7 +102,7 @@ export function createDemonstration(graphEl, opts = {}) {
       if (state !== IDLE) return handle.status();
       observer = observeArrangement(graphEl, { onChange: onObserved });
       observer.captureBaseline(true);
-      proposals = []; note = ''; accepted = null;
+      proposals = []; selected.clear(); note = ''; accepted = null;
       state = DEMONSTRATING;
       notify();
       return handle.status();
@@ -110,6 +115,7 @@ export function createDemonstration(graphEl, opts = {}) {
       if (state === IDLE || !observer) return handle.status();
       const out = observer.propose(data, opts.infer || {});
       proposals = out.proposals || [];
+      selected.clear();
       if (proposals.length > 0) {
         state = OFFERING;
         note = '';
@@ -121,14 +127,26 @@ export function createDemonstration(graphEl, opts = {}) {
       return handle.status();
     },
 
-    // Take one. The marks it accounts for are credited before we leave, so the
-    // caller can report what the demonstration bought. Applying the line is the
-    // caller's job — this module never writes to the source.
-    accept(proposal) {
-      if (state !== OFFERING) return handle.status();
-      const summary = observer.accept(proposal);
+    // Selection belongs to the offer and disappears if the diagram changes.
+    toggle(proposal) {
+      if (state !== OFFERING || !proposals.includes(proposal)) return handle.status();
+      if (selected.has(proposal.line)) selected.delete(proposal.line);
+      else selected.add(proposal.line);
+      notify();
+      return handle.status();
+    },
+
+    // Take the chosen rules as one action. The source is written by the caller.
+    acceptSelected() {
+      if (state !== OFFERING || selected.size === 0) return handle.status();
+      const chosen = proposals.filter((p) => selected.has(p.line));
+      accepting = true;
+      let summary;
+      try { summary = observer.acceptMany(chosen); }
+      finally { accepting = false; }
       accepted = {
-        line: proposal && proposal.line,
+        lines: chosen.map((p) => p.line),
+        line: chosen[0].line,
         explained: summary.explained,
         marked: summary.marked,
       };
@@ -138,10 +156,18 @@ export function createDemonstration(graphEl, opts = {}) {
       return handle.status();
     },
 
+    /** Compatibility for callers that already choose one proposal directly. */
+    accept(proposal) {
+      if (state !== OFFERING || !proposals.includes(proposal)) return handle.status();
+      selected = new Set([proposal.line]);
+      return handle.acceptSelected();
+    },
+
     /** None of these — back to arranging, demonstration intact. */
     dismiss() {
       if (state !== OFFERING) return handle.status();
       proposals = [];
+      selected.clear();
       state = DEMONSTRATING;
       notify();
       return handle.status();
@@ -303,7 +329,8 @@ function makeHighlighter(graphEl) {
 //   graphEl — the graph the user will rearrange
 //   opts.dark     — match the surrounding theme
 //   opts.getData  — () => { atoms, relations } as the graph currently stands
-//   opts.onApply  — (line) => Promise; append the accepted annotation
+//   opts.onApply  — (line) => Promise; legacy single-rule callback
+//   opts.onApplyMany — (lines) => Promise; append selected rules in one update
 //   opts.infer    — inference options (maxDepth, maxSuggestions, …)
 //   opts.palette  — partial colour override: bg, ink, border, accent, accentInk,
 //                   slot, soft, btnBg. Anything omitted keeps the default.
@@ -369,7 +396,7 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
       start.addEventListener('click', () => machine.begin());
       bar.insertBefore(start, label);
       label.textContent = s.accepted
-        ? `Added ${s.accepted.line} — that explains ${s.accepted.explained} of the ${s.accepted.marked} you moved.`
+        ? `Added ${s.accepted.lines.length} ${s.accepted.lines.length === 1 ? 'rule' : 'rules'} — explains ${s.accepted.explained} of ${s.accepted.marked} moved nodes.`
         : 'Arrange the diagram by hand and I\'ll suggest the annotations that explain it.';
       if (s.accepted) label.style.opacity = '.85';
       return;
@@ -378,13 +405,13 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     // In the mode: say what is being watched, and how much of it there is.
     label.innerHTML = '';
     const head = doc.createElement('strong');
-    head.textContent = s.state === OFFERING ? 'Here\'s what would explain it' : 'Showing';
+    head.textContent = s.state === OFFERING ? 'Choose rules to add' : 'Showing';
     head.style.cssText = 'font-weight: 700;';
     label.appendChild(head);
     const tail = doc.createElement('span');
     tail.style.cssText = 'opacity: .8;';
     tail.textContent = s.state === OFFERING
-      ? ` — ${s.marked} moved. Point at a selector to see what it names.`
+      ? ` — ${s.marked} moved. Select one or more; point at a selector to preview its nodes.`
       : ` — arrange it how you want it. ${s.marked} moved.`;
     label.appendChild(tail);
 
@@ -413,11 +440,21 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     // One arrangement can support a dozen true readings; a list that long is a
     // chore rather than an offer. They arrive ranked, so the tail is the least
     // consistent and least explanatory of the set.
-    for (const p of s.proposals.slice(0, maxSuggestions)) {
-      const row = doc.createElement('div');
+    for (const [index, p] of s.proposals.slice(0, maxSuggestions).entries()) {
+      const row = doc.createElement('label');
       row.style.cssText =
-        `display: flex; align-items: center; gap: 8px; padding: 5px 7px; margin: 4px 0 0;` +
-        ` border: 1px solid ${C.border}; border-radius: 6px; background: ${C.slot};`;
+        `display: flex; align-items: center; gap: 8px; padding: 7px 9px; margin: 5px 0 0; cursor: pointer;` +
+        ` border: 1px solid ${s.selected.includes(p.line) ? C.accent : C.border}; border-radius: 6px; background: ${C.slot};`;
+      const check = doc.createElement('input');
+      check.type = 'checkbox';
+      check.checked = s.selected.includes(p.line);
+      check.style.cssText = `flex: 0 0 auto; margin: 0; accent-color: ${C.accent}; width: 15px; height: 15px;`;
+      check.addEventListener('change', () => {
+        const keepFocus = doc.activeElement === check;
+        machine.toggle(p);
+        if (keepFocus) host.querySelectorAll('input[type="checkbox"]')[index]?.focus();
+      });
+      row.appendChild(check);
       const code = doc.createElement('code');
       code.style.cssText =
         `flex: 1 1 auto; min-width: 0; overflow-x: auto; white-space: pre; font: 11.5px/1.5 ${MONO};`;
@@ -451,17 +488,30 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
       why.style.cssText = `flex: 0 0 auto; font: 10.5px/1.3 ${SANS}; opacity: .75; white-space: nowrap;`;
       why.textContent = note(p);
       row.appendChild(why);
-      const add = btn('Add', 'Append this annotation to the source and re-run');
-      add.style.flex = '0 0 auto';
-      add.addEventListener('click', async () => {
-        // Credit the marks this explains *before* applying: the re-render
-        // replaces the arrangement, and what it bought should survive that.
-        machine.accept(p);
-        if (typeof opts.onApply === 'function') await opts.onApply(p.line);
-      });
-      row.appendChild(add);
       host.appendChild(row);
     }
+
+    const actions = doc.createElement('div');
+    actions.style.cssText =
+      `position: sticky; bottom: -8px; display: flex; align-items: center; gap: 9px;` +
+      ` margin: 9px -12px -8px; padding: 8px 12px; background: ${C.bg}; border-top: 1px solid ${C.border};`;
+    const add = btn(`Add ${s.selected.length} ${s.selected.length === 1 ? 'rule' : 'rules'}`,
+      'Append the selected rules to the source and update the diagram', true);
+    add.disabled = s.selected.length === 0;
+    if (add.disabled) { add.style.opacity = '.45'; add.style.cursor = 'default'; }
+    add.addEventListener('click', async () => {
+      if (add.disabled) return;
+      const lines = s.proposals.filter((p) => s.selected.includes(p.line)).map((p) => p.line);
+      add.disabled = true;
+      machine.acceptSelected();
+      if (typeof opts.onApplyMany === 'function') await opts.onApplyMany(lines);
+      else if (typeof opts.onApply === 'function') {
+        for (const rule of lines) await opts.onApply(rule);
+      }
+    });
+    actions.appendChild(add);
+    actions.appendChild(line(`${s.selected.length} selected`, `font: 11px/1.3 ${SANS}; opacity: .8;`));
+    host.appendChild(actions);
   };
 
   const dataNow = () => {

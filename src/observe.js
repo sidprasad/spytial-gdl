@@ -257,16 +257,21 @@ export function observeArrangement(graphEl, opts = {}) {
     // Accept a proposal: the marks it accounts for are explained, and stop
     // counting against the user. The proposal's own text is the caller's to
     // apply — this module never writes to the source.
-    accept(proposal) {
-      for (const [a, b] of (proposal && proposal.coveredPairs) || []) {
-        explained.add(a); explained.add(b);
+    accept(proposal) { return handle.acceptMany([proposal]); },
+
+    /** Credit several chosen rules together and announce the result once. */
+    acceptMany(proposals) {
+      for (const proposal of proposals) {
+        for (const [a, b] of (proposal && proposal.coveredPairs) || []) {
+          explained.add(a); explained.add(b);
+        }
+        // `covered` is a count, not a list; when the caller has not supplied
+        // pairs, fall back to marking everything the proposal touched.
+        if (!proposal || !proposal.coveredPairs) {
+          for (const id of marks) explained.add(id);
+        }
+        record('accept', { line: proposal && proposal.line });
       }
-      // `covered` is a count, not a list; when the caller has not supplied the
-      // pairs, fall back to marking everything the proposal's selector touched.
-      if (!proposal || !proposal.coveredPairs) {
-        for (const id of marks) explained.add(id);
-      }
-      record('accept', { line: proposal && proposal.line });
       notify();
       return handle.summary();
     },

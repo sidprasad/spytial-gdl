@@ -239,6 +239,7 @@ renderSpytialGdl(graphEl, source, opts?) → Promise<result>
 | `rules` | none | raw spytial-core layout YAML, merged with inline requirements and styling rules. |
 | `extraSpec` | none | extra spec YAML folded in via the class registry. |
 | `viewOptions` | compact controls | spytial-core view options; for example `{ toolbar: 'full' }` restores its full toolbar, or `{ toolbar: 'none' }` hides its controls. |
+| `preservePositions` | `false` | On a rerender of the same graph, pass its current positions and viewport to spytial-core's `renderLayout` as `priorPositions`. New rules settle from the arrangement already on screen. |
 
 All GDL render paths share the same presentation defaults. Read-only diagrams
 show spytial-core's **+, −, and Fit** controls in the lower-right corner; editable
