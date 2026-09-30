@@ -1,13 +1,15 @@
-// Paths are relative to this module, so examples also work under a Pages prefix.
-export const EXAMPLE_FILES = {
-  tree: './examples/binary-tree.gdl',
-  ring: './examples/ring.gdl',
-  apples: './examples/apples.gdl',
-};
+export async function listExamples(fetchSource = fetch) {
+  const url = new URL('./examples.json', import.meta.url);
+  const response = await fetchSource(url, { cache: 'no-cache' });
+  if (!response.ok) throw new Error(`Could not list examples (HTTP ${response.status}).`);
+  return response.json();
+}
 
 export async function loadExample(name, fetchSource = fetch) {
-  if (!Object.hasOwn(EXAMPLE_FILES, name)) throw new Error(`Unknown example: ${name}`);
-  const url = new URL(EXAMPLE_FILES[name], import.meta.url);
+  if (!name?.endsWith('.gdl') || name.startsWith('.') || /[/\\]/.test(name)) {
+    throw new Error(`Invalid example: ${name}`);
+  }
+  const url = new URL(`./examples/${encodeURIComponent(name)}`, import.meta.url);
   // Revalidate on every selection so editing the file is enough to update it.
   const response = await fetchSource(url, { cache: 'no-cache' });
   if (!response.ok) throw new Error(`Could not load ${name} example (HTTP ${response.status}).`);

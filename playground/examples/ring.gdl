@@ -1,11 +1,11 @@
-S0 -next-> S1
-S1 -next-> S2
-S2 -next-> S3
-S3 -next-> S4
-S4 -next-> S0
+S0 -> S1 : next
+S1 -> S2 : next
+S2 -> S3 : next
+S3 -> S4 : next
+S4 -> S0 : next
 
-S3 -other-> S2
-S2 -other-> S1
+S3 -> S2 : other
+S2 -> S1 : other
 
 %% Arrange the five nodes related by the next edge in a ring.
 @cyclic(selector=next, direction=clockwise)

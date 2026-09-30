@@ -198,12 +198,7 @@
             <a href="../docs/">Docs</a>
         </nav>
         <select id="example-select" title="Load an example" aria-label="Load an example" disabled>
-            <option value="" disabled>Custom diagram</option>
-            <option value="tree" selected>Binary tree</option>
-            <option value="cycle">Five-node cycle</option>
-            <option value="compiler">Compiler subsystem</option>
-            <option value="counterfactual">One edge creates a cycle</option>
-            <option value="apples">Apples in bags</option>
+            <option value="" selected disabled>Custom diagram</option>
         </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
@@ -264,7 +259,7 @@
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
-        import { loadExample } from './examples.js';
+        import { listExamples, loadExample } from './examples.js';
 
         // Sources loaded from editable .gdl files, retained to recognize edits.
         const exampleSources = new Map();
@@ -737,24 +732,36 @@
             const shared = await readHash();
             const revision = sourceRevision;
             let initialSource = shared && shared.m != null ? shared.m : null;
+            let exampleError = null;
             try {
+                const examples = await listExamples();
+                for (const name of examples) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    exampleSelect.appendChild(option);
+                }
                 if (initialSource === null) {
-                    initialSource = await loadExample('tree');
-                    exampleSources.set('tree', initialSource);
+                    if (!examples.length) throw new Error('No playground examples found.');
+                    initialSource = await loadExample(examples[0]);
+                    exampleSources.set(examples[0], initialSource);
                 }
             } catch (err) {
+                exampleError = err;
                 // Keep the editor usable so a failed example can be retried or
                 // another file selected; shared diagrams never need this fetch.
-                setStatus(err.message, 'error');
-                exampleSelect.disabled = false;
+                exampleSelect.disabled = exampleSelect.options.length <= 1;
                 applyBtn.disabled = false;
-                return;
+                if (initialSource === null) {
+                    setStatus(err.message, 'error');
+                    return;
+                }
             }
-            exampleSelect.disabled = false;
+            exampleSelect.disabled = exampleSelect.options.length <= 1;
             applyBtn.disabled = false;
             if (revision !== sourceRevision) return;
             setSource(initialSource);
-            setStatus('Ready — edit and press Apply (⌘⏎).', 'info');
+            setStatus(exampleError?.message || 'Ready — edit and press Apply (⌘⏎).', exampleError ? 'error' : 'info');
             setTimeout(apply, 80);
         });
     </script>

@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { exampleManifest } from './example-manifest.mjs';
 
 const ROOT = normalize(join(fileURLToPath(import.meta.url), '..', '..'));
 const PORT = Number(process.env.PORT) || 8100;
@@ -26,6 +27,12 @@ createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     let path = decodeURIComponent(url.pathname);
+
+    if (path === '/playground/examples.json') {
+      res.writeHead(200, { 'content-type': TYPES['.json'] });
+      res.end(JSON.stringify(await exampleManifest()));
+      return;
+    }
 
     if (path.endsWith('/')) path += 'index.html';
     // Serve generated docs alongside the working source, assets, and playground.

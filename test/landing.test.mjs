@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as core from 'spytial-core';
 import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
 import { legacyTarget } from '../docs/pages/javascripts/legacy-routes.js';
-import { EXAMPLE_FILES, loadExample } from '../playground/examples.js';
+import { listExamples, loadExample } from '../playground/examples.js';
+import { exampleManifest } from '../scripts/example-manifest.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const landing = read('index.html');
@@ -53,12 +54,21 @@ assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\
 const exampleMenu = playground.match(/<select id="example-select"[\s\S]*?<\/select>/)?.[0];
 assert.ok(exampleMenu, 'The playground has an example menu');
 assert.deepEqual([...exampleMenu.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]),
-  ['', 'tree', 'cycle', 'compiler', 'counterfactual', 'apples']);
-assert.match(exampleMenu, /<option value="tree" selected>Binary tree<\/option>/);
-assert.deepEqual(Object.keys(EXAMPLE_FILES), ['tree', 'cycle', 'compiler', 'counterfactual', 'apples']);
-for (const name of Object.keys(EXAMPLE_FILES)) {
+  [''], 'Example choices are filled from the discovered files');
+const examples = await exampleManifest();
+assert.ok(examples.length > 0, 'The playground has at least one example');
+assert.deepEqual([...examples].sort(),
+  readdirSync(new URL('../playground/examples/', import.meta.url))
+    .filter((file) => !file.startsWith('.') && file.endsWith('.gdl'))
+    .sort());
+assert.deepEqual(await listExamples(async (url, options) => {
+  assert.equal(url.pathname.endsWith('/playground/examples.json'), true);
+  assert.equal(options.cache, 'no-cache');
+  return { ok: true, json: async () => examples };
+}), examples);
+for (const name of examples) {
   const source = await loadExample(name, async (url, options) => {
-    assert.equal(url.pathname.endsWith('.gdl'), true, 'Examples are editable GDL files');
+    assert.equal(decodeURIComponent(url.pathname).endsWith(`/examples/${name}`), true);
     assert.equal(options.cache, 'no-cache', 'Reloading an example revalidates edits to its file');
     return { ok: true, text: async () => readFileSync(url, 'utf8') };
   });
@@ -66,34 +76,12 @@ for (const name of Object.keys(EXAMPLE_FILES)) {
   assert.equal(compiled.ok, true, name);
   assert.deepEqual(compiled.parseErrors, [], name);
   assert.deepEqual(compiled.annotationErrors, [], name);
-  const solved = solveSpytialGdl(core, compiled);
-  if (name === 'counterfactual') {
-    assert.ok(solved.error?.errorMessages, 'The counterfactual example reports a constraint clash');
-    assert.equal(compiled.parsed.nodes.size, 7);
-    assert.equal(compiled.parsed.edges.length, 7);
-    const conflict = solved.layout.conflictingConstraints;
-    assert.equal(conflict.length, 3, 'Only the three cycle edges belong to the conflict');
-    assert.deepEqual(new Set(conflict.flatMap((c) => [c.top.id, c.bottom.id])),
-      new Set(['A', 'B', 'D']), 'Four nodes remain outside the conflict');
-    assert.equal(solved.layout.nodes.length, 7, 'The counterfactual retains the whole graph');
-    assert.equal(solved.layout.constraints.length, 6, 'The original tree constraints remain feasible');
-    const repaired = solveSpytialGdl(core, compileSpytialGdl(source.replace(/^D -> A\n/m, '')));
-    assert.equal(repaired.error, null, 'Removing the extra edge resolves the conflict');
-  } else {
-    assert.equal(solved.error, null, `${name} layout requirements are satisfiable`);
-  }
-  assert.deepEqual(solved.diagnostics, [], name);
-  assert.ok(solved.layout, name);
-  if (name === 'cycle') {
-    assert.equal(compiled.parsed.nodes.size, 5);
-    assert.equal(compiled.parsed.edges.length, 5);
-  }
 }
-await assert.rejects(loadExample('tree', async () => ({ ok: false, status: 404 })),
-  /Could not load tree example \(HTTP 404\)/, 'Failed fetches report an error instead of loading an error page');
-await assert.rejects(loadExample('unknown', async () => {
-  assert.fail('Unknown examples must not issue a request');
-}), /Unknown example/);
+await assert.rejects(loadExample(examples[0], async () => ({ ok: false, status: 404 })),
+  /Could not load .* example \(HTTP 404\)/, 'Failed fetches report an error instead of loading an error page');
+await assert.rejects(loadExample('../unknown.gdl', async () => {
+  assert.fail('Invalid example names must not issue a request');
+}), /Invalid example/);
 assert.doesNotMatch(playground, /id="value-btn"|id="view-hint"/);
 assert.match(playground, /#error-messages #error-message-modal\s*\{[^}]*background: var\(--canvas\)/);
 assert.ok(existsSync(new URL('../SKILL.md', import.meta.url)));

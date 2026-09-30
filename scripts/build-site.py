@@ -14,6 +14,11 @@ subprocess.run(
 )
 for name in ("assets", "src", "vendor", "playground", "skills"):
     shutil.copytree(ROOT / name, SITE / name, dirs_exist_ok=True)
+subprocess.run(
+    ["node", str(ROOT / "scripts" / "example-manifest.mjs"), str(SITE / "playground" / "examples.json")],
+    check=True,
+    cwd=ROOT,
+)
 for name in ("index.html", ".nojekyll", "spytial-gdl-language.json", "SKILL.md", "llms.txt", "CHANGELOG.md"):
     shutil.copy2(ROOT / name, SITE / name)
 
