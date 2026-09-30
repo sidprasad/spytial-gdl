@@ -195,20 +195,16 @@ export function createDemonstration(graphEl, opts = {}) {
 // ── what a suggestion is about ──────────────────────────────────────────────
 
 // The nodes a proposal makes a claim about, as pairs and as a flat id list.
-// Pure, and here rather than in the chrome, because "which nodes does this line
-// talk about" is a fact about the proposal and not about how it is drawn.
+// A scope lets each evidence count point at exactly the pairs behind it.
 //
-// All three pair sets belong in it. `coveredPairs` is what you demonstrated and
-// `consistentPairs` is what the drawing already honoured — but `predicts`, the
-// pairs accepting the line would *move*, is the set most worth looking at and
-// the only one you have no other way to find. Leaving it out would light up
-// nothing new for the suggestion whose note reads "would also move 2", which is
-// precisely the one you wanted to look at twice.
+// The full selector preview includes covered, already consistent and predicted
+// pairs. The fit count includes both newly demonstrated and already satisfied
+// pairs; missed and predicted counts each preview their own set.
 //
 // A ring contributes `members` as well. Its `coveredPairs` are the consecutive
 // pairs and do reach every member, but the members are what the proposal is
 // about, and saying so is better than relying on that.
-export function relatedNodes(proposal) {
+export function relatedNodes(proposal, scope = 'all') {
   const pairs = [];
   const ids = new Set();
 
@@ -224,10 +220,13 @@ export function relatedNodes(proposal) {
   };
 
   if (proposal) {
-    take(proposal.coveredPairs);
-    take(proposal.consistentPairs);
-    take(proposal.predicts);
-    for (const id of proposal.members || []) if (id != null) ids.add(id);
+    if (scope === 'all' || scope === 'covered' || scope === 'satisfied') take(proposal.coveredPairs);
+    if (scope === 'all' || scope === 'satisfied') take(proposal.consistentPairs);
+    if (scope === 'all' || scope === 'predicted') take(proposal.predicts);
+    if (scope === 'missed') take(proposal.missedPairs);
+    if (scope === 'all' || scope === 'covered') {
+      for (const id of proposal.members || []) if (id != null) ids.add(id);
+    }
   }
 
   return { pairs, ids: [...ids] };
@@ -256,10 +255,8 @@ const BARE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 // Show the part of the diagram a suggestion is talking about.
 //
 // A line like `@orientation(selector=parent, directions=[below])` names a
-// relation, not a picture, and which boxes on screen it would move is exactly
-// what the text cannot say. Pointing at the selector asks the renderer to show
-// them — which is also what turns "covers 3, would also move 2" from two numbers
-// into something you can look at before you accept it.
+// relation, not a picture. Pointing at the selector shows its full reach;
+// pointing at an evidence count shows only the nodes behind that count.
 //
 // spytial-core owns the highlight: `highlightNodes`, `highlightNodePairs` and
 // `clearNodeHighlights` for nodes, `highlightRelation` for edges. Ids it does
@@ -302,10 +299,11 @@ function makeHighlighter(graphEl) {
     relations = [];
   };
 
-  const show = (proposal) => {
+  const show = (proposal, scope = 'all') => {
     clear();
     if (!proposal) return;
-    const { pairs, ids } = relatedNodes(proposal);
+    const { pairs, ids } = relatedNodes(proposal, scope);
+    if (ids.length === 0) return;
     lit = true;
     // Blue-then-red is a claim about order, so it goes only to the one kind that
     // has one: `@orientation(selector=parent, directions=[below])` marks the
@@ -315,8 +313,12 @@ function makeHighlighter(graphEl) {
     // rather than a direction they do not have.
     if (proposal.kind === 'orientation') call('highlightNodePairs', pairs);
     else call('highlightNodes', ids);
-    relations = edgesFor(proposal.selector);
-    for (const name of relations) call('highlightRelation', name);
+    // A count means only its own pairs. Highlighting the entire relation here
+    // would make a narrow count appear to include every edge in the graph.
+    if (scope === 'all') {
+      relations = edgesFor(proposal.selector);
+      for (const name of relations) call('highlightRelation', name);
+    }
   };
 
   return { show, clear };
@@ -362,16 +364,19 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     return el;
   };
 
-  // What a proposal is worth saying about itself. A suggestion that reaches past
-  // what was shown and would actually move something is the one thing worth
-  // checking before accepting — pairs the drawing already honours are not, since
-  // accepting changes nothing about them. A ring is counted in nodes, because
-  // "covers 5" is not what a person sees when they look at one.
-  const note = (p) => {
-    if (p.kind === 'cyclic') return `${p.members.length}-node ring, ${p.value}`;
-    return p.predicts.length
-      ? `covers ${p.covered}, would also move ${p.predicts.length}`
-      : `covers ${p.covered}`;
+  // The counts are evidence, not just score labels: each has its own pair set
+  // and previews only that set. Buttons make the same inspection available by
+  // keyboard, where hover alone would be inaccessible.
+  const metric = (p, scope, label, explanation) => {
+    const el = btn(label, explanation);
+    el.setAttribute('aria-label', `${label}. ${explanation}`);
+    el.style.cssText +=
+      ` padding: 3px 6px; font: 10.5px/1.2 ${SANS}; cursor: help;`;
+    el.addEventListener('mouseenter', () => highlighter.show(p, scope));
+    el.addEventListener('mouseleave', () => highlighter.clear());
+    el.addEventListener('focus', () => highlighter.show(p, scope));
+    el.addEventListener('blur', () => highlighter.clear());
+    return el;
   };
 
   const render = (s) => {
@@ -411,7 +416,7 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     const tail = doc.createElement('span');
     tail.style.cssText = 'opacity: .8;';
     tail.textContent = s.state === OFFERING
-      ? ` — ${s.marked} moved. Select one or more; point at a selector to preview its nodes.`
+      ? ` — ${s.marked} moved. Select rules; hover or focus a count to highlight its nodes.`
       : ` — arrange it how you want it. ${s.marked} moved.`;
     label.appendChild(tail);
 
@@ -441,10 +446,12 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
     // chore rather than an offer. They arrive ranked, so the tail is the least
     // consistent and least explanatory of the set.
     for (const [index, p] of s.proposals.slice(0, maxSuggestions).entries()) {
-      const row = doc.createElement('label');
+      const row = doc.createElement('div');
       row.style.cssText =
-        `display: flex; align-items: center; gap: 8px; padding: 7px 9px; margin: 5px 0 0; cursor: pointer;` +
+        `display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 9px; margin: 5px 0 0;` +
         ` border: 1px solid ${s.selected.includes(p.line) ? C.accent : C.border}; border-radius: 6px; background: ${C.slot};`;
+      const choice = doc.createElement('label');
+      choice.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1 1 300px; min-width: 0; cursor: pointer;';
       const check = doc.createElement('input');
       check.type = 'checkbox';
       check.checked = s.selected.includes(p.line);
@@ -454,7 +461,7 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
         machine.toggle(p);
         if (keepFocus) host.querySelectorAll('input[type="checkbox"]')[index]?.focus();
       });
-      row.appendChild(check);
+      choice.appendChild(check);
       const code = doc.createElement('code');
       code.style.cssText =
         `flex: 1 1 auto; min-width: 0; overflow-x: auto; white-space: pre; font: 11.5px/1.5 ${MONO};`;
@@ -483,10 +490,27 @@ export function mountDemonstration(doc, host, graphEl, opts = {}) {
         }
         code.appendChild(span);
       }
-      row.appendChild(code);
-      const why = doc.createElement('span');
-      why.style.cssText = `flex: 0 0 auto; font: 10.5px/1.3 ${SANS}; opacity: .75; white-space: nowrap;`;
-      why.textContent = note(p);
+      choice.appendChild(code);
+      row.appendChild(choice);
+      const why = doc.createElement('div');
+      why.style.cssText = 'display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto;';
+      if (p.kind === 'cyclic') {
+        why.appendChild(metric(p, 'covered', `${p.members.length} nodes in ring`,
+          'Highlights the ring you arranged.'));
+        why.appendChild(line(p.value, `font: 10.5px/1.8 ${SANS}; opacity: .75;`));
+      } else {
+        const fitting = relatedNodes(p, 'satisfied').pairs.length;
+        why.appendChild(metric(p, 'satisfied', `fits ${fitting} ${fitting === 1 ? 'pair' : 'pairs'}`,
+          'Highlights the pairs that fit this rule in the current drawing, including pairs that were already in place.'));
+        if (p.missedPairs?.length) {
+          why.appendChild(metric(p, 'missed', `misses ${p.missedPairs.length} ${p.missedPairs.length === 1 ? 'shown pair' : 'shown pairs'}`,
+            'Highlights arranged pairs this rule does not explain.'));
+        }
+        if (p.predicts?.length) {
+          why.appendChild(metric(p, 'predicted', `would move ${p.predicts.length} more ${p.predicts.length === 1 ? 'pair' : 'pairs'}`,
+            'Highlights other pairs this rule would also constrain.'));
+        }
+      }
       row.appendChild(why);
       host.appendChild(row);
     }

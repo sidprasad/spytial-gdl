@@ -77,6 +77,30 @@ const crooked = () => new FakeGraph([
 // replaces, so the honest implementation is not to be listening at all.
 
 {
+  // Both spouse pairs end up almost horizontal, as in the reported drawing.
+  // c/e already aligned in the baseline, even though all four nodes were moved.
+  const el = crooked();
+  const demo = createDemonstration(el);
+  demo.begin();
+  el.drag('e', 129, 112);
+  el.drag('c', 239, 115);
+  el.drag('h', 291, 233);
+  el.drag('i', 427, 229);
+  const p = demo.explain(SPOUSES).proposals.find((x) =>
+    x.line === '@align(selector=spouse, direction=horizontal)');
+  check('slightly imperfect spouse alignments both satisfy the suggested rule',
+    p?.covered === 1 && p?.consistent === 1 && p?.predicts.length === 0,
+    JSON.stringify(p));
+  const fitting = relatedNodes(p, 'satisfied');
+  check('the fit badge counts two undirected pairs and highlights all four nodes',
+    fitting.pairs.length === 2 && fitting.ids.length === 4, JSON.stringify(fitting));
+  if (p) demo.accept(p);
+  check('accepting credits all four moved nodes whose arrangement fits the rule',
+    demo.status().accepted?.explained === 4, JSON.stringify(demo.status().accepted));
+  demo.detach();
+}
+
+{
   const el = crooked();
   const demo = createDemonstration(el);
 
@@ -312,6 +336,14 @@ const crooked = () => new FakeGraph([
     ids.includes('e') && ids.includes('f'), ids.join(','));
   check('and every pair survives as a pair, so direction can be shown',
     pairs.length === 3 && pairs.every((pr) => pr.length === 2), JSON.stringify(pairs));
+  check('the demonstrated scope isolates newly demonstrated pairs',
+    relatedNodes(p, 'covered').ids.join(',') === 'a,b');
+  check('the fit count includes existing matches and excludes pairs that would move',
+    relatedNodes(p, 'satisfied').ids.join(',') === 'a,b,c,d');
+  check('hovering the predicted count isolates the other pairs',
+    relatedNodes(p, 'predicted').ids.join(',') === 'e,f');
+  check('hovering the missed count isolates demonstrations this rule leaves out',
+    relatedNodes({ ...p, missedPairs: [['g', 'h']] }, 'missed').ids.join(',') === 'g,h');
 }
 
 {
@@ -321,6 +353,8 @@ const crooked = () => new FakeGraph([
     coveredPairs: [['S0', 'S1'], ['S1', 'S2'], ['S2', 'S3']],
   });
   check('a ring is about all of its members', ids.length === 4, ids.join(','));
+  check('the ring count highlights every member',
+    relatedNodes({ kind: 'cyclic', members: ['S0', 'S1', 'S2', 'S3'] }, 'covered').ids.length === 4);
 }
 
 {
