@@ -4,6 +4,7 @@ export const EXAMPLE_FILES = {
   cycle: './examples/five-node-cycle.gdl',
   compiler: './examples/compiler.gdl',
   counterfactual: './examples/counterfactual.gdl',
+  apples: './examples/apples.gdl',
 };
 
 export async function loadExample(name, fetchSource = fetch) {

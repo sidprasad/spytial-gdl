@@ -53,9 +53,9 @@ assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\
 const exampleMenu = playground.match(/<select id="example-select"[\s\S]*?<\/select>/)?.[0];
 assert.ok(exampleMenu, 'The playground has an example menu');
 assert.deepEqual([...exampleMenu.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]),
-  ['', 'tree', 'cycle', 'compiler', 'counterfactual']);
+  ['', 'tree', 'cycle', 'compiler', 'counterfactual', 'apples']);
 assert.match(exampleMenu, /<option value="tree" selected>Binary tree<\/option>/);
-assert.deepEqual(Object.keys(EXAMPLE_FILES), ['tree', 'cycle', 'compiler', 'counterfactual']);
+assert.deepEqual(Object.keys(EXAMPLE_FILES), ['tree', 'cycle', 'compiler', 'counterfactual', 'apples']);
 for (const name of Object.keys(EXAMPLE_FILES)) {
   const source = await loadExample(name, async (url, options) => {
     assert.equal(url.pathname.endsWith('.gdl'), true, 'Examples are editable GDL files');

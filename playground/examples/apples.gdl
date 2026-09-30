@@ -1,0 +1,9 @@
+bag1[1]:::Bag -> gala[🍎 Gala]:::Apple : contains
+bag1 -> fuji[🍎 Fuji]:::Apple : contains
+bag2[2]:::Bag -> honeycrisp[🍎 Honeycrisp]:::Apple : contains
+bag2 -> pinklady[🍎 Pink Lady]:::Apple : contains
+bag2 -> braeburn[🍎 Braeburn]:::Apple : contains
+
+@group(selector=contains, name='Bag')
+@hideAtom(selector=Bag)
+@hideField(field=contains)
