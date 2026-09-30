@@ -1,0 +1,12 @@
+A -> B : left
+A -> C : right
+B -> D : left
+B -> E : right
+C -> F : left
+C -> G : right
+
+%% Every child goes below its parent. Left children go left;
+%% right children go right.
+@orientation(selector=_links, directions=[below])
+@orientation(selector=left,  directions=[left])
+@orientation(selector=right, directions=[right])

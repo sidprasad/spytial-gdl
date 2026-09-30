@@ -18,6 +18,7 @@ const TYPES = {
   '.json': 'application/json; charset=utf-8',
   '.md': 'text/plain; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
+  '.gdl': 'text/plain; charset=utf-8',
   '.svg': 'image/svg+xml',
 };
 

@@ -197,7 +197,7 @@
             <a href="../docs/#/embedding">Embed</a>
             <a href="../docs/">Docs</a>
         </nav>
-        <select id="example-select" title="Load an example" aria-label="Load an example">
+        <select id="example-select" title="Load an example" aria-label="Load an example" disabled>
             <option value="" disabled>Custom diagram</option>
             <option value="tree" selected>Binary tree</option>
             <option value="cycle">Five-node cycle</option>
@@ -263,66 +263,12 @@
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
+        import { loadExample } from './examples.js';
 
-        // ─── Examples (one combined source: graph + inline requirements) ──────
-        // Selectors below match what relationalize.js emits:
-        //   <label>  — edges with that label, e.g. left / right (drawn)
-        //   _        — unlabeled edges (drawn)
-        //   _links   — every edge
-        //   <type>   — nodes of that sort, e.g. A:::Person → Person
-        //   <class>  — nodes carrying a class
-        const EXAMPLES = {
-            tree: `A -> B : left
-A -> C : right
-B -> D : left
-B -> E : right
-C -> F : left
-C -> G : right
-
-%% Every child goes below its parent. Left children go left;
-%% right children go right.
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])`,
-
-            cycle: `S0 -> S1
-S1 -> S2
-S2 -> S3
-S3 -> S4
-S4 -> S0
-
-%% Arrange the five nodes as a ring.
-@cyclic(selector=_links, direction=clockwise)`,
-
-            compiler: `source[Source] -> parse[Parse] : enters
-parse -> check[Check types] : stage
-check -> generate[Generate code] : stage
-generate -> program[Program] : leaves
-class parse,check,generate compiler
-
-%% Keep the compiler's internal order even with connections outside it.
-@group(selector=compiler, name='Compiler')
-@orientation(selector=stage, directions=[right])
-@align(selector=stage, direction=horizontal)
-@orientation(selector=enters, directions=[directlyBelow])
-@orientation(selector=leaves, directions=[directlyBelow])`,
-
-            counterfactual: `A -> B
-A -> C
-B -> D
-B -> E
-C -> F
-C -> G
-
-%% This extra edge closes the cycle A -> B -> D -> A.
-%% Delete it to restore a graph that can be ordered top to bottom.
-D -> A
-
-%% Every edge should point downward. Only the three edges in
-%% the cycle conflict; C, E, F and G are outside the conflict.
-%% The counterfactual drawing keeps the other requirements.
-@orientation(selector=_links, directions=[below])`,
-        };
+        // Sources loaded from editable .gdl files, retained to recognize edits.
+        const exampleSources = new Map();
+        let sourceRevision = 0;
+        let exampleRequest = 0;
 
         // ─── Element refs / state ───────────────────────────────────────
         const sourceEl = document.getElementById('source-input');
@@ -385,14 +331,16 @@ D -> A
             paintSource();
         }
         function setSource(text) {
+            sourceRevision++;
             sourceEl.value = text;
             showSourceDiagnostics([]);
             syncExampleSelection();
         }
         function syncExampleSelection() {
-            exampleSelect.value = Object.keys(EXAMPLES).find((key) => EXAMPLES[key] === sourceEl.value) || '';
+            exampleSelect.value = [...exampleSources].find(([, source]) => source.trimEnd() === sourceEl.value.trimEnd())?.[0] || '';
         }
         sourceEl.addEventListener('input', () => {
+            sourceRevision++;
             showSourceDiagnostics([]);
             setStatus('Changes not applied — press Apply.', 'info');
             syncExampleSelection();
@@ -557,12 +505,25 @@ D -> A
         }
 
         // ─── Examples ───────────────────────────────────────────────────
-        exampleSelect.addEventListener('change', (e) => {
-            const src = EXAMPLES[e.target.value];
-            if (!src) return;
-            setSource(src);
-            // Loading an example resets to View (its own source of truth).
-            if (mode === 'edit') enterView(); else apply();
+        exampleSelect.addEventListener('change', async (e) => {
+            const name = e.target.value;
+            if (!name) return;
+            const request = ++exampleRequest;
+            const revision = sourceRevision;
+            setStatus('Loading example…', 'info');
+            try {
+                const source = await loadExample(name);
+                // A slower request must not overwrite a newer selection or edit.
+                if (request !== exampleRequest || revision !== sourceRevision) return;
+                exampleSources.set(name, source);
+                setSource(source);
+                // Loading an example resets to View (its own source of truth).
+                if (mode === 'edit') enterView(); else apply();
+            } catch (err) {
+                if (request !== exampleRequest || revision !== sourceRevision) return;
+                syncExampleSelection();
+                setStatus(err.message, 'error');
+            }
         });
 
         // ─── The pipeline: graph + requirements -> live constraint diagram ───
@@ -773,9 +734,25 @@ D -> A
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages');
 
             const shared = await readHash();
-            setSource(shared && shared.m != null ? shared.m : EXAMPLES.tree);
-
+            const revision = sourceRevision;
+            let initialSource = shared && shared.m != null ? shared.m : null;
+            try {
+                if (initialSource === null) {
+                    initialSource = await loadExample('tree');
+                    exampleSources.set('tree', initialSource);
+                }
+            } catch (err) {
+                // Keep the editor usable so a failed example can be retried or
+                // another file selected; shared diagrams never need this fetch.
+                setStatus(err.message, 'error');
+                exampleSelect.disabled = false;
+                applyBtn.disabled = false;
+                return;
+            }
+            exampleSelect.disabled = false;
             applyBtn.disabled = false;
+            if (revision !== sourceRevision) return;
+            setSource(initialSource);
             setStatus('Ready — edit and press Apply (⌘⏎).', 'info');
             setTimeout(apply, 80);
         });
