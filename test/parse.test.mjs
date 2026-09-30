@@ -74,6 +74,30 @@ const j = (v) => JSON.stringify(v);
   check('pipe label, label+sort, and class → no errors',
     g.errors.length === 0 && g.edges.length === 2, j(g));
 }
+{
+  const inline = parseGraph('S0 -- next --> S1');
+  const piped = parseGraph('S0 -->|next| S1');
+  const native = parseGraph('S0 -> S1 : next');
+  check('Mermaid inline label has the same graph meaning as pipe and native labels',
+    [inline, piped, native].every((g) => g.errors.length === 0 &&
+      g.nodes.size === 2 && g.edges.length === 1 &&
+      g.edges[0].source === 'S0' && g.edges[0].target === 'S1' &&
+      g.edges[0].label === 'next' && g.labelLines.get('next') === 1), j(inline));
+}
+{
+  const g = parseGraph('S0-- next-->S1\nA[foo -- bar] -- later --> B\nfoo--bar --> B');
+  check('inline labels allow Mermaid spacing and ignore delimiters inside node labels',
+    g.errors.length === 0 && g.edges.length === 3 &&
+    g.edges[0].label === 'next' && g.edges[1].label === 'later' &&
+    g.nodes.get('A')?.label === 'foo -- bar' &&
+    g.edges[2].source === 'foo--bar' && g.edges[2].label === null, j(g));
+}
+{
+  const g = parseGraph('A -- left child --> B');
+  check('invalid inline relation name uses the normal selector diagnostic',
+    g.edges.length === 1 && g.edges[0].label === 'left child' &&
+    g.errors.length === 1 && /edge label "left child"/.test(g.errors[0].message), j(g));
+}
 
 // ── an arrow inside a quoted/bracketed label is not an edge delimiter ─────────
 {

@@ -74,6 +74,7 @@ on the source line.
 | `A --> B` | an edge |
 | `A -.-> B`, `A ==> B`, `A --- B` | an edge, with a warning that dotted, thick, or open-link styling was lost |
 | `A -->\|left\| B` | a labeled edge, label `left` |
+| `A -- left --> B` | a labeled edge, label `left` |
 | `cs[Algorithms]` | a node with display label `Algorithms` |
 | `cs(Algorithms)`, `cs{Algorithms}`, `cs((Algorithms))` | a node with display label `Algorithms`, with a warning that its shape was lost |
 | `classDef …`, `style …`, `linkStyle …`, `click …` | ignored with a warning |

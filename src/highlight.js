@@ -218,6 +218,22 @@ function findArrow(s) {
   return null;
 }
 
+// Match parse.js's Mermaid inline-label delimiter, outside node labels.
+function inlineLabelStart(s) {
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < s.length - 2; i++) {
+    const ch = s[i];
+    if (quote) { if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '[' || ch === '(' || ch === '{') { depth++; continue; }
+    if (ch === ']' || ch === ')' || ch === '}') { if (depth > 0) depth--; continue; }
+    if (depth === 0 && s.startsWith('--', i) && /\s/.test(s[i + 2]) &&
+        s.slice(0, i).trim() && s.slice(i + 2).trim()) return i;
+  }
+  return -1;
+}
+
 // ` : label` on an edge's target side — the colon must follow whitespace and sit
 // at depth 0, so `:::Person` and a colon inside a `[label]` are left alone.
 function splitLabel(s) {
@@ -250,7 +266,20 @@ function scanGraphLine(s, push) {
   const arrow = findArrow(s);
   if (!arrow) { scanNodeExpr(s, push); return; }
 
-  scanNodeExpr(s.slice(0, arrow.i), push);
+  const before = s.slice(0, arrow.i);
+  const inline = arrow.tok === '-->' ? inlineLabelStart(before) : -1;
+  if (inline !== -1) {
+    scanNodeExpr(before.slice(0, inline), push);
+    push('--', 'arrow');
+    const labelText = before.slice(inline + 2);
+    const lead = labelText.match(/^\s*/)[0];
+    const body = labelText.slice(lead.length).replace(/\s+$/, '');
+    push(lead, 'text');
+    push(body, 'selector');
+    push(labelText.slice(lead.length + body.length), 'text');
+  } else {
+    scanNodeExpr(before, push);
+  }
   push(arrow.tok, 'arrow');
 
   let rest = s.slice(arrow.i + arrow.tok.length);

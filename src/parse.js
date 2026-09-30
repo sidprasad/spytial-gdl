@@ -37,6 +37,7 @@
 //
 // For paste-compatibility, a leading `graph`/`flowchart` line, the mermaid-style
 // arrows (-->, -.->, ==>, ---), and pipe labels (A -->|x| B) are also accepted;
+// Mermaid inline arrow labels (A -- x --> B) are accepted too;
 // the other mermaid bracket forms are read as a label too (inner text).
 
 // A bracket wrapper after an id holds the node's display label, e.g. `A[Alice]`
@@ -171,6 +172,27 @@ function findArrow(line) {
   return null;
 }
 
+// Mermaid's `A -- label --> B` puts the relation name before the arrow.
+// Require whitespace after `--`: without it, `A--name` is a valid node ID.
+// Scan outside brackets and quotes so a node label containing ` -- ` is safe.
+function splitInlineLabel(leftRaw) {
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < leftRaw.length - 2; i++) {
+    const ch = leftRaw[i];
+    if (quote) { if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '[' || ch === '(' || ch === '{') { depth++; continue; }
+    if (ch === ']' || ch === ')' || ch === '}') { if (depth > 0) depth--; continue; }
+    if (depth === 0 && leftRaw.startsWith('--', i) && /\s/.test(leftRaw[i + 2])) {
+      const node = leftRaw.slice(0, i).trim();
+      const label = leftRaw.slice(i + 2).trim();
+      if (node && label) return { node, label };
+    }
+  }
+  return null;
+}
+
 // Split a trailing ` : label` off an edge's target side. The colon must be
 // preceded by whitespace and sit at bracket depth 0, so it can't be confused
 // with a `:::class` tag or a colon inside a `[label]`.
@@ -215,7 +237,9 @@ function parseEdgeLine(line) {
   const leftRaw = line.slice(0, arrow.i);
   const rightRaw = line.slice(arrow.i + arrow.tok.length);
   const { node, label } = splitLabel(rightRaw); // ` : label` form
-  return { leftExpr: leftRaw.trim(), rightExpr: node, kind: arrow.tok, label };
+  const inline = arrow.tok === '-->' && label == null ? splitInlineLabel(leftRaw) : null;
+  return { leftExpr: inline?.node ?? leftRaw.trim(), rightExpr: node,
+    kind: arrow.tok, label: inline?.label ?? label };
 }
 
 // Returns { nodes, edges, classesPerNode, errors, labelLines, classLines }, where

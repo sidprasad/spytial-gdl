@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "package": "spytial-gdl",
-  "packageVersion": "0.6.0",
+  "packageVersion": "0.6.1",
   "scope": "Graph authoring forms and annotation vocabulary. This is not a complete parser grammar or a JSON Schema for GDL text.",
   "upstream": {
     "coreVersion": "6.5.0",
