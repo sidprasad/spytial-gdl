@@ -1,0 +1,12 @@
+source[Source] -> parse[Parse] : enters
+parse -> check[Check types] : stage
+check -> generate[Generate code] : stage
+generate -> program[Program] : leaves
+class parse,check,generate compiler
+
+%% Keep the compiler's internal order even with connections outside it.
+@group(selector=compiler, name='Compiler')
+@orientation(selector=stage, directions=[right])
+@align(selector=stage, direction=horizontal)
+@orientation(selector=enters, directions=[directlyBelow])
+@orientation(selector=leaves, directions=[directlyBelow])

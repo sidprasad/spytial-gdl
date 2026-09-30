@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as core from 'spytial-core';
 import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
 import { legacyTarget } from '../docs/pages/javascripts/legacy-routes.js';
+import { EXAMPLE_FILES, loadExample } from '../playground/examples.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const landing = read('index.html');
@@ -54,10 +55,13 @@ assert.ok(exampleMenu, 'The playground has an example menu');
 assert.deepEqual([...exampleMenu.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]),
   ['', 'tree', 'cycle', 'compiler', 'counterfactual']);
 assert.match(exampleMenu, /<option value="tree" selected>Binary tree<\/option>/);
-const examples = Object.fromEntries([...playground.matchAll(/\n\s+(tree|cycle|compiler|counterfactual): `([\s\S]*?)`,/g)]
-  .map(([, name, source]) => [name, source]));
-assert.deepEqual(Object.keys(examples), ['tree', 'cycle', 'compiler', 'counterfactual']);
-for (const [name, source] of Object.entries(examples)) {
+assert.deepEqual(Object.keys(EXAMPLE_FILES), ['tree', 'cycle', 'compiler', 'counterfactual']);
+for (const name of Object.keys(EXAMPLE_FILES)) {
+  const source = await loadExample(name, async (url, options) => {
+    assert.equal(url.pathname.endsWith('.gdl'), true, 'Examples are editable GDL files');
+    assert.equal(options.cache, 'no-cache', 'Reloading an example revalidates edits to its file');
+    return { ok: true, text: async () => readFileSync(url, 'utf8') };
+  });
   const compiled = compileSpytialGdl(source);
   assert.equal(compiled.ok, true, name);
   assert.deepEqual(compiled.parseErrors, [], name);
@@ -85,6 +89,11 @@ for (const [name, source] of Object.entries(examples)) {
     assert.equal(compiled.parsed.edges.length, 5);
   }
 }
+await assert.rejects(loadExample('tree', async () => ({ ok: false, status: 404 })),
+  /Could not load tree example \(HTTP 404\)/, 'Failed fetches report an error instead of loading an error page');
+await assert.rejects(loadExample('unknown', async () => {
+  assert.fail('Unknown examples must not issue a request');
+}), /Unknown example/);
 assert.doesNotMatch(playground, /id="value-btn"|id="view-hint"/);
 assert.match(playground, /#error-messages #error-message-modal\s*\{[^}]*background: var\(--canvas\)/);
 assert.ok(existsSync(new URL('../SKILL.md', import.meta.url)));

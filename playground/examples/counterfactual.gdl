@@ -1,0 +1,15 @@
+A -> B
+A -> C
+B -> D
+B -> E
+C -> F
+C -> G
+
+%% This extra edge closes the cycle A -> B -> D -> A.
+%% Delete it to restore a graph that can be ordered top to bottom.
+D -> A
+
+%% Every edge should point downward. Only the three edges in
+%% the cycle conflict; C, E, F and G are outside the conflict.
+%% The counterfactual drawing keeps the other requirements.
+@orientation(selector=_links, directions=[below])
