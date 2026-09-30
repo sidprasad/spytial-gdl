@@ -202,7 +202,7 @@
             <option value="tree" selected>Binary tree</option>
             <option value="cycle">Five-node cycle</option>
             <option value="compiler">Compiler subsystem</option>
-            <option value="counterfactual">Counterfactual clash</option>
+            <option value="counterfactual">One edge creates a cycle</option>
         </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
@@ -307,16 +307,21 @@ class parse,check,generate compiler
 @orientation(selector=enters, directions=[directlyBelow])
 @orientation(selector=leaves, directions=[directlyBelow])`,
 
-            counterfactual: `a -> b : r1
-b -> c : r2
-c -> a : r3
+            counterfactual: `A -> B
+A -> C
+B -> D
+B -> E
+C -> F
+C -> G
 
-%% Each edge demands that its target sit to the right. Around
-%% this cycle, the three demands cannot all hold. The diagram
-%% shows a counterfactual layout; the report explains the clash.
-@orientation(selector=r1, directions=[right])
-@orientation(selector=r2, directions=[right])
-@orientation(selector=r3, directions=[right])`,
+%% This extra edge closes the cycle A -> B -> D -> A.
+%% Delete it to restore a graph that can be ordered top to bottom.
+D -> A
+
+%% Every edge should point downward. Only the three edges in
+%% the cycle conflict; C, E, F and G are outside the conflict.
+%% The counterfactual drawing keeps the other requirements.
+@orientation(selector=_links, directions=[below])`,
         };
 
         // ─── Element refs / state ───────────────────────────────────────
