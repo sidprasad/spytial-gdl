@@ -4,9 +4,24 @@ B -> D : left
 B -> E : right
 C -> F : left
 C -> G : right
+G -> H : left
 
-%% Every child goes below its parent. Left children go left;
-%% right children go right.
-@orientation(selector=_links, directions=[below])
-@orientation(selector=left,  directions=[left])
-@orientation(selector=right, directions=[right])
+%% All children go below their parents. 
+@orientation(selector=left + right, directions=[below])
+
+%% The entire left subtree should be to a node's left.
+@orientation(selector='left.*(left + right)', directions=[left])
+
+%% The entire right subtree should be to a node's right.
+@orientation(selector='right.*(left + right)', directions=[right])
+
+%% Align nodes at the same tree depth horizontally.
+%% This demonstrates a more complicated selector, using set comprehension notation.
+%% For each pair of graph elements, follow left and right child links back toward the root.
+%% If both have the same number of ancestors, align them horizontally.
+@align(selector='{x, y: univ | #(x.^~(left + right)) = #(y.^~(left + right))}', direction=horizontal)
+
+
+%% Uncomment the line below to add an edge between []. 
+%% This turns the tree into a DAG, making the layout constraints unsatisfiable.
+%% A -> D : right

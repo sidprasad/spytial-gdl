@@ -1,0 +1,16 @@
+S0 -next-> S1
+S1 -next-> S2
+S2 -next-> S3
+S3 -next-> S4
+S4 -next-> S0
+
+S3 -other-> S2
+S2 -other-> S1
+
+%% Arrange the five nodes related by the next edge in a ring.
+@cyclic(selector=next, direction=clockwise)
+
+%% The "other" edge is currently not constrained, and so is free to be laid out however.
+%% However, if you uncomment the constraint below, it will cause an 
+%% unsatisfiable layout.
+%%% @cyclic(selector=other, direction=clockwise)
