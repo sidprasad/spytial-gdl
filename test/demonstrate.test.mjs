@@ -197,6 +197,46 @@ const crooked = () => new FakeGraph([
   const demo = createDemonstration(el);
   demo.begin();
   el.drag('i', 300, 300);
+  const offered = demo.explain(SPOUSES).proposals;
+  check('one arrangement can offer several rules', offered.length >= 2);
+  check('nothing is selected by default', demo.status().selected.length === 0);
+  check('adding with no selection keeps the offer open', demo.acceptSelected().state === OFFERING);
+
+  demo.toggle(offered[0]);
+  demo.toggle(offered[1]);
+  check('multiple rules can be selected', demo.status().selected.length === 2);
+  demo.toggle(offered[0]);
+  check('a selected rule can be unchecked', demo.status().selected.length === 1);
+  demo.toggle(offered[0]);
+
+  const result = demo.acceptSelected();
+  check('the chosen rules are accepted together in their ranked order',
+    result.accepted.lines.length === 2 &&
+    result.accepted.lines[0] === offered[0].line &&
+    result.accepted.lines[1] === offered[1].line);
+  check('accepting several rules leaves the mode and clears selection',
+    result.state === IDLE && result.selected.length === 0 && el.watchers === 0);
+}
+
+{
+  const el = crooked();
+  const demo = createDemonstration(el);
+  demo.begin();
+  el.drag('i', 300, 300);
+  const offered = demo.explain(SPOUSES).proposals;
+  demo.toggle(offered[0]);
+  el.drag('i', 300, 420);
+  check('a drag clears selected rules along with stale offers',
+    demo.state === DEMONSTRATING && demo.status().selected.length === 0);
+  check('a stale rule cannot be selected or accepted',
+    demo.toggle(offered[0]).selected.length === 0 && demo.accept(offered[0]).state === DEMONSTRATING);
+}
+
+{
+  const el = crooked();
+  const demo = createDemonstration(el);
+  demo.begin();
+  el.drag('i', 300, 300);
   const p = demo.explain(SPOUSES).proposals.find((x) => x.kind === 'align');
 
   const after = demo.accept(p);

@@ -390,14 +390,15 @@ c -> a : r3
         function fitView() { fitEl(graphEl); }
 
         // ─── Show, don't tell ───────────────────────────────────────────
-        // Append an accepted rule to the notation and re-render, so it is
-        // indistinguishable from one you typed — the textarea stays the source of
-        // truth. Matches what the markdown blocks do.
-        async function appendAnnotation(line) {
+        // Append the selected rules and re-render once. The textarea stays the
+        // source of truth, as it does for rules entered by hand.
+        async function appendAnnotation(lines) {
+            const additions = Array.isArray(lines) ? lines : [lines];
+            if (!additions.length) return;
             const body = sourceEl.value.replace(/\s+$/, '');
-            setSource(body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line);
-            await apply();
-            toast('Added ' + line);
+            setSource(body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${additions.join('\n')}` : additions.join('\n'));
+            await apply({ preservePositions: true });
+            toast(`Added ${additions.length} ${additions.length === 1 ? 'rule' : 'rules'}`);
         }
 
         // (Re)mount the band. The palette is baked in at mount time, so a theme
@@ -417,7 +418,7 @@ c -> a : r3
                         accentInk: '#f2efe6', slot: '#ffffff', soft: '#55504a', btnBg: '#ffffff' },
                 infer: { maxDepth: 2 },
                 getData: () => lastData,
-                onApply: appendAnnotation,
+                onApplyMany: appendAnnotation,
             });
         }
 
@@ -523,7 +524,7 @@ c -> a : r3
         });
 
         // ─── The pipeline: graph + requirements -> live constraint diagram ───
-        async function apply() {
+        async function apply({ preservePositions = false } = {}) {
             // Edit mode renders live from the structured-input graph; nothing to apply.
             if (mode === 'edit') return;
             window.clearAllErrors && window.clearAllErrors();
@@ -536,7 +537,7 @@ c -> a : r3
             let result;
             try {
                 // Layout requirements come from inline @ rules in the source.
-                result = await renderSpytialGdl(graphEl, src);
+                result = await renderSpytialGdl(graphEl, src, { preservePositions });
             } catch (err) {
                 console.error(err);
                 setStatus('Error: ' + err.message, 'error');
@@ -544,7 +545,10 @@ c -> a : r3
                 return;
             }
 
-            if (result.applied) { fitView(); setTimeout(fitView, 450); setTimeout(fitView, 1000); }
+            // renderLayout restores the user's viewport when warm-starting.
+            if (result.applied && !preservePositions) {
+                fitView(); setTimeout(fitView, 450); setTimeout(fitView, 1000);
+            }
 
             // Feed the demonstration mode. `data` is what generalization names a
             // relation from; `instance` is what selector synthesis evaluates

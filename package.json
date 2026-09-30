@@ -45,7 +45,7 @@
     "serve": "node scripts/preview-server.mjs",
     "update-core": "./scripts/update-spytial-core.sh",
     "spec-tables": "node scripts/generate-spec-tables.mjs",
-    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/mermaid-compat.pbt.mjs && node test/annotations.test.mjs && node test/spec-tables.test.mjs && node test/highlight.test.mjs && node test/platforms.test.mjs && node test/infer.test.mjs && node test/cycles.test.mjs && node test/observe.test.mjs && node test/demonstrate.test.mjs && node test/infer-roundtrip.test.mjs && node test/conformance.test.mjs && node test/engine-diagnostics.test.mjs && node test/sgq-integration.test.mjs && node test/pins.test.mjs",
+    "test": "node test/roundtrip.test.mjs && node test/parse.test.mjs && node test/mermaid-compat.pbt.mjs && node test/render-continuity.test.mjs && node test/annotations.test.mjs && node test/spec-tables.test.mjs && node test/highlight.test.mjs && node test/platforms.test.mjs && node test/infer.test.mjs && node test/cycles.test.mjs && node test/observe.test.mjs && node test/demonstrate.test.mjs && node test/infer-roundtrip.test.mjs && node test/conformance.test.mjs && node test/engine-diagnostics.test.mjs && node test/sgq-integration.test.mjs && node test/pins.test.mjs",
     "test:roundtrip": "node test/roundtrip.test.mjs",
     "test:parse": "node test/parse.test.mjs && node test/mermaid-compat.pbt.mjs",
     "test:platforms": "node test/platforms.test.mjs",

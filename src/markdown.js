@@ -582,13 +582,13 @@ function buildDevice(doc, opts, height, editable) {
 
   // text → diagram: explicit apply (button / ⌘⏎). Re-render, then snap the panel
   // to the canonical round-trip so what's shown matches the diagram exactly.
-  async function doApply() {
+  async function doApply(preserveView = false) {
     if (!applyFn || !srcTextarea) return;
     const prev = runBtn ? runBtn.textContent : '';
     if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Updating…'; }
     srcStatus.textContent = '';
     let res;
-    try { res = await applyFn(srcTextarea.value); }
+    try { res = await applyFn(srcTextarea.value, preserveView); }
     catch (err) { res = { ok: false, message: err && err.message ? err.message : String(err) }; }
     if (runBtn) { runBtn.disabled = false; runBtn.textContent = prev || 'Update diagram'; }
     if (res && res.ok) {
@@ -598,18 +598,19 @@ function buildDevice(doc, opts, height, editable) {
       srcStatus.title = srcStatus.textContent;
     }
   }
-  if (runBtn) runBtn.addEventListener('click', doApply);
+  if (runBtn) runBtn.addEventListener('click', () => doApply());
 
-  // Append an inferred annotation and apply it in one step. The textarea is the
-  // source of truth, so the line lands in the text the user can see and edit —
-  // an accepted suggestion is indistinguishable from one they typed.
-  async function appendAnnotation(line) {
+  // Append the selected annotations and render once. The textarea remains the
+  // source of truth, just as it is for a rule the user typed.
+  async function appendAnnotation(lines) {
     if (!srcTextarea) return;
+    const additions = Array.isArray(lines) ? lines : [lines];
+    if (!additions.length) return;
     const body = srcTextarea.value.replace(/\s+$/, '');
-    srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${line}` : line;
+    srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${additions.join('\n')}` : additions.join('\n');
     paintGhost();
     dirty = true; styleRun();
-    await doApply();
+    await doApply(true);
   }
 
   if (srcTextarea) {
@@ -763,11 +764,11 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           dark: theme === 'dark',
           infer: { maxDepth: 2, ...(opts.infer && typeof opts.infer === 'object' ? opts.infer : {}) },
           getData: () => (handle && handle.getValue ? handle.getValue() : null),
-          onApply: (annotation) => ui.appendAnnotation(annotation),
+          onApplyMany: (annotations) => ui.appendAnnotation(annotations),
         });
 
         // text → diagram: explicit apply / ⌘⏎ re-renders onto the same element.
-        ui.setApply(async (text) => {
+        ui.setApply(async (text, preserveView) => {
           applying = true;
           let h;
           try { h = await renderSpytialGdlEditable(graphEl, text); }
@@ -776,7 +777,9 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           reflectDiag(h);
           if (h && h.applied === false) return { ok: false, message: h.reason || 'no nodes parsed from source' };
           wire(h);
-          refit(graphEl);
+          // StructuredInputGraph warm-starts from getLayoutState() itself.
+          // Keep its restored viewport when these rules came from the diagram.
+          if (!preserveView) refit(graphEl);
           reflectConflict();
           // A re-render replaces the arrangement, which is the one thing a
           // demonstration cannot survive: the baseline described a drawing that
