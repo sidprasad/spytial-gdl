@@ -1,9 +1,7 @@
 // Paths are relative to this module, so examples also work under a Pages prefix.
 export const EXAMPLE_FILES = {
   tree: './examples/binary-tree.gdl',
-  cycle: './examples/five-node-cycle.gdl',
-  compiler: './examples/compiler.gdl',
-  counterfactual: './examples/counterfactual.gdl',
+  ring: './examples/ring.gdl',
   apples: './examples/apples.gdl',
 };
 
