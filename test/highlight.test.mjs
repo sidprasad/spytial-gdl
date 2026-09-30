@@ -28,6 +28,16 @@ check('an edge label is a selector', of(line('c -> e : spouse'), 'selector').joi
 check('a node sort is a selector', of(line('a:::Person -> b'), 'selector').join() === 'Person');
 check('a class tag is a selector', of(line('class A,B,C tree'), 'selector').join() === 'tree');
 check('a mermaid pipe label is a selector', of(line('A -->|left| B'), 'selector').join() === 'left');
+check('a Mermaid inline label is a selector',
+  of(line('S0 -- next --> S1'), 'selector').join() === 'next');
+check('inline label highlighting preserves every character', (() => {
+  const src = 'A[foo -- bar] -- next --> B';
+  return of(line(src), 'selector').join() === 'next' &&
+    line(src).map((t) => t.text).join('') === src;
+})());
+check('a hyphenated node ID remains a node, not an inline label',
+  of(line('foo--bar --> B'), 'node')[0] === 'foo--bar' &&
+  of(line('foo--bar --> B'), 'selector').length === 0);
 check('and so is the value of selector=',
   of(line('@align(selector=spouse, direction=horizontal)'), 'selector').join() === 'spouse');
 
