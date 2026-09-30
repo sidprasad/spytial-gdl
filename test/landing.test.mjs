@@ -65,6 +65,16 @@ for (const [name, source] of Object.entries(examples)) {
   const solved = solveSpytialGdl(core, compiled);
   if (name === 'counterfactual') {
     assert.ok(solved.error?.errorMessages, 'The counterfactual example reports a constraint clash');
+    assert.equal(compiled.parsed.nodes.size, 7);
+    assert.equal(compiled.parsed.edges.length, 7);
+    const conflict = solved.layout.conflictingConstraints;
+    assert.equal(conflict.length, 3, 'Only the three cycle edges belong to the conflict');
+    assert.deepEqual(new Set(conflict.flatMap((c) => [c.top.id, c.bottom.id])),
+      new Set(['A', 'B', 'D']), 'Four nodes remain outside the conflict');
+    assert.equal(solved.layout.nodes.length, 7, 'The counterfactual retains the whole graph');
+    assert.equal(solved.layout.constraints.length, 6, 'The original tree constraints remain feasible');
+    const repaired = solveSpytialGdl(core, compileSpytialGdl(source.replace(/^D -> A\n/m, '')));
+    assert.equal(repaired.error, null, 'Removing the extra edge resolves the conflict');
   } else {
     assert.equal(solved.error, null, `${name} layout requirements are satisfiable`);
   }
