@@ -8,13 +8,13 @@ is a fix.
 ## Unreleased
 
 - Commented-out annotations (`%%@name(...)`) no longer produce spec warnings.
-- Require spytial-core 6.5.0 and start its error details collapsed in the
+- Require spytial-core 6.5.1 and start its error details collapsed in the
   playground and Markdown embeds. Users can expand the details when needed.
 - Apply the shared compact graph controls to every GDL render path, including
   the playground and programmatic examples. Read-only diagrams use floating
   zoom/Fit controls; editable diagrams retain graph editing actions. Both render
   APIs accept `viewOptions` for explicit customization.
-- Refresh the vendored spytial-core schema and language manifest from 6.5.0;
+- Refresh the vendored spytial-core schema and language manifest from 6.5.1;
   the layout language version remains 2026-09-18.
 - Browser embeds load core's complete bundle, and the vendored annotation
   schema includes `@group(showLabel=…)`.
