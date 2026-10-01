@@ -8,7 +8,7 @@ export async function configureGraphView(graphEl, editable, overrides) {
   // explicit viewOptions argument can update the presentation on any render.
   if (configured.has(graphEl) && overrides === undefined) return;
   if (typeof graphEl.setViewOptions !== 'function') {
-    throw new Error('GDL rendering requires spytial-core 6.5.0 or newer');
+    throw new Error('GDL rendering requires spytial-core 6.5.1 or newer');
   }
   const options = overrides || {};
   await graphEl.setViewOptions({

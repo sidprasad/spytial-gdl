@@ -78,10 +78,8 @@ for (const commented of [
   check('commented annotation is not extracted or compiled',
     extracted.source === source && extracted.specYaml === '' &&
     extracted.annotationLines.length === 0 && extracted.errors.length === 0, j(extracted));
-  check('commented annotation produces one migration warning',
-    parsed.nodes.has('Person') && parsed.errors.length === 1 &&
-    parsed.errors[0].line === 2 && parsed.errors[0].severity === 'warning' &&
-    /remove %%/.test(parsed.errors[0].message), j(parsed.errors));
+  check('commented annotation produces no diagnostic',
+    parsed.nodes.has('Person') && parsed.errors.length === 0, j(parsed.errors));
 }
 
 // ── trailing `;` and inline `%%` comment after the close paren ───────────────

@@ -246,7 +246,7 @@ export function whenEngineReady(timeoutMs = 10000) {
 // Core's complete browser bundle includes its renderer dependencies.
 // Loaded only if the page hasn't already included it.
 const ENGINE_DEPS = [
-  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.0/dist/browser/spytial-core-complete.global.js',
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.1/dist/browser/spytial-core-complete.global.js',
 ];
 
 function loadScript(src) {
@@ -834,9 +834,9 @@ export async function renderSpytialGdls(root = document, opts = {}) {
 // whichever diagram currently has the displayed clash: one IIS panel at a time,
 // which is what the component is designed for.
 const ERROR_COMPONENT_JS =
-  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.0/dist/components/react-component-integration.global.js';
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.1/dist/components/react-component-integration.global.js';
 const ERROR_COMPONENT_CSS =
-  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.0/dist/components/react-component-integration.css';
+  'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.1/dist/components/react-component-integration.css';
 
 let _errLoading = null;   // promise: the lazy component load
 let _errHost = null;      // the single <div> the modal renders into

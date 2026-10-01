@@ -336,11 +336,6 @@ export function parseGraph(source) {
   };
 
   rawLines.forEach((raw, idx) => {
-    if (/^\s*%%\s*@/.test(raw)) {
-      errors.push({ line: idx + 1, text: raw.trim(), severity: 'warning',
-        message: 'ignored: annotations prefixed with %% are comments; remove %% to use @name(...)' });
-      return;
-    }
     // Mermaid config directives look like comments to stripComments, but they
     // change a Mermaid render. Report the loss instead of silently discarding it.
     if (/^\s*%%\s*\{/.test(raw)) {
