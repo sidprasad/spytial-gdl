@@ -141,13 +141,11 @@ for (let i = 0; i < 100; i++) {
   const guard = pick(['%%@', '%% @', '  %%@', '  %% @']);
   const source = `${a} --> ${b}\n${guard}orientation(selector=_links, directions=[right])`;
   const compiled = compileSpytialGdl(source);
-  check(source, 'commented annotations never compile but always warn on their line',
+  check(source, 'commented annotations never compile or warn',
     compiled.ok && compiled.parsed.edges.length === 1 &&
     compiled.annotationLines.length === 0 && compiled.annotationMeta.length === 0 &&
     !compiled.rules.includes('orientation:') &&
-    compiled.parseErrors.length === 1 && compiled.parseErrors[0].line === 2 &&
-    compiled.parseErrors[0].severity === 'warning' &&
-    /remove %%/.test(compiled.parseErrors[0].message));
+    compiled.parseErrors.length === 0);
 }
 
 for (const word of ['pie', 'style', 'click', 'direction', 'linkStyle']) {
@@ -277,10 +275,9 @@ try {
     async renderLayout(layout) { commentedLayout = layout; },
   };
   const commentedResult = await renderSpytialGdl(commentedGraph, commentedSource);
-  check(commentedSource, 'commented annotation warning reaches the renderer warning panel',
-    commentedResult.applied && commentedResult.diagnostics.length === 1 &&
-    commentedLayout.warnings.some((w) => w.code === 'gdl-parse' &&
-      w.label === 'spytial-gdl · line 2' && /remove %%/.test(w.message)));
+  check(commentedSource, 'commented annotation leaves the renderer warning panel empty',
+    commentedResult.applied && commentedResult.diagnostics.length === 0 &&
+    commentedLayout.warnings.length === 0);
 
   const mixedSource = `A -.-> B\n@orientation(selector=missing, directions=[right])`;
   let mixedLayout;

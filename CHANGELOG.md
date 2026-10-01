@@ -7,6 +7,7 @@ is a fix.
 
 ## Unreleased
 
+- Commented-out annotations (`%%@name(...)`) no longer produce spec warnings.
 - Require spytial-core 6.5.0 and start its error details collapsed in the
   playground and Markdown embeds. Users can expand the details when needed.
 - Apply the shared compact graph controls to every GDL render path, including
