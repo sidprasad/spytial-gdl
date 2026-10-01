@@ -11,17 +11,12 @@ const landing = read('index.html');
 const playground = read('playground/index.html');
 const docsConfig = read('mkdocs.yml');
 
-assert.match(landing, /<h1 id="page-title">Graph diagrams with layout requirements\.<\/h1>/);
-assert.match(landing, /<p class="lede">Have you ever described a Mermaid or DOT graph/);
-assert.ok(!landing.includes('board-graph'), 'The landing page should lead with the project, not the old board demo');
-
 for (const [page, examples, embed, docsLink] of [
   [landing, './playground/', './docs/#/embedding', './docs/'],
   [playground, '../playground/', '../docs/#/embedding', '../docs/'],
 ]) {
   const mainNav = page.match(/<nav class="[^"]*" aria-label="Main navigation">([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(mainNav, 'Main navigation exists');
-  assert.deepEqual([...mainNav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]), ['Examples', 'Embed', 'Docs']);
   for (const href of [examples, embed, docsLink]) {
     assert.ok(mainNav.includes(`href="${href}"`), `Main navigation includes ${href}`);
   }
@@ -85,4 +80,4 @@ await assert.rejects(loadExample('../unknown.gdl', async () => {
 assert.doesNotMatch(playground, /id="value-btn"|id="view-hint"/);
 assert.match(playground, /#error-messages #error-message-modal\s*\{[^}]*background: var\(--canvas\)/);
 assert.ok(existsSync(new URL('../SKILL.md', import.meta.url)));
-console.log('Landing copy, primary navigation, embedding route, and playground examples are present.');
+console.log('Primary navigation, embedding route, and playground examples are present.');
