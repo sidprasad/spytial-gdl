@@ -10,9 +10,9 @@ const descriptions = {
     capability: 'Cyclic layout',
   },
   'apples.gdl': {
-    title: 'Bags of apples',
-    description: 'Group apples into bags, hiding the helper nodes and edges.',
-    capability: 'Grouping · Visibility',
+    title: 'Bags of apples and cherries',
+    description: 'Style apples and cherries with icons across bags, then group them and hide the helper nodes and edges.',
+    capability: 'Grouping · Visibility · Icons',
   },
 };
 
