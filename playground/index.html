@@ -35,7 +35,7 @@
         .brand:hover { text-decoration: none; }
         .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0; }
         .topbar .spacer { flex: 1; }
-        .topbar select, .topbar button.ghost {
+        .editor-bar select, .topbar button.ghost {
             font: 13px/1.2 var(--sans);
             background: var(--paper); color: var(--ink);
             border: 1px solid var(--hair); border-radius: 0;
@@ -93,6 +93,7 @@
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
             padding: 11px 14px; border-bottom: 1px solid var(--hair); background: var(--chrome-2);
         }
+        .editor-bar select { min-width: 0; max-width: 45%; }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
         .status.success { color: var(--blue); }
@@ -102,7 +103,7 @@
             font: 14px/1.2 var(--sans);
             background: var(--ink); color: var(--paper);
             border: 1px solid var(--ink); border-radius: 0; padding: 8px 14px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 9px; margin-left: auto;
+            display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0;
         }
         button.apply:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
         button.apply:disabled { opacity: .4; cursor: default; }
@@ -190,9 +191,6 @@
             <a href="../docs/#/embedding">Embed</a>
             <a href="../docs/">Docs</a>
         </nav>
-        <select id="example-select" title="Load an example" aria-label="Load an example" disabled>
-            <option value="" selected disabled>Custom diagram</option>
-        </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
     </header>
@@ -202,6 +200,9 @@
         <section class="pane left">
             <div class="editor-bar">
                 <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
+                <select id="example-select" title="Load an example" aria-label="Load an example" disabled>
+                    <option value="" selected disabled>Custom diagram</option>
+                </select>
                 <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
             </div>
             <div class="editor-stack">

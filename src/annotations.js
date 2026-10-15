@@ -50,6 +50,7 @@ import {
   ITEMS,
   STYLE_BLOCKS,
 } from './_spec-tables.js';
+import { maskBlockComments } from './comments.js';
 
 export { CONSTRAINT_NAMES, DIRECTIVE_NAMES };
 
@@ -573,7 +574,8 @@ function emitEntry(name, kwargs) {
 // Extract inline annotations from `rawSource`.
 //
 // Returns { source, specYaml, annotationLines, errors }:
-//   source          — the input with annotation lines removed (feed to parseGraph)
+//   source          — the input with annotations and block comments blanked
+//                     (feed to parseGraph)
 //   specYaml        — authoring YAML for the compiled constraints/directives, or
 //                     '' if none. Shape:
 //                     `constraints:\n  - <entry>\n directives:\n  - <entry>`
@@ -597,13 +599,13 @@ function emitEntry(name, kwargs) {
 //                   default so the compiled YAML is the bare rule; compileSpytialGdl
 //                   turns it on for everything that reaches the engine.
 export function extractAnnotations(rawSource, opts = {}) {
-  const lines = String(rawSource ?? '').split(/\r?\n/);
+  const rawLines = String(rawSource ?? '').split(/\r?\n/);
+  const { lines, errors } = maskBlockComments(rawSource);
   const kept = [];
   const constraints = [];
   const directives = [];
   const annotationLines = [];
   const annotationMeta = [];
-  const errors = [];
 
   let i = 0;
   while (i < lines.length) {
@@ -635,7 +637,7 @@ export function extractAnnotations(rawSource, opts = {}) {
     let blockText = '';
     let close = -1;
     while (i < lines.length) {
-      block.push(lines[i]);
+      block.push(rawLines[i]);
       blockText += (blockText ? '\n' : '') + lines[i];
       i++;
       const open = blockText.match(ANNOTATION_OPEN);
@@ -699,7 +701,7 @@ export function extractAnnotations(rawSource, opts = {}) {
     // A smart-quotes filter upstream (Pollen's decoder, a CMS typography pass)
     // turns name='Team A' into name=’Team A’. That still parses — the curly
     // quotes just end up inside the value — so nothing else would ever say so.
-    if (SMART_QUOTE.test(verbatim)) {
+    if (SMART_QUOTE.test(blockText)) {
       errors.push({ line: at, text: verbatim.trim(),
         message: 'curly quotes in the arguments: a smart-punctuation filter has rewritten ' +
           "this block, and they are now part of the value rather than quoting it" });

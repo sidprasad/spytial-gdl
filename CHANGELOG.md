@@ -7,6 +7,8 @@ is a fix.
 
 ## Unreleased
 
+- Add multiline comments delimited by `%%{` and `}%%` on their own lines,
+  including syntax highlighting and diagnostics for unmatched delimiters.
 - Commented-out annotations (`%%@name(...)`) no longer produce spec warnings.
 - Require spytial-core 6.5.1 and start its error details collapsed in the
   playground and Markdown embeds. Users can expand the details when needed.

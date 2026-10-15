@@ -31,6 +31,8 @@ export function manifest() {
         { name: 'relation', syntax: 'source -> target : relation', example: 'cs1 -> cs2 : prereq' },
         { name: 'class', syntax: 'class id1,id2 ClassName', example: 'cs1\ncs2\nclass cs1,cs2 foundation' },
         { name: 'comment', syntax: '%% comment', example: 'cs1 %% first course' },
+        { name: 'block-comment', syntax: '%%{\ncomment\n}%%', example: '%%{\nFirst course in the sequence.\n@orientation(selector=prereq, directions=[left])\n}%%\ncs1',
+          note: 'Delimiters must be on their own lines; indentation is allowed. Blocks do not nest.' },
       ],
       annotations: {
         syntax: '@name(key=value, key=[value, value])',

@@ -47,6 +47,12 @@
         "name": "comment",
         "syntax": "%% comment",
         "example": "cs1 %% first course"
+      },
+      {
+        "name": "block-comment",
+        "syntax": "%%{\ncomment\n}%%",
+        "example": "%%{\nFirst course in the sequence.\n@orientation(selector=prereq, directions=[left])\n}%%\ncs1",
+        "note": "Delimiters must be on their own lines; indentation is allowed. Blocks do not nest."
       }
     ],
     "annotations": {
