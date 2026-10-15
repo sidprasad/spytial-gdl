@@ -1,3 +1,29 @@
+const descriptions = {
+  'binary-tree.gdl': {
+    title: 'Binary tree',
+    description: 'Position subtrees left and right. Align nodes at the same depth.',
+    capability: 'Orientation · Alignment',
+  },
+  'ring.gdl': {
+    title: 'A cycle, arranged',
+    description: 'Arrange a cycle clockwise, leaving other connections free.',
+    capability: 'Cyclic layout',
+  },
+  'apples.gdl': {
+    title: 'Bags of apples',
+    description: 'Group apples into bags, hiding the helper nodes and edges.',
+    capability: 'Grouping · Visibility',
+  },
+};
+
+export function exampleInfo(name) {
+  return descriptions[name] || {
+    title: name.replace(/\.gdl$/, '').replace(/[-_]/g, ' '),
+    description: 'Open this diagram to explore its graph and layout rules.',
+    capability: 'Graph + layout rules',
+  };
+}
+
 export async function listExamples(fetchSource = fetch) {
   const url = new URL('./examples.json', import.meta.url);
   const response = await fetchSource(url, { cache: 'no-cache' });

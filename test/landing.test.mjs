@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as core from 'spytial-core';
 import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
 import { legacyTarget } from '../docs/pages/javascripts/legacy-routes.js';
-import { listExamples, loadExample } from '../playground/examples.js';
+import { listExamples, loadExample, exampleInfo } from '../playground/examples.js';
 import { exampleManifest } from '../scripts/example-manifest.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -46,10 +46,10 @@ for (const [, source] of referenceExamples) {
   assert.ok(solved.layout);
 }
 assert.match(read('docs/pages/embedding.md'), /## Quick start[\s\S]*src="https:\/\/cdn\.jsdelivr\.net\/npm\/spytial-gdl\/src\/auto\.js"/);
-const exampleMenu = playground.match(/<select id="example-select"[\s\S]*?<\/select>/)?.[0];
-assert.ok(exampleMenu, 'The playground has an example menu');
-assert.deepEqual([...exampleMenu.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]),
-  [''], 'Example choices are filled from the discovered files');
+assert.match(playground, /id="examples-toggle"[^>]*aria-controls="examples-panel"/,
+  'The example browser has an accessible disclosure control');
+assert.match(playground, /id="examples-panel"[^>]*aria-labelledby="examples-title"/);
+assert.match(playground, /id="examples-list"/);
 const examples = await exampleManifest();
 assert.ok(examples.length > 0, 'The playground has at least one example');
 assert.deepEqual([...examples].sort(),
@@ -62,6 +62,8 @@ assert.deepEqual(await listExamples(async (url, options) => {
   return { ok: true, json: async () => examples };
 }), examples);
 for (const name of examples) {
+  const info = exampleInfo(name);
+  assert.ok(info.title && info.description && info.capability, 'Every discovered file has a gallery caption');
   const source = await loadExample(name, async (url, options) => {
     assert.equal(decodeURIComponent(url.pathname).endsWith(`/examples/${name}`), true);
     assert.equal(options.cache, 'no-cache', 'Reloading an example revalidates edits to its file');
@@ -72,6 +74,8 @@ for (const name of examples) {
   assert.deepEqual(compiled.parseErrors, [], name);
   assert.deepEqual(compiled.annotationErrors, [], name);
 }
+assert.equal(exampleInfo('new-example.gdl').title, 'new example',
+  'New files work in the gallery without curated metadata');
 await assert.rejects(loadExample(examples[0], async () => ({ ok: false, status: 404 })),
   /Could not load .* example \(HTTP 404\)/, 'Failed fetches report an error instead of loading an error page');
 await assert.rejects(loadExample('../unknown.gdl', async () => {
