@@ -58,11 +58,10 @@ npm run serve   # site and playground at localhost:8100
 
 Playground examples live in [`playground/examples/`](playground/examples/) as
 editable `.gdl` files. Each file contains the graph and its inline layout rules.
-Add a file there and it appears in the collapsible examples gallery automatically,
-with a preview rendered from its source. Optional titles and descriptions live
-in `playground/examples.js`.
-Edit a file, then select its example again to load the updated source.
-The local server discovers files on each gallery request;
+Add a file there and it appears in the example dropdown automatically.
+Display names can be customized in `playground/examples.js`.
+Edit a file, then select its example again (switch away and back if needed) to
+load the updated source. The local server discovers files on each menu request;
 the site build generates the same list for GitHub Pages.
 
 The documentation uses Material for MkDocs. To build it with the live examples:

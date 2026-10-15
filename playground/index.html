@@ -35,7 +35,7 @@
         .brand:hover { text-decoration: none; }
         .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0; }
         .topbar .spacer { flex: 1; }
-        .editor-bar .examples-toggle, .topbar button.ghost {
+        .editor-bar select, .topbar button.ghost {
             font: 13px/1.2 var(--sans);
             background: var(--paper); color: var(--ink);
             border: 1px solid var(--hair); border-radius: 0;
@@ -45,8 +45,7 @@
         .topbar button.icon { width: 34px; height: 33px; display: inline-grid; place-items: center; font-size: 14px; padding: 0; }
 
         /* ─── Main split ────────────────────────────────────────────────── */
-        main { flex: 1; display: flex; min-height: 0; position: relative; }
-        .workspace { flex: 1; display: flex; min-width: 0; min-height: 0; }
+        main { flex: 1; display: flex; min-height: 0; }
         .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
         .pane.left { flex: 0 0 44%; background: var(--paper); }
         .pane.right { flex: 1; background: var(--paper); }
@@ -54,38 +53,6 @@
         .splitter { flex: 0 0 6px; cursor: col-resize; background: transparent; position: relative; }
         .splitter::after { content: ""; position: absolute; inset: 0 2px; background: var(--hair); }
         .splitter:hover::after { inset: 0; background: var(--red); }
-
-        /* ─── Browse the range of diagrams ──────────────────────────────── */
-        .examples-panel {
-            flex: 0 0 288px; min-height: 0; display: flex; flex-direction: column;
-            background: var(--paper); border-right: 1px solid var(--hair);
-        }
-        .examples-panel[hidden] { display: none; }
-        .examples-heading { padding: 16px 16px 12px; border-bottom: 1px solid var(--hair); }
-        .examples-heading-row { display: flex; align-items: center; gap: 8px; }
-        .examples-heading h2 { font-size: 18px; font-weight: 600; }
-        #examples-count { color: var(--ink-faint); font: 12px var(--mono); }
-        #examples-close {
-            margin-left: auto; border: 0; background: transparent; color: var(--ink-soft);
-            font: 22px/1 var(--sans); padding: 3px 6px; cursor: pointer;
-        }
-        .examples-heading p { margin: 8px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
-        .examples-list { overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
-        .example-card {
-            flex-shrink: 0; display: block; width: 100%; padding: 0; text-align: left;
-            border: 1px solid var(--hair); background: var(--raised); color: var(--ink);
-            font-family: var(--sans); cursor: pointer;
-        }
-        .example-card:hover { border-color: var(--blue); }
-        .example-card[aria-pressed="true"] { border-color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
-        .example-preview { display: block; height: 80px; background: #f7f8fa; position: relative; overflow: hidden; pointer-events: none; }
-        .example-preview::after { content: 'Loading preview…'; position: absolute; inset: 0; display: grid; place-items: center; color: #595750; font-size: 12px; }
-        .example-preview.loaded::after, .example-preview.unavailable::after { display: none; }
-        .example-preview.unavailable { display: grid; place-items: center; color: #595750; font-size: 12px; }
-        .example-caption { display: block; padding: 8px 12px; border-top: 1px solid var(--hair); }
-        .example-capability { display: block; color: var(--blue); font-size: 11px; line-height: 1.3; }
-        .example-title { display: block; font-size: 16px; font-weight: 600; line-height: 1.2; margin: 3px 0; }
-        .example-description { display: block; color: var(--ink-soft); font-size: 12px; line-height: 1.35; }
 
         /* ─── Left: combined-source editor (graph + requirements) ───── */
         .editor-stack { flex: 1; position: relative; min-height: 0; }
@@ -126,10 +93,10 @@
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
             padding: 11px 14px; border-bottom: 1px solid var(--hair); background: var(--chrome-2);
         }
-        .editor-bar .examples-toggle { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
-        .examples-toggle[aria-expanded="true"] { border-color: var(--blue); color: var(--blue); }
-        .examples-toggle svg { width: 15px; height: 15px; }
-        .example-name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .example-picker { display: flex; flex-direction: column; gap: 4px; flex: 0 1 230px; min-width: 0; margin-left: auto; }
+        .example-picker label { font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--blue); }
+        .editor-bar select { width: 100%; min-width: 0; border-color: var(--blue); background: var(--raised); }
+        .editor-bar button.apply { align-self: flex-end; }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
         .status.success { color: var(--blue); }
@@ -214,11 +181,8 @@
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         @media (max-width: 860px) { .pane.left { flex-basis: 50%; } }
-        @media (max-width: 1099px) {
-            .examples-panel { position: absolute; left: 0; top: 0; bottom: 0; width: min(292px, calc(100% - 24px)); z-index: 30; box-shadow: 8px 0 24px #0002; }
-        }
         @media (max-width: 640px) {
-            .workspace { flex-direction: column; }
+            main { flex-direction: column; }
             .pane.left { flex: 0 0 48%; }
             .splitter { display: none; }
             .editor-bar { padding: 9px 12px; gap: 10px; }
@@ -241,27 +205,16 @@
     </header>
 
     <main>
-        <aside class="examples-panel" id="examples-panel" aria-labelledby="examples-title" hidden>
-            <div class="examples-heading">
-                <div class="examples-heading-row">
-                    <h2 id="examples-title">Examples</h2>
-                    <span id="examples-count"></span>
-                    <button type="button" id="examples-close" aria-label="Close examples">×</button>
-                </div>
-                <p>Explore a diagram, then change its graph or layout rules.</p>
-            </div>
-            <div class="examples-list" id="examples-list">Loading examples…</div>
-        </aside>
-        <div class="workspace">
         <!-- LEFT: one combined-source editor (graph + inline requirements) -->
         <section class="pane left">
             <div class="editor-bar">
-                <span class="example-name" id="example-name" hidden>Custom diagram</span>
                 <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
-                <button class="examples-toggle" id="examples-toggle" type="button" aria-expanded="false" aria-controls="examples-panel">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="3" width="16" height="14"/><path d="M8 3v14M4 7h2M4 10h2M4 13h2"/></svg>
-                    Examples
-                </button>
+                <div class="example-picker">
+                    <label for="example-select">Choose an example</label>
+                    <select id="example-select" title="Choose an example" disabled>
+                        <option value="" selected disabled>Custom diagram</option>
+                    </select>
+                </div>
                 <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
             </div>
             <div class="editor-stack">
@@ -301,7 +254,6 @@
             <!-- Show, don't tell: demonstrate.js renders the whole flow in here. -->
             <div id="demo-slot"></div>
         </section>
-        </div>
     </main>
 
     <div id="toast"></div>
@@ -313,8 +265,7 @@
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
-        import { listExamples, loadExample } from './examples.js';
-        import { mountExampleBrowser } from './example-browser.js';
+        import { listExamples, loadExample, exampleInfo } from './examples.js';
 
         // Sources loaded from editable .gdl files, retained to recognize edits.
         const exampleSources = new Map();
@@ -323,36 +274,7 @@
 
         // ─── Element refs / state ───────────────────────────────────────
         const sourceEl = document.getElementById('source-input');
-        const exampleName = document.getElementById('example-name');
-        const exampleBrowser = mountExampleBrowser({
-            onSelect: selectExample,
-            renderPreview: async (container, source) => {
-                const previewGraph = document.createElement('webcola-cnd-graph');
-                previewGraph.setAttribute('theme', 'light');
-                container.appendChild(previewGraph);
-                const result = await renderSpytialGdl(previewGraph, source, {
-                    viewOptions: { toolbar: 'none', interaction: { nodeDrag: false, panZoom: false } },
-                });
-                if (!result.applied || result.error) throw new Error(result.reason || 'Could not render preview');
-                if (!container.getClientRects().length) {
-                    container.replaceChildren();
-                    return false; // The drawer closed during the solve; retry on opening.
-                }
-                // Snapshot the actual solved diagram. A viewBox fits tiny
-                // previews without the interactive viewer's viewport padding.
-                const svg = previewGraph.shadowRoot.querySelector('svg');
-                const bounds = svg.querySelector('.zoomable').getBBox();
-                const thumbnail = svg.cloneNode(true);
-                thumbnail.querySelector('.zoomable').removeAttribute('transform');
-                thumbnail.setAttribute('viewBox', `${bounds.x - 12} ${bounds.y - 12} ${bounds.width + 24} ${bounds.height + 24}`);
-                thumbnail.style.cssText = 'display:block;width:100%;height:100%;';
-                const host = document.createElement('span');
-                host.style.cssText = 'display:block;width:100%;height:100%;';
-                // Isolate SVG marker IDs so previews cannot affect each other.
-                host.attachShadow({ mode: 'open' }).appendChild(thumbnail);
-                container.replaceChildren(host);
-            },
-        });
+        const exampleSelect = document.getElementById('example-select');
         const ghostEl = document.getElementById('source-ghost');
         const sourceDiagnosticsEl = document.getElementById('source-diagnostics');
         const codeWrapEl = ghostEl.parentElement;
@@ -417,8 +339,7 @@
             syncExampleSelection();
         }
         function syncExampleSelection() {
-            const name = [...exampleSources].find(([, source]) => source.trimEnd() === sourceEl.value.trimEnd())?.[0] || '';
-            exampleBrowser.setSelected(name);
+            exampleSelect.value = [...exampleSources].find(([, source]) => source.trimEnd() === sourceEl.value.trimEnd())?.[0] || '';
         }
         sourceEl.addEventListener('input', () => {
             sourceRevision++;
@@ -445,7 +366,6 @@
 
         function setStatus(msg, kind = 'info') {
             statusEl.hidden = !msg;
-            exampleName.hidden = Boolean(msg);
             statusEl.className = `status ${kind}`;
             statusEl.replaceChildren();
             if (msg) {
@@ -587,7 +507,8 @@
         }
 
         // ─── Examples ───────────────────────────────────────────────────
-        async function selectExample(name) {
+        exampleSelect.addEventListener('change', async (e) => {
+            const name = e.target.value;
             if (!name) return;
             const request = ++exampleRequest;
             const revision = sourceRevision;
@@ -605,7 +526,7 @@
                 syncExampleSelection();
                 setStatus(err.message, 'error');
             }
-        }
+        });
 
         // ─── The pipeline: graph + requirements -> live constraint diagram ───
         async function apply({ preservePositions = false } = {}) {
@@ -775,13 +696,11 @@
         (function () {
             const splitter = document.getElementById('splitter');
             const left = document.querySelector('.pane.left');
-            const workspace = document.querySelector('.workspace');
             let dragging = false;
             splitter.addEventListener('mousedown', () => { dragging = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
             window.addEventListener('mousemove', (e) => {
                 if (!dragging) return;
-                const bounds = workspace.getBoundingClientRect();
-                const pct = Math.min(70, Math.max(24, ((e.clientX - bounds.left) / bounds.width) * 100));
+                const pct = Math.min(70, Math.max(24, (e.clientX / window.innerWidth) * 100));
                 left.style.flexBasis = pct + '%';
             });
             window.addEventListener('mouseup', () => { dragging = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; });
@@ -812,11 +731,7 @@
             applyTheme(theme);
 
             try { await waitForEngine(); }
-            catch (err) {
-                exampleBrowser.showError('Examples could not load. Check your connection and reload.');
-                setStatus(err.message + ' — check your network / CDN.', 'error');
-                return;
-            }
+            catch (err) { setStatus(err.message + ' — check your network / CDN.', 'error'); return; }
 
             window.mountErrorMessageModal && window.mountErrorMessageModal('error-messages', 'graph', true);
 
@@ -825,11 +740,14 @@
             const request = exampleRequest;
             let initialSource = shared && shared.m != null ? shared.m : null;
             let exampleError = null;
-            let galleryLoaded = false;
             try {
                 const examples = await listExamples();
-                exampleBrowser.setExamples(examples);
-                galleryLoaded = true;
+                for (const name of examples) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = exampleInfo(name).title;
+                    exampleSelect.appendChild(option);
+                }
                 if (initialSource === null) {
                     if (!examples.length) throw new Error('No playground examples found.');
                     initialSource = await loadExample(examples[0]);
@@ -837,14 +755,16 @@
                 }
             } catch (err) {
                 exampleError = err;
-                // Shared diagrams remain usable even if the gallery cannot load.
-                if (!galleryLoaded) exampleBrowser.showError(err.message);
+                // Keep the editor usable so a failed example can be retried or
+                // another file selected; shared diagrams never need this fetch.
+                exampleSelect.disabled = exampleSelect.options.length <= 1;
                 applyBtn.disabled = false;
                 if (initialSource === null) {
                     setStatus(err.message, 'error');
                     return;
                 }
             }
+            exampleSelect.disabled = exampleSelect.options.length <= 1;
             applyBtn.disabled = false;
             if (revision !== sourceRevision || request !== exampleRequest) return;
             setSource(initialSource);

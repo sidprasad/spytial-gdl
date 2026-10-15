@@ -7,8 +7,7 @@ is a fix.
 
 ## Unreleased
 
-- Browse playground examples in a collapsible sidebar with diagram previews
-  and descriptions of the layout features each example demonstrates.
+- Put a clearly labeled example dropdown beside Apply in the playground.
 - Add multiline comments delimited by `%%{` and `}%%` on their own lines,
   including syntax highlighting and diagnostics for unmatched delimiters.
 - Commented-out annotations (`%%@name(...)`) no longer produce spec warnings.

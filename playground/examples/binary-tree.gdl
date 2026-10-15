@@ -1,10 +1,10 @@
-A -> B : left
-A -> C : right
-B -> D : left
-B -> E : right
-C -> F : left
-C -> G : right
-G -> H : left
+D -> A : right
+G -> C : right
+D -> G : left
+B -> E : left
+G -> F : left
+A -> B : right
+A -> H : left
 
 %% Uncomment the block below to place requirements on the graph.
 %%{
@@ -26,4 +26,4 @@ G -> H : left
 
 %% Uncomment the line below to add an edge between []. 
 %% This turns the tree into a DAG, making the layout constraints unsatisfiable.
-%% A -> D : right
+%% D -> F : right
