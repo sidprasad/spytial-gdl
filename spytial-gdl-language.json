@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "package": "spytial-gdl",
-  "packageVersion": "0.6.1",
+  "packageVersion": "0.7.0",
   "scope": "Graph authoring forms and annotation vocabulary. This is not a complete parser grammar or a JSON Schema for GDL text.",
   "upstream": {
     "coreVersion": "6.5.1",
@@ -47,6 +47,12 @@
         "name": "comment",
         "syntax": "%% comment",
         "example": "cs1 %% first course"
+      },
+      {
+        "name": "block-comment",
+        "syntax": "%%{\ncomment\n}%%",
+        "example": "%%{\nFirst course in the sequence.\n@orientation(selector=prereq, directions=[left])\n}%%\ncs1",
+        "note": "Delimiters must be on their own lines; indentation is allowed. Blocks do not nest."
       }
     ],
     "annotations": {

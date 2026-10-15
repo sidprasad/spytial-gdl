@@ -7,6 +7,11 @@ is a fix.
 
 ## Unreleased
 
+## [0.7.0] — 2026-10-15
+
+- Put a clearly labeled example dropdown beside Apply in the playground.
+- Add multiline comments delimited by `%%{` and `}%%` on their own lines,
+  including syntax highlighting and diagnostics for unmatched delimiters.
 - Commented-out annotations (`%%@name(...)`) no longer produce spec warnings.
 - Require spytial-core 6.5.1 and start its error details collapsed in the
   playground and Markdown embeds. Users can expand the details when needed.

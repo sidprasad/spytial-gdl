@@ -19,6 +19,8 @@
 // suggestion rows in demonstrate.js need the selector as an element of its own
 // so hovering *it* can highlight the nodes it denotes.
 
+import { blockCommentLine } from './comments.js';
+
 /** Every kind `tokenize` can emit. `text` is whitespace and anything unclaimed. */
 export const TOKEN_KINDS = [
   'text', 'comment', 'annotation', 'key', 'selector', 'direction',
@@ -344,15 +346,22 @@ function parenDelta(text) {
  *   open — unclosed parentheses carried in from the lines before it, 0 at the
  *          start of a source
  *
- * Returns { tokens, open } — pass `open` to the next call. An annotation's
- * arguments may wrap over several lines, and a line in the middle of one is not
- * a graph line however much it may look like one.
+ *   inBlock — whether a block comment was open on the previous line
+ *
+ * Returns { tokens, open, inBlock } — pass both states to the next call.
+ * An annotation's arguments may wrap over several lines, and a line in the
+ * middle of one is not a graph line however much it may look like one.
  */
-export function tokenizeLine(line, open = 0) {
+export function tokenizeLine(line, open = 0, inBlock = false) {
   const s = String(line == null ? '' : line);
   const tokens = [];
   const push = pusher(tokens);
   const depth = Math.max(0, Number(open) || 0);
+  const block = blockCommentLine(s, inBlock);
+  if (block.comment || s.trim() === '}%%') {
+    push(s, 'comment');
+    return { tokens, open: depth, inBlock: block.inBlock };
+  }
 
   // The arguments, plus whatever follows once they close. A `%%` after the
   // closing paren is a comment on the annotation, not one of its values.
@@ -360,14 +369,14 @@ export function tokenizeLine(line, open = 0) {
     const end = annotationEnd(body, from);
     if (end === -1) {
       scanArgs(body, push);
-      return { tokens, open: Math.max(0, from + parenDelta(body)) };
+      return { tokens, open: Math.max(0, from + parenDelta(body)), inBlock: false };
     }
     scanArgs(body.slice(0, end), push);
     const tail = body.slice(end);
     const hash = tail.indexOf('%%');
     if (hash === -1) push(tail, 'text');
     else { push(tail.slice(0, hash), 'text'); push(tail.slice(hash), 'comment'); }
-    return { tokens, open: 0 };
+    return { tokens, open: 0, inBlock: false };
   };
 
   if (depth > 0) return args(s, depth);
@@ -384,19 +393,21 @@ export function tokenizeLine(line, open = 0) {
   if (hash !== -1) {
     scanGraphLine(s.slice(0, hash), push);
     push(s.slice(hash), 'comment');
-    return { tokens, open: 0 };
+    return { tokens, open: 0, inBlock: false };
   }
 
   scanGraphLine(s, push);
-  return { tokens, open: 0 };
+  return { tokens, open: 0, inBlock: false };
 }
 
 /** Tokenize a whole source, one token list per line. */
 export function tokenize(source) {
   let open = 0;
+  let inBlock = false;
   return String(source == null ? '' : source).split(/\r?\n/).map((line) => {
-    const out = tokenizeLine(line, open);
+    const out = tokenizeLine(line, open, inBlock);
     open = out.open;
+    inBlock = out.inBlock;
     return out.tokens;
   });
 }

@@ -61,6 +61,22 @@ one type.
 `%%` starts a line comment. Write requirements as bare `@name(...)` lines;
 `%%@name(...)` is a comment and does not apply a rule.
 
+For a multiline comment, put `%%{` and `}%%` on their own lines:
+
+```text
+%%{
+This explanation can span several lines.
+A -> B
+@orientation(selector=_links, directions=[right])
+}%%
+A -> C
+```
+
+Everything inside the block is ignored, including graph statements and
+annotations. The delimiters may be indented. Blocks do not nest; the first
+`}%%` on its own line closes the block. An unclosed block reports an error at
+its opening line and ignores the remaining source.
+
 ## Mermaid compatibility
 
 These Mermaid flowchart forms parse, with the changes shown below. Unsupported

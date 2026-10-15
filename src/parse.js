@@ -33,12 +33,14 @@
 //                        reserved for a linear sort hierarchy (the leaf is the sort).
 //   A[Alice]:::Person    a label and a sort together
 //   class A,B,C tag      tag several nodes with a cross-cutting class
-// Comments:  %% rest-of-line
+// Comments:  %% rest-of-line, or %%{ / }%% on their own lines
 //
 // For paste-compatibility, a leading `graph`/`flowchart` line, the mermaid-style
 // arrows (-->, -.->, ==>, ---), and pipe labels (A -->|x| B) are also accepted;
 // Mermaid inline arrow labels (A -- x --> B) are accepted too;
 // the other mermaid bracket forms are read as a label too (inner text).
+
+import { maskBlockComments } from './comments.js';
 
 // A bracket wrapper after an id holds the node's display label, e.g. `A[Alice]`
 // (mermaid-style). The forms ((x)), {x}, [[x]], [(x)], >x] are tolerated too.
@@ -252,12 +254,11 @@ function parseEdgeLine(line) {
 //                        given two labels, an edge written twice)
 // Rendering stays best-effort: a bad line is reported and skipped, never fatal.
 export function parseGraph(source) {
-  const rawLines = String(source ?? '').split(/\r?\n/);
+  const { lines: rawLines, errors } = maskBlockComments(source);
 
   const nodes = new Map();
   const edges = [];
   const classesPerNode = new Map();
-  const errors = [];
   const labelLines = new Map();   // edge label → first line
   const classLines = new Map();   // class → first line
   const classTexts = new Map();   // class → that line's text, for the report

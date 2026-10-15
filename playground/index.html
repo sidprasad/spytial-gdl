@@ -35,7 +35,7 @@
         .brand:hover { text-decoration: none; }
         .brand h1 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0; }
         .topbar .spacer { flex: 1; }
-        .topbar select, .topbar button.ghost {
+        .editor-bar select, .topbar button.ghost {
             font: 13px/1.2 var(--sans);
             background: var(--paper); color: var(--ink);
             border: 1px solid var(--hair); border-radius: 0;
@@ -93,6 +93,10 @@
             flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
             padding: 11px 14px; border-bottom: 1px solid var(--hair); background: var(--chrome-2);
         }
+        .example-picker { display: flex; flex-direction: column; gap: 4px; flex: 0 1 230px; min-width: 0; margin-left: auto; }
+        .example-picker label { font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--blue); }
+        .editor-bar select { width: 100%; min-width: 0; border-color: var(--blue); background: var(--raised); }
+        .editor-bar button.apply { align-self: flex-end; }
         .status { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .status.info { color: var(--ink-soft); }
         .status.success { color: var(--blue); }
@@ -102,7 +106,7 @@
             font: 14px/1.2 var(--sans);
             background: var(--ink); color: var(--paper);
             border: 1px solid var(--ink); border-radius: 0; padding: 8px 14px; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 9px; margin-left: auto;
+            display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0;
         }
         button.apply:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
         button.apply:disabled { opacity: .4; cursor: default; }
@@ -177,6 +181,12 @@
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
         @media (max-width: 860px) { .pane.left { flex-basis: 50%; } }
+        @media (max-width: 640px) {
+            main { flex-direction: column; }
+            .pane.left { flex: 0 0 48%; }
+            .splitter { display: none; }
+            .editor-bar { padding: 9px 12px; gap: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -190,9 +200,6 @@
             <a href="../docs/#/embedding">Embed</a>
             <a href="../docs/">Docs</a>
         </nav>
-        <select id="example-select" title="Load an example" aria-label="Load an example" disabled>
-            <option value="" selected disabled>Custom diagram</option>
-        </select>
         <button class="ghost" id="share-btn" title="Copy a shareable link">Share</button>
         <button class="ghost icon" id="theme-btn" title="Toggle light / dark" aria-label="Toggle theme">☾</button>
     </header>
@@ -202,6 +209,12 @@
         <section class="pane left">
             <div class="editor-bar">
                 <div id="status" class="status info"><span class="pulse"></span>Loading engine…</div>
+                <div class="example-picker">
+                    <label for="example-select">Choose an example</label>
+                    <select id="example-select" title="Choose an example" disabled>
+                        <option value="" selected disabled>Custom diagram</option>
+                    </select>
+                </div>
                 <button class="apply" id="apply-btn" onclick="apply()" disabled>Apply <kbd>⌘⏎</kbd></button>
             </div>
             <div class="editor-stack">
@@ -252,7 +265,7 @@
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
-        import { listExamples, loadExample } from './examples.js';
+        import { listExamples, loadExample, exampleInfo } from './examples.js';
 
         // Sources loaded from editable .gdl files, retained to recognize edits.
         const exampleSources = new Map();
@@ -724,6 +737,7 @@
 
             const shared = await readHash();
             const revision = sourceRevision;
+            const request = exampleRequest;
             let initialSource = shared && shared.m != null ? shared.m : null;
             let exampleError = null;
             try {
@@ -731,7 +745,7 @@
                 for (const name of examples) {
                     const option = document.createElement('option');
                     option.value = name;
-                    option.textContent = name;
+                    option.textContent = exampleInfo(name).title;
                     exampleSelect.appendChild(option);
                 }
                 if (initialSource === null) {
@@ -752,7 +766,7 @@
             }
             exampleSelect.disabled = exampleSelect.options.length <= 1;
             applyBtn.disabled = false;
-            if (revision !== sourceRevision) return;
+            if (revision !== sourceRevision || request !== exampleRequest) return;
             setSource(initialSource);
             setStatus(exampleError?.message || 'Ready — edit and press Apply (⌘⏎).', exampleError ? 'error' : 'info');
             setTimeout(apply, 80);

@@ -58,7 +58,8 @@ npm run serve   # site and playground at localhost:8100
 
 Playground examples live in [`playground/examples/`](playground/examples/) as
 editable `.gdl` files. Each file contains the graph and its inline layout rules.
-Add a file there and its filename appears in the example menu automatically.
+Add a file there and it appears in the example dropdown automatically.
+Display names can be customized in `playground/examples.js`.
 Edit a file, then select its example again (switch away and back if needed) to
 load the updated source. The local server discovers files on each menu request;
 the site build generates the same list for GitHub Pages.

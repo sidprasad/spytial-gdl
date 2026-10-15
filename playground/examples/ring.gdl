@@ -7,8 +7,11 @@ S4 -> S0 : next
 S3 -> S2 : other
 S2 -> S1 : other
 
+%% Uncomment the block below to place requirements on the graph.
+%%{
 %% Arrange the five nodes related by the next edge in a ring.
 @cyclic(selector=next, direction=clockwise)
+}%%
 
 %% The "other" edge is currently not constrained, and so is free to be laid out however.
 %% However, if you uncomment the constraint below, it will cause an 

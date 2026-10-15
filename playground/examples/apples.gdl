@@ -1,9 +1,23 @@
-bag1[1]:::Bag -> gala[🍎 Gala]:::Apple : contains
-bag1 -> fuji[🍎 Fuji]:::Apple : contains
-bag2[2]:::Bag -> honeycrisp[🍎 Honeycrisp]:::Apple : contains
-bag2 -> pinklady[🍎 Pink Lady]:::Apple : contains
-bag2 -> braeburn[🍎 Braeburn]:::Apple : contains
+bag1[1]:::Bag -> gala[Gala]:::Apple : contains
+bag1 -> bing[Bing]:::Cherry : contains
+bag1 -> fuji[Fuji]:::Apple : contains
+bag1 -> pinklady[Pink Lady]:::Apple : contains
+bag1 -> chelan[Chelan]:::Cherry : contains
+bag1 -> lapins[Lapins]:::Cherry : contains
+bag2[2]:::Bag -> honeycrisp[Honeycrisp]:::Apple : contains
+bag2 -> rainier[Rainier]:::Cherry : contains
+bag2 -> braeburn[Braeburn]:::Apple : contains
+bag2 -> sweetheart[Sweetheart]:::Cherry : contains
 
+
+
+%% Uncomment the block below to place requirements on the graph.
+%%{
 @group(selector=contains, name='Bag')
 @hideAtom(selector=Bag)
 @hideField(field=contains)
+
+%% Style Apples and Cherries to be different.
+@atomStyle(selector=Apple, iconStyle(path='lucide:apple', placement=full, opacity=0.2))
+@atomStyle(selector=Cherry, iconStyle(path='lucide:cherry', placement=full, opacity=0.2))
+}%%
