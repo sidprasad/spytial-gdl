@@ -30,7 +30,7 @@
 //     import { renderSpytialGdls } from '.../src/markdown.js';
 //     await renderSpytialGdls(myContainer);
 
-import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable } from './index.js';
+import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable, mountGdlSequence } from './index.js';
 import { mountDemonstration } from './demonstrate.js';
 import { paintInto } from './highlight.js';
 
@@ -43,7 +43,8 @@ const LANGS = ['spytial-gdl', 'spytial'];
 // opt a block into the editor (` ```spytial-gdl-editable `). A `data-editable`
 // attribute on the host (hand-authored HTML) works too, as does opts.editable.
 const EDITABLE_LANGS = ['spytial-gdl-editable', 'spytial-editable'];
-const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS];
+const SEQUENCE_LANGS = ['gdl-sequence', 'spytial-gdl-sequence'];
+const ALL_LANGS = [...LANGS, ...EDITABLE_LANGS, ...SEQUENCE_LANGS];
 let nextSourceId = 0;
 
 // CSS selectors covering how a fenced block comes out the other side of the
@@ -184,8 +185,11 @@ function collectBlocks(root, opts = {}) {
     // Entity-decoded by the DOM, so `-->` and `>` come through verbatim.
     const code = el.querySelector && el.querySelector('code');
     const setting = (name) => host.getAttribute(name) ?? el.getAttribute(name) ?? code?.getAttribute(name);
+    const sequence = SEQUENCE_LANGS.some(lang => hasLang(el, lang) || hasLang(host, lang) || hasLang(code, lang)
+      || setting('data-language') === lang || setting('data-lang') === lang
+      || el.classList.contains(`highlight-${lang}`));
     found.set(host, {
-      source: sourceFromBlock(el), editable: isEditableBlock(el, host, opts),
+      source: sourceFromBlock(el), editable: !sequence && isEditableBlock(el, host, opts), sequence,
       height: setting('data-height'),
       theme: setting('data-theme'),
     });
@@ -638,6 +642,11 @@ function buildDevice(doc, opts, height, editable) {
   styleRun();
   return {
     device, graphHost, conflict, diagnostics, demoSlot,
+    attachSequenceControls: (handle) => {
+      viewControls.style.position = 'static';
+      viewControls.style.marginInlineStart = 'auto';
+      handle.element.querySelector('.sequence-controls').append(viewControls);
+    },
     attachCoreToolbar: (el) => {
       if (!floatCoreControls || !el.shadowRoot || typeof el.addToolbarControl !== 'function') return;
       // Core owns the actual +, −, and Fit buttons and their enabled states.
@@ -699,14 +708,21 @@ export async function renderSpytialGdls(root = document, opts = {}) {
     }, 400);
   };
 
-  for (const [host, { source, editable, height, theme: blockTheme }] of blocks) {
+  for (const [host, { source, editable, sequence, height, theme: blockTheme }] of blocks) {
     const theme = themeForBlock(doc, host, blockTheme, opts);
     const blockOpts = { ...opts, theme };
     const ui = buildDevice(doc, blockOpts, height, editable);
     host.replaceWith(ui.device);
 
     try {
-      if (editable) {
+      if (sequence) {
+        const handle = mountGdlSequence(ui.graphHost, source, blockOpts);
+        ui.attachSequenceControls(handle);
+        ui.setSourceProvider(() => source);
+        ui.refreshSource(true);
+        const result = await handle.ready;
+        results.push({ host: ui.graphHost, sequence: true, applied: result.applied, handle, result });
+      } else if (editable) {
         const graphEl = mountInputGraph(ui.graphHost, { theme });
 
         // Surface the UNSAT core, attached below the graph, and keep it live:

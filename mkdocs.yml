@@ -24,6 +24,7 @@ nav:
   - Documentation: index.md
   - Graph description: notation.md
   - Layout requirements: requirements.md
+  - Sequences of states: sequences.md
   - Embed in a document: embedding.md
   - Examples: https://www.siddharthaprasad.com/spytial-gdl/playground/
 
@@ -44,6 +45,9 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
         - name: spytial-gdl-editable
           class: spytial-gdl-editable
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: gdl-sequence
+          class: gdl-sequence
           format: !!python/name:pymdownx.superfences.fence_code_format
 
 extra_javascript:

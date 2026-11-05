@@ -23,6 +23,8 @@ import { extractAnnotations } from './annotations.js';
 import { serializeToSpytialGdl } from './serialize.js';
 import { sourceDiagnostics, sourceLayoutWarnings, engineDiagnostics } from './diagnostics.js';
 import { configureGraphView } from './graph-view.js';
+export { parseGdlSequence, isGdlSequence, SEQUENCE_POLICIES } from './sequence-parser.js';
+export { compileGdlSequence, mountGdlSequence } from './sequence.js';
 
 export { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings, extractAnnotations, serializeToSpytialGdl };
 export { sourceDiagnostics, sourceLayoutWarnings, engineDiagnostics, attributeLine } from './diagnostics.js';
@@ -168,7 +170,7 @@ export function compileSpytialGdl(source, opts = {}) {
       parsed, annotationLines, annotationMeta, annotationErrors, parseErrors,
     };
   }
-  if (parsed.nodes.size === 0) {
+  if (parsed.nodes.size === 0 && !opts.allowEmpty) {
     return {
       ok: false, reason: 'no nodes parsed from source',
       parsed, annotationLines, annotationMeta, annotationErrors, parseErrors,
@@ -278,6 +280,13 @@ export function solveSpytialGdl(spytial, compiled, opts = {}) {
 // line numbers where there are any: the parser's, the annotation compiler's,
 // and the engine's (see diagnostics.js).
 export async function renderSpytialGdl(graphEl, source, opts = {}) {
+  return renderCompiledSpytialGdl(graphEl, compileSpytialGdl(source, opts), opts);
+}
+
+// Shared render boundary for a static graph and a compiled sequence state.
+// Sequence navigation supplies an explicit core policy + departing instance;
+// the target instance is attached here, after the same solve as static GDL.
+export async function renderCompiledSpytialGdl(graphEl, compiled, opts = {}) {
   if (!graphEl || typeof graphEl.renderLayout !== 'function') {
     throw new Error(
       'renderSpytialGdl: graphEl must be a <webcola-cnd-graph> element. ' +
@@ -288,10 +297,10 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
   const spytial = getSpytialCore();
   engineApi(spytial);
   await configureGraphView(graphEl, false, opts.viewOptions);
+  if (opts.signal?.aborted) return { applied: false, diagnostics: [] };
 
   // 0. annotations → spec, notation → graph, graph → datum. Everything up to
   //    here is engine-independent and shared with the editable path.
-  const compiled = compileSpytialGdl(source, opts);
   const { parsed, annotationErrors, parseErrors } = compiled;
   const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
@@ -331,10 +340,17 @@ export async function renderSpytialGdl(graphEl, source, opts = {}) {
     // demonstrated, while ordinary source replacement remains a fresh render.
     const priorState = opts.preservePositions && typeof graphEl.getLayoutState === 'function'
       ? graphEl.getLayoutState() : null;
-    const renderOptions = priorState && priorState.positions.length > 0
+    let renderOptions = priorState && priorState.positions.length > 0
       ? { priorPositions: priorState } : undefined;
+    if (opts.sequenceTransition) {
+      renderOptions = { ...opts.sequenceTransition, currInstance: instance };
+    }
     if (!renderOptions && typeof graphEl.clear === 'function') graphEl.clear();
     await graphEl.renderLayout(layout, renderOptions);
+    if (opts.signal?.aborted) {
+      graphEl.clear?.();
+      return { applied: false, diagnostics: [] };
+    }
     applied = true;
   }
 

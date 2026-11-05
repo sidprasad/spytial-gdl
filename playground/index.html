@@ -248,6 +248,7 @@
                 <div class="canvas-wrap">
                     <webcola-cnd-graph id="graph" theme="light" aria-label="Live constraint diagram"></webcola-cnd-graph>
                     <structured-input-graph id="input-graph" theme="light" aria-label="Editable constraint diagram" hidden></structured-input-graph>
+                    <div id="sequence-host" style="width:100%;height:100%;" hidden></div>
                     <div id="error-messages"></div>
                 </div>
             </div>
@@ -263,7 +264,7 @@
     <script src="https://cdn.jsdelivr.net/npm/spytial-core@^6.5.1/dist/components/react-component-integration.global.js"></script>
 
     <script type="module">
-        import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration } from '../src/index.js';
+        import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration, mountGdlSequence, isGdlSequence } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
         import { listExamples, loadExample, exampleInfo } from './examples.js';
 
@@ -280,6 +281,9 @@
         const codeWrapEl = ghostEl.parentElement;
         const graphEl = document.getElementById('graph');
         const inputGraphEl = document.getElementById('input-graph');
+        const sequenceHost = document.getElementById('sequence-host');
+        let sequence = null;
+        let applyRequest = 0;
         const statusEl = document.getElementById('status');
         const applyBtn = document.getElementById('apply-btn');
         const modeViewBtn = document.getElementById('mode-view');
@@ -337,6 +341,12 @@
             sourceEl.value = text;
             showSourceDiagnostics([]);
             syncExampleSelection();
+            syncSequenceControls();
+        }
+        function syncSequenceControls() {
+            const isSequence = isGdlSequence(sourceEl.value);
+            modeEditBtn.disabled = isSequence;
+            modeEditBtn.title = isSequence ? 'Edit sequence graphs in the source, then Apply.' : 'Edit the graph; the notation mirrors your edits';
         }
         function syncExampleSelection() {
             exampleSelect.value = [...exampleSources].find(([, source]) => source.trimEnd() === sourceEl.value.trimEnd())?.[0] || '';
@@ -346,6 +356,7 @@
             showSourceDiagnostics([]);
             setStatus('Changes not applied — press Apply.', 'info');
             syncExampleSelection();
+            syncSequenceControls();
         });
         sourceEl.addEventListener('scroll', () => {
             ghostEl.scrollTop = sourceEl.scrollTop;
@@ -398,7 +409,7 @@
         // a demonstration in progress, which `detach` handles.
         function mountDemo() {
             if (demo) { try { demo.detach(); } catch (e) {} }
-            demoSlot.hidden = mode !== 'view';
+            demoSlot.hidden = mode !== 'view' || !!sequence;
             const dark = document.documentElement.getAttribute('data-theme') === 'dark';
             demo = mountDemonstration(document, demoSlot, graphEl, {
                 dark,
@@ -420,10 +431,11 @@
             const t = theme === 'dark' ? 'dark' : 'light';
             graphEl.setAttribute('theme', t);
             inputGraphEl.setAttribute('theme', t);
+            sequence?.setTheme(t);
             document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀' : '☾';
             paintTokenColors(t);
             try { localStorage.setItem('spytial-gdl-theme', theme); } catch (e) {}
-            if (demo) mountDemo();
+            if (demo && !sequence) mountDemo();
         }
         document.getElementById('theme-btn').onclick = () => {
             const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -538,6 +550,32 @@
 
             const src = sourceEl.value;
             if (!src.trim()) { setStatus('Write a graph to render.', 'error'); return; }
+            const request = ++applyRequest;
+            sequence?.dispose(); sequence = null;
+            syncSequenceControls();
+            if (isGdlSequence(src)) {
+                graphEl.hidden = true;
+                sequenceHost.hidden = false;
+                demo?.cancel(); demoSlot.hidden = true;
+                const reflectSequence = value => {
+                    if (request !== applyRequest || src !== sourceEl.value) return;
+                    showSourceDiagnostics(value.diagnostics);
+                    const first = value.diagnostics.find(d => d.severity !== 'warning') || value.diagnostics[0];
+                    if (first) setStatus(`${first.line ? `line ${first.line}: ` : ''}${first.message}`, first.severity === 'warning' ? 'info' : 'error');
+                    else if (value.states.some(state => state.result?.error)) setStatus('These rules cannot all hold — see the state explanation.', 'error');
+                    else setStatus('');
+                };
+                sequence = mountGdlSequence(sequenceHost, src, {
+                    theme: document.documentElement.getAttribute('data-theme'),
+                    onChange: reflectSequence,
+                    onError: error => { if (request === applyRequest) setStatus(error.message, 'error'); },
+                });
+                try { reflectSequence(await sequence.ready); }
+                catch (error) { if (request === applyRequest) setStatus(error.message, 'error'); }
+                return;
+            }
+            sequenceHost.hidden = true; graphEl.hidden = false;
+            demoSlot.hidden = false;
 
             let result;
             try {
@@ -549,6 +587,7 @@
                 window.showGeneralError && window.showGeneralError(err.message);
                 return;
             }
+            if (request !== applyRequest) return;
 
             // renderLayout restores the user's viewport when warm-starting.
             if (result.applied && !preservePositions) {
@@ -618,7 +657,10 @@
         // it own the graph; mirror its serialized notation back into the textarea.
         async function enterEdit() {
             if (mode === 'edit') return;
+            if (isGdlSequence(sourceEl.value)) { setStatus('Edit the state blocks in the source, then Apply.', 'info'); return; }
             if (!sourceEl.value.trim()) { setStatus('Write a graph first, then switch to Edit.', 'error'); return; }
+            applyRequest++;
+            sequence?.dispose(); sequence = null; sequenceHost.hidden = true;
             mode = 'edit';
             setModeButtons();
             teardownEdit();
