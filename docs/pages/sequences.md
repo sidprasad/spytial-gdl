@@ -134,7 +134,7 @@ await viewer.previous();
 await viewer.goTo('after');   // optional id, or a zero-based numeric index
 await viewer.setView('pair'); // 'single' or 'pair'
 console.log(viewer.state);   // visible states, graph elements, diagnostics
-// viewer.dispose();        // remove the UI and release readers/renderers
+// viewer.dispose();        // remove the UI and release renderers
 
 const compiled = compileGdlSequence(source); // no DOM or core needed
 ```

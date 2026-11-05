@@ -161,9 +161,6 @@ export function mountGdlSequence(container, source, opts = {}) {
     .spytial-gdl-sequence .sequence-graph { flex:1;min-height:0;position:relative; }
     .spytial-gdl-sequence webcola-cnd-graph { display:block;width:100%;height:100%; }
     .spytial-gdl-sequence .sequence-empty { position:absolute;inset:45% 0 auto;text-align:center;pointer-events:none;color:var(--seq-soft); }
-    .spytial-gdl-sequence .sequence-reader { max-height:45%;overflow:auto;border-top:1px solid var(--seq-border); }
-    .spytial-gdl-sequence .sequence-reader[hidden] { display:none; }
-    .spytial-gdl-sequence summary { cursor:pointer;padding:4px 8px;font-size:11px;color:var(--seq-soft); }
     .spytial-gdl-sequence .sequence-diagnostics { flex:0 0 auto;max-height:100px;overflow:auto;color:var(--seq-ink); }
     .spytial-gdl-sequence .sequence-diagnostics:not(:empty) { padding:5px 9px;border-top:1px solid var(--seq-border); }
     .spytial-gdl-sequence .sequence-diagnostics p { margin:3px 0;white-space:pre-wrap; }
@@ -259,7 +256,7 @@ export function mountGdlSequence(container, source, opts = {}) {
   function notify() { if (!disposed) opts.onChange?.(snapshot()); }
   function disposePane(pane) {
     pane.cancelFit?.();
-    pane.reader?.dispose(); pane.graph.clear?.(); pane.element.remove();
+    pane.graph.clear?.(); pane.element.remove();
   }
   // Fit a resized pane, or reveal nodes outside a carried camera, using core's
   // public viewport APIs. This never changes coordinates or re-solves a graph.
@@ -315,13 +312,6 @@ export function mountGdlSequence(container, source, opts = {}) {
     stage.insertBefore(element, following || null);
     const graph = mountGraph(graphHost, { theme: opts.theme, ariaLabel: stateLabel(index) });
     const pane = { index, element, heading, graph, result: null, graphHost };
-    if (opts.reader !== false) {
-      const details = el('details', 'sequence-reader'), summary = el('summary', '', 'Explore this state');
-      // A host's graph reader is optional. Reveal the disclosure only when
-      // the render pipeline returns a reader handle for this state.
-      details.hidden = true; pane.readerDetails = details;
-      pane.readerSlot = el('div'); details.append(summary, pane.readerSlot); element.append(details);
-    }
     const selectPane = () => { if (!disposed && !busy) { active = pane; reflect(); notify(); } };
     heading.addEventListener('click', selectPane);
     element.addEventListener('pointerdown', selectPane, true);
@@ -341,12 +331,10 @@ export function mountGdlSequence(container, source, opts = {}) {
     pane.result = null;
     try {
       pane.result = await renderCompiledSpytialGdl(pane.graph, compiled.states[index].compiled, {
-        ...opts, signal: abort.signal, reader: pane.readerSlot, sequenceTransition: transition,
+        ...opts, signal: abort.signal, sequenceTransition: transition,
       });
-      if (pane.result.reader) pane.reader = pane.result.reader;
-      if (pane.readerDetails) pane.readerDetails.hidden = !pane.result.reader;
     } catch (error) {
-      pane.reader?.dispose(); pane.reader = null; pane.graph.clear?.();
+      pane.graph.clear?.();
       throw error;
     }
     if (disposed) { disposePane(pane); return; }

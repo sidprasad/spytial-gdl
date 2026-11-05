@@ -716,7 +716,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
 
     try {
       if (sequence) {
-        const handle = mountGdlSequence(ui.graphHost, source, { ...blockOpts, reader: opts.reader !== false });
+        const handle = mountGdlSequence(ui.graphHost, source, blockOpts);
         ui.attachSequenceControls(handle);
         ui.setSourceProvider(() => source);
         ui.refreshSource(true);

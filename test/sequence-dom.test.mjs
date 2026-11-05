@@ -51,7 +51,7 @@ const at = (state, id) => state.positions.find(position => position.id === id);
 const host = doc.getElementById('host');
 let handle;
 try {
-  handle = mountGdlSequence(host, source, { reader: false });
+  handle = mountGdlSequence(host, source);
   assert.equal((await handle.ready).busy, false, 'awaited snapshots report the committed view');
   assert.equal(handle.state.applied, true);
   assert.equal(host.querySelector('.sequence-controls select'), null, 'policy belongs to the source, not the viewer controls');
@@ -124,7 +124,7 @@ try {
 
   for (const policy of ['ignore_history', 'change_emphasis', 'random_positioning']) {
     const policyHost = doc.createElement('div'); doc.querySelector('main').append(policyHost);
-    const viewer = mountGdlSequence(policyHost, source.replace('policy: stability', `policy: ${policy}`), { reader: false });
+    const viewer = mountGdlSequence(policyHost, source.replace('policy: stability', `policy: ${policy}`));
     try {
       await viewer.ready;
       viewer.state.states[0].graph.drag('a', 651, 652);
@@ -184,25 +184,25 @@ try {
   // Markdown marker variations, no header required inside the fence, source
   // disclosure and no automatic refit that would discard a carried camera.
   host.innerHTML = '<pre><code class="language-gdl-sequence">state before { a }\nstate { a -&gt; b }</code></pre>';
-  const blocks = await renderSpytialGdls(host, { injectEngine: false, reader: false });
+  const blocks = await renderSpytialGdls(host, { injectEngine: false });
   assert.equal(blocks.length, 1); assert.equal(blocks[0].sequence, true); assert.equal(blocks[0].applied, true);
   assert.ok(host.querySelector('.sequence-controls .spytial-gdl-source-toggle'));
   assert.equal((await renderSpytialGdls(host, { injectEngine: false })).length, 0, 'embeds are not rendered twice');
   blocks[0].handle.dispose(); host.replaceChildren();
   host.innerHTML = '<pre data-language="gdl-sequence">state { a }\nstate { b }</pre>';
-  const dataBlock = await renderSpytialGdls(host, { injectEngine: false, reader: false });
+  const dataBlock = await renderSpytialGdls(host, { injectEngine: false });
   assert.equal(dataBlock[0].sequence, true); dataBlock[0].handle.dispose(); host.replaceChildren();
 
-  handle = mountGdlSequence(host, 'state {}', { reader: false, view: 'pair' });
+  handle = mountGdlSequence(host, 'state {}', { view: 'pair' });
   await handle.ready; assert.equal(handle.state.view, 'single');
   assert.match(host.textContent, /Empty state/);
   handle.dispose();
-  handle = mountGdlSequence(host, 'state same {}\nstate same {}', { reader: false });
+  handle = mountGdlSequence(host, 'state same {}\nstate same {}');
   await handle.ready; assert.equal(handle.state.applied, false);
   assert.match(host.textContent, /duplicate state id/);
   handle.dispose();
 
-  // Disposal while core awaits translation cannot remount readers or emit a
+  // Disposal while core awaits translation cannot remount UI or emit a
   // late change into a new source application.
   let release;
   gate = new Promise(resolve => { release = resolve; });
