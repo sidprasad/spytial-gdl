@@ -7,6 +7,10 @@ is a fix.
 
 ## Unreleased
 
+- Add `gdl-sequence` documents with optional state ids, shared rules, a global
+  policy in the source, and compact single/pair navigation that carries live
+  arrangements forward or backward.
+
 ## [0.7.0] — 2026-10-15
 
 - Put a clearly labeled example dropdown beside Apply in the playground.

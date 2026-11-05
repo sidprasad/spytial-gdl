@@ -1,4 +1,9 @@
 const descriptions = {
+  'state-sequence.gdl': {
+    title: 'A list across states',
+    description: 'Insert nodes in a list. Drag an arrangement and carry it forward or backward, in one-state or two-state view.',
+    capability: 'Sequences · Layout policies',
+  },
   'binary-tree.gdl': {
     title: 'Binary tree',
     description: 'Position subtrees left and right. Align nodes at the same depth.',

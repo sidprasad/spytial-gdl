@@ -48,6 +48,30 @@ Mermaid flowcharts can be pasted into GDL. Unsupported Mermaid subgraphs and
 non-flowchart diagrams produce an error instead of a partial diagram. Flowchart
 features that lose styling or behavior produce line-specific warnings.
 
+## Sequences of states
+
+Use a `gdl-sequence` fence for complete graph snapshots under one policy:
+
+```gdl-sequence
+policy: stability
+@orientation(selector=next, directions=[right])
+
+state before {
+  a -> c : next
+}
+state {
+  a -> b : next
+  b -> c : next
+}
+```
+
+State ids are optional; block order defines the sequence. Rules before the
+blocks apply to every state. One-state and consecutive two-state views carry
+the live departing arrangement forward **or backward**, including drags.
+[Syntax, navigation, policies and API](docs/pages/sequences.md).
+In the playground, start the source with `gdl-sequence`, or choose **A list
+across states** from the examples.
+
 ## Development
 
 ```sh

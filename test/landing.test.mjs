@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as core from 'spytial-core';
-import { compileSpytialGdl, solveSpytialGdl } from '../src/index.js';
+import { compileSpytialGdl, solveSpytialGdl, isGdlSequence, compileGdlSequence } from '../src/index.js';
 import { legacyTarget } from '../docs/pages/javascripts/legacy-routes.js';
 import { listExamples, loadExample, exampleInfo } from '../playground/examples.js';
 import { exampleManifest } from '../scripts/example-manifest.mjs';
@@ -69,10 +69,16 @@ for (const name of examples) {
     assert.equal(options.cache, 'no-cache', 'Reloading an example revalidates edits to its file');
     return { ok: true, text: async () => readFileSync(url, 'utf8') };
   });
-  const compiled = compileSpytialGdl(source);
-  assert.equal(compiled.ok, true, name);
-  assert.deepEqual(compiled.parseErrors, [], name);
-  assert.deepEqual(compiled.annotationErrors, [], name);
+  const sequence = isGdlSequence(source) ? compileGdlSequence(source) : null;
+  if (sequence) {
+    assert.equal(sequence.ok, true, name);
+    assert.deepEqual(sequence.diagnostics, [], name);
+  }
+  for (const compiled of sequence ? sequence.states.map(state => state.compiled) : [compileSpytialGdl(source)]) {
+    assert.equal(compiled.ok, true, name);
+    assert.deepEqual(compiled.parseErrors, [], name);
+    assert.deepEqual(compiled.annotationErrors, [], name);
+  }
 }
 assert.equal(exampleInfo('new-example.gdl').title, 'new example',
   'New files have a readable default display name');
