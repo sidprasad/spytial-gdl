@@ -1,9 +1,4 @@
 const descriptions = {
-  'arithmetic.gdl': {
-    title: 'Arithmetic expression',
-    description: 'Drag the operands of (6 ÷ 2) × 3 and see how the tree preserves their order.',
-    capability: 'Orientation',
-  },
   'binary-tree.gdl': {
     title: 'Binary tree',
     description: 'Position subtrees left and right. Align nodes at the same depth.',
