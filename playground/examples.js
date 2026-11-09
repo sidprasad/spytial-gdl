@@ -1,7 +1,7 @@
 const descriptions = {
   'operand-order.gdl': {
     title: 'Arithmetic and operand order',
-    description: 'Find 20 ÷ 5 in a larger expression tree, then enable two rules to put its operands in reading order.',
+    description: 'Read the operands of 8 ÷ 2 and 9 − 3, then enable two rules to put them in reading order.',
     capability: 'Orientation',
   },
   'state-sequence.gdl': {
