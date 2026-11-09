@@ -1,0 +1,12 @@
+%% The expression (6 ÷ 2) × 3.
+mul[×] -> div[÷] : lhs
+mul -> three[3] : rhs
+div -> six[6] : lhs
+div -> two[2] : rhs
+
+%% Drag an operand. It stays below its operator and on the side its role specifies.
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
+
+%% Uncomment this edge and press Apply. Each operator would have to be below the other.
+%% div -> mul : rhs
