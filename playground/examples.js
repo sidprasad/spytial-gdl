@@ -1,4 +1,14 @@
 const descriptions = {
+  'arithmetic.gdl': {
+    title: 'Arithmetic expression',
+    description: 'Drag the operands of (6 ÷ 2) × 3 and see how the tree preserves their order.',
+    capability: 'Orientation',
+  },
+  'operand-order.gdl': {
+    title: 'Arithmetic and operand order',
+    description: 'Find 20 ÷ 5 in a larger expression tree, then enable two rules to put its operands in reading order.',
+    capability: 'Orientation',
+  },
   'state-sequence.gdl': {
     title: 'A list across states',
     description: 'Insert nodes in a list. Drag an arrangement and carry it forward or backward, in one-state or two-state view.',

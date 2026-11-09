@@ -1,0 +1,22 @@
+%% ((7 × 4) − (20 ÷ 5)) ÷ (6 + 2) = 3.
+%% Find the inner ÷. Which number looks like its left operand?
+
+quot[÷] -> top[−] : lhs
+quot -> bottom[+] : rhs
+
+top -> product[×] : lhs
+top -> inner[÷] : rhs
+product -> seven[7] : lhs
+product -> four[4] : rhs
+inner -> twenty[20] : lhs
+inner -> five[5] : rhs
+
+bottom -> six[6] : lhs
+bottom -> two[2] : rhs
+
+%% Delete the two lines containing only %%{ and }%%, then press Apply.
+%% Look at 20 ÷ 5 again. Try dragging 5 across its operator.
+%%{
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
+}%%
