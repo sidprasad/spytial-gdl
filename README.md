@@ -20,7 +20,7 @@ div -> two[2] : rhs
 
 This is `(6 ÷ 2) × 3`. The two rules keep each left operand below and to the
 left of its operator, and each right operand below and to the right.
-[Try it in the playground.](https://www.siddharthaprasad.com/spytial-gdl/playground/)
+Choose **Arithmetic and operand order** in the [playground](https://www.siddharthaprasad.com/spytial-gdl/playground/) to try the rules on a larger tree.
 
 ## Use
 
