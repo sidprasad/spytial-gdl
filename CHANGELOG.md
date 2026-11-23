@@ -10,6 +10,8 @@ is a fix.
 - Add `gdl-sequence` documents with optional state ids, shared rules, a global
   policy in the source, and compact single/pair navigation that carries live
   arrangements forward or backward.
+- Require spytial-core 6.8.0 and refresh the vendored schema and generated
+  language references for layout language 2026-11-18.
 
 ## [0.7.0] — 2026-10-15
 

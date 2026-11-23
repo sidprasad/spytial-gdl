@@ -1,0 +1,11 @@
+{
+  "name": "spytial-gdl-skill",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "playwright": "^1.58.0",
+    "spytial-core": "^6.8.0",
+    "spytial-gdl": "^0.6.1 || ^0.7.0"
+  }
+}
