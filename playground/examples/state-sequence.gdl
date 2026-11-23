@@ -1,0 +1,22 @@
+gdl-sequence
+policy: stability
+
+%% These rules apply independently to every complete snapshot below.
+@orientation(selector=next, directions=[right])
+@align(selector=next, direction=horizontal)
+
+state before {
+  a[A] -> c[C] : next
+}
+
+%% State ids are optional. Order comes from the blocks, not the names.
+state {
+  a[A] -> b[B] : next
+  b -> c[C] : next
+}
+
+state after {
+  a[A] -> b[B] : next
+  b -> c[C] : next
+  c -> d[D] : next
+}

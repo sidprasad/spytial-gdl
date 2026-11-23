@@ -381,6 +381,24 @@ export function tokenizeLine(line, open = 0, inBlock = false) {
 
   if (depth > 0) return args(s, depth);
 
+  // The envelope's keywords are structural; ids remain ordinary names.
+  const state = s.match(/^(\s*)(state)(\s+(?:[A-Za-z_][\w-]*\s*)?)?(\{)(.*)$/);
+  if (state) {
+    push(state[1], 'text'); push(state[2], 'key'); push(state[3] || '', 'node');
+    push(state[4], 'punct'); scanGraphLine(state[5], push);
+    return { tokens, open: 0, inBlock: false };
+  }
+  const policy = s.match(/^(\s*)(policy)(\s*:\s*)([\w-]*)(.*)$/);
+  if (policy) {
+    push(policy[1], 'text'); push(policy[2], 'key'); push(policy[3], 'punct');
+    push(policy[4], 'value'); push(policy[5], 'text');
+    return { tokens, open: 0, inBlock: false };
+  }
+  if (/^\s*(?:gdl-sequence|})\s*$/.test(s)) {
+    push(s, s.includes('gdl-sequence') ? 'key' : 'punct');
+    return { tokens, open: 0, inBlock: false };
+  }
+
   const head = s.match(ANNOTATION_HEAD);
   if (head) {
     push(head[1], 'text');

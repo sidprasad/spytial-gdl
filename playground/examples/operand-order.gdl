@@ -1,0 +1,21 @@
+%% (8 ÷ 2 + 1) × (9 − 3) = 30.
+%% Read the children of div and sub from left to right. What expression do you see?
+
+mul -> add : lhs
+mul -> sub : rhs
+
+add -> div : lhs
+add -> 1 : rhs
+
+div -> 8 : lhs
+div -> 2 : rhs
+
+sub -> 9 : lhs
+sub -> 3 : rhs
+
+%% Delete the two lines containing only %%{ and }%%, then press Apply.
+%% Read the two pairs again. Try dragging 2 to the left of div.
+%%{
+@orientation(selector=lhs, directions=[below, left])
+@orientation(selector=rhs, directions=[below, right])
+}%%

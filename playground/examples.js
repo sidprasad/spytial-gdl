@@ -1,4 +1,14 @@
 const descriptions = {
+  'operand-order.gdl': {
+    title: 'Arithmetic and operand order',
+    description: 'Read the operands of 8 ÷ 2 and 9 − 3, then enable two rules to put them in reading order.',
+    capability: 'Orientation',
+  },
+  'state-sequence.gdl': {
+    title: 'A list across states',
+    description: 'Insert nodes in a list. Drag an arrangement and carry it forward or backward, in one-state or two-state view.',
+    capability: 'Sequences · Layout policies',
+  },
   'binary-tree.gdl': {
     title: 'Binary tree',
     description: 'Position subtrees left and right. Align nodes at the same depth.',

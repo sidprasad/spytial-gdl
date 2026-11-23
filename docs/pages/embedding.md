@@ -2,6 +2,10 @@
 
 Add a live graph diagram to an HTML page or a Markdown site.
 
+For a collection of graph snapshots, use a [`gdl-sequence` fence](sequences.md)
+or the `mountGdlSequence` API. State ids are optional, with one global policy
+and shared rules before the blocks.
+
 ## Quick start
 
 Add the renderer once to your HTML page or Markdown site's template:

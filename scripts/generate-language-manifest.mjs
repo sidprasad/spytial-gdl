@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { build, loadSchema } from './generate-spec-tables.mjs';
 import { DEFAULT_RELATION, ALL_EDGES_RELATION } from '../src/relationalize.js';
+import { SEQUENCE_POLICIES } from '../src/sequence-parser.js';
 
 const root = new URL('../', import.meta.url);
 const output = new URL('spytial-gdl-language.json', root);
@@ -17,7 +18,7 @@ export function manifest() {
     upstream: {
       coreVersion: tables.coreVersion,
       layoutLanguageVersion: tables.languageVersion,
-      layoutManifest: 'https://cdn.jsdelivr.net/npm/spytial-core@^6.5.1/docs/spytial-language.json',
+      layoutManifest: `https://cdn.jsdelivr.net/npm/spytial-core@${pkg.peerDependencies['spytial-core']}/docs/spytial-language.json`,
       selectorManifest: 'https://cdn.jsdelivr.net/npm/simple-graph-query@3/docs/sgq-language.json',
       note: 'Upstream URLs follow compatible package ranges. The annotation vocabulary below is generated from the vendored schema at coreVersion. Selector support follows the engine loaded by the host.',
     },
@@ -39,6 +40,16 @@ export function manifest() {
         styleBlock: '@name(key=value, blockName(key=value))',
         example: 'cs1 -> cs2 : prereq\n@orientation(selector=prereq, directions=[right])',
         note: 'Selectors can be quoted expressions. See the upstream selector manifest for expression syntax.',
+      },
+      sequence: {
+        fence: 'gdl-sequence',
+        header: 'gdl-sequence (required for playground detection, optional inside the fence or explicit sequence API)',
+        syntax: 'policy: <policy>\n<shared @annotations>\nstate <optional-id> {\n  <complete GDL graph and local @annotations>\n}',
+        example: 'policy: stability\n@orientation(selector=next, directions=[right])\nstate before { a -> c : next }\nstate { a -> b : next\n b -> c : next }',
+        policies: SEQUENCE_POLICIES,
+        defaultPolicy: 'stability',
+        stateId: 'Optional unique identifier: letters, digits, underscore or hyphen, starting with a letter or underscore. Block order defines sequence order.',
+        semantics: 'Each block is a complete snapshot. Shared and local rules accumulate. Node ids match objects across states. Navigation in either direction uses the live departing arrangement. No per-state layout recall.',
       },
     },
     selectors: {

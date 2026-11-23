@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { manifest, renderManifest } from '../scripts/generate-language-manifest.mjs';
-import { compileSpytialGdl, extractAnnotations } from '../src/index.js';
+import { compileSpytialGdl, extractAnnotations, compileGdlSequence, SEQUENCE_POLICIES } from '../src/index.js';
 import { ITEMS, STYLE_BLOCKS } from '../src/_spec-tables.js';
 
 const m = manifest();
@@ -9,6 +9,10 @@ assert.equal(readFileSync(new URL('../spytial-gdl-language.json', import.meta.ur
   'Manifest is stale; run npm run manifest');
 assert.deepEqual(m.annotations, ITEMS, 'Public annotations must match runtime validation');
 assert.deepEqual(m.styleBlocks, STYLE_BLOCKS, 'Public style blocks must match runtime validation');
+assert.deepEqual(m.syntax.sequence.policies, SEQUENCE_POLICIES);
+const sequence = compileGdlSequence(m.syntax.sequence.example);
+assert.equal(sequence.ok, true);
+assert.deepEqual(sequence.diagnostics, []);
 
 for (const form of [...m.syntax.forms, m.syntax.annotations]) {
   const result = compileSpytialGdl(form.example);
