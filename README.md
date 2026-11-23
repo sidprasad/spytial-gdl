@@ -41,12 +41,34 @@ GitHub does not run the renderer in READMEs, so the block above shows as source.
 - [Graph description](https://www.siddharthaprasad.com/spytial-gdl/docs/#/notation)
 - [Layout requirements](https://www.siddharthaprasad.com/spytial-gdl/docs/#/requirements)
 - [Embedding and JavaScript API](https://www.siddharthaprasad.com/spytial-gdl/docs/#/embedding)
-- [Agent skill](https://www.siddharthaprasad.com/spytial-gdl/SKILL.md)
+- [Agent skill](skills/spytial-gdl/SKILL.md)
 - [Changelog](CHANGELOG.md)
 
 Mermaid flowcharts can be pasted into GDL. Unsupported Mermaid subgraphs and
 non-flowchart diagrams produce an error instead of a partial diagram. Flowchart
 features that lose styling or behavior produce line-specific warnings.
+
+## Use with Claude Code or Codex
+
+From this checkout, install the skill for both clients with Node.js 22.20 or
+later.
+
+```sh
+npx skills add ./skills/spytial-gdl -a claude-code codex
+```
+
+From another project, use the absolute path to the same skill folder. Add
+`-g` to install it for use across projects.
+
+You can also copy the whole `skills/spytial-gdl` folder into your project's
+`.claude/skills/` for Claude Code or `.agents/skills/` for Codex.
+
+Ask for a graph in plain language, or invoke `/spytial-gdl` in Claude Code or
+`$spytial-gdl` in Codex. For example, “Draw a dependency diagram for this
+project. Give me an image for the README and keep the editable source.”
+The skill can check `.gdl` source and export a PNG or a standalone interactive
+HTML file. The [skill instructions](skills/spytial-gdl/SKILL.md#check-source-and-export)
+include the renderer setup and commands.
 
 ## Sequences of states
 

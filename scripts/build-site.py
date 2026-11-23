@@ -12,8 +12,12 @@ subprocess.run(
     check=True,
     cwd=ROOT,
 )
-for name in ("assets", "src", "vendor", "playground", "skills"):
+for name in ("assets", "src", "vendor", "playground"):
     shutil.copytree(ROOT / name, SITE / name, dirs_exist_ok=True)
+shutil.copytree(
+    ROOT / "skills", SITE / "skills", dirs_exist_ok=True,
+    ignore=shutil.ignore_patterns("node_modules"),
+)
 subprocess.run(
     ["node", str(ROOT / "scripts" / "example-manifest.mjs"), str(SITE / "playground" / "examples.json")],
     check=True,

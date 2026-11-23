@@ -8,7 +8,7 @@ and links to the relevant authoring, integration, and validation references.
 
 ## Start here
 
-- Agent skill: https://www.siddharthaprasad.com/spytial-gdl/SKILL.md
+- Agent skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-gdl/SKILL.md
 - Operations skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-operations/SKILL.md
 - Selectors skill: https://www.siddharthaprasad.com/spytial-gdl/skills/spytial-selectors/SKILL.md
 - GDL language manifest: https://www.siddharthaprasad.com/spytial-gdl/spytial-gdl-language.json
