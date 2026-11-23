@@ -59,11 +59,11 @@
     "test:sequence": "node test/sequence.test.mjs && node test/sequence-dom.test.mjs"
   },
   "devDependencies": {
-    "spytial-core": "^6.5.1",
+    "spytial-core": "^6.8.0",
     "jsdom": "^26.1.0",
     "axe-core": "^4.10.3"
   },
   "peerDependencies": {
-    "spytial-core": "^6.5.1"
+    "spytial-core": "^6.8.0"
   }
 }

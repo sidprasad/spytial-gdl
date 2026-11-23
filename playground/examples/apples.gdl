@@ -18,6 +18,6 @@ bag2 -> sweetheart[Sweetheart]:::Cherry : contains
 @hideField(field=contains)
 
 %% Style Apples and Cherries to be different.
-@atomStyle(selector=Apple, iconStyle(path='lucide:apple', placement=full, opacity=0.2))
-@atomStyle(selector=Cherry, iconStyle(path='lucide:cherry', placement=full, opacity=0.2))
+@atomStyle(selector=Apple, borderStyle(color=green), iconStyle(path='lucide:apple', placement=full, opacity=0.2))
+@atomStyle(selector=Cherry, borderStyle(color=red), iconStyle(path='lucide:cherry', placement=full, opacity=0.2))
 }%%
