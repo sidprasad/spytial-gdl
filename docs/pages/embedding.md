@@ -26,6 +26,37 @@ The script renders each `spytial-gdl` block after Markdown becomes HTML.
 ES modules cannot run from a `file://` URL, so serve the page over HTTP(S). See
 [platform setup](#platform-setup).
 
+## Diagram size and resizing
+
+Embedded diagrams fill the available width and start at 360 pixels high by
+default. Set `data-height` to a pixel count such as `260` or a CSS length such as
+`28rem` or `60vh`. Use `data-height` on its own for a fixed height. Add
+`data-resizable` to let readers drag the bottom-right handle to adjust the
+height in browsers that support native resize handles.
+
+```html
+<div class="spytial-gdl" data-height="260" data-resizable>
+A -> B
+A -> C
+</div>
+```
+
+In Markdown, you can use that HTML block directly. If your Markdown renderer
+supports fence attributes, you can also set them on the fence. This works with
+the [MkDocs setup below](#mkdocs) when `attr_list` is enabled.
+
+````markdown
+```{.spytial-gdl data-height="260" data-resizable="true"}
+A -> B
+A -> C
+```
+````
+
+```{.spytial-gdl data-height="260" data-resizable="true"}
+A -> B
+A -> C
+```
+
 ## Platform setup
 
 Add the [script](#quick-start) to your site template. Keep `type="module"`.
@@ -83,6 +114,7 @@ highlighter, register a verbatim fence to preserve the source:
 
 ```yaml
 markdown_extensions:
+  - attr_list
   - pymdownx.superfences:
       custom_fences:
         - name: spytial-gdl
