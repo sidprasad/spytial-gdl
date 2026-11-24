@@ -33,6 +33,7 @@
 import { mountGraph, renderSpytialGdl, mountInputGraph, renderSpytialGdlEditable, mountGdlSequence } from './index.js';
 import { mountDemonstration } from './demonstrate.js';
 import { paintInto } from './highlight.js';
+import { appendSourceRules } from './source-edits.js';
 
 // Languages that mark a Spytial GDL block. `spytial-gdl` is canonical; `spytial`
 // is the short alias.
@@ -159,11 +160,9 @@ export function sourceFromBlock(el) {
       else if (SRC_LINE_TAGS.has(child.tagName)) endLine();
     }
   })(inner || el);
-  // A hand-authored <div> almost always opens with a newline before its first
-  // line of notation. Left in, that empty first line is "line 1", and every
-  // diagnostic and conflict report is off by one from what the author sees in
-  // their file. A fenced block's text starts on its first line already.
-  return out.replace(/^[ \t]*\n/, '');
+  // Drop the HTML formatting newline from a bare <div>. In code blocks a
+  // leading blank line belongs to the authored source.
+  return !inner && el.tagName === 'DIV' ? out.replace(/^[ \t]*\n/, '') : out;
 }
 
 function collectBlocks(root, opts = {}) {
@@ -294,10 +293,8 @@ export async function ensureEngineLoaded(opts = {}) {
 // The source mirrors the current notation, so editing the diagram (in the
 // editable variant) updates the text on the spot.
 //
-// `editable` makes the source a real <textarea> with an Update diagram button — text →
-// diagram is an *explicit* apply (button / ⌘⏎ re-renders), not continuous binding,
-// which would fight the normalizing serializer (caret jumps, dropped %% comments,
-// lost node positions mid-type). Diagram → text stays live.
+// `editable` makes the source a <textarea> with an Update diagram button.
+// Text → diagram is explicit (button / ⌘⏎); diagram → text stays live.
 //
 // Returns refs + hooks:
 //   graphHost            — mount the graph element into this
@@ -571,12 +568,11 @@ function buildDevice(doc, opts, { height, editable, resizable }) {
     sourceToggle.title = collapsed ? 'Show diagram source' : 'Hide diagram source';
   }
 
-  // Push notation into the panel. In editable mode, don't yank text out from
-  // under the user mid-edit (focused or unsaved) unless forced (initial / apply).
+  // Push diagram edits into the panel while protecting unapplied typing.
   const setSourceText = (text, force) => {
     if (srcTextarea) {
-      if (!force && (dirty || doc.activeElement === srcTextarea)) return;
-      srcTextarea.value = text == null ? '' : text;
+      if (!force && dirty) return;
+      if (srcTextarea.value !== (text ?? '')) srcTextarea.value = text ?? '';
       paintGhost();
       dirty = false; srcStatus.textContent = ''; styleRun();
     } else if (srcPre) {
@@ -598,19 +594,20 @@ function buildDevice(doc, opts, { height, editable, resizable }) {
     } catch (_) { window.prompt('spytial-gdl notation:', text); }
   });
 
-  // text → diagram: explicit apply (button / ⌘⏎). Re-render, then snap the panel
-  // to the canonical round-trip so what's shown matches the diagram exactly.
+  // Applying text updates the diagram and keeps the textarea, caret and undo intact.
   async function doApply(preserveView = false) {
-    if (!applyFn || !srcTextarea) return;
+    if (!applyFn || !srcTextarea || runBtn?.disabled) return;
+    const text = srcTextarea.value;
     const prev = runBtn ? runBtn.textContent : '';
     if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Updating…'; }
     srcStatus.textContent = '';
     let res;
-    try { res = await applyFn(srcTextarea.value, preserveView); }
+    try { res = await applyFn(text, preserveView); }
     catch (err) { res = { ok: false, message: err && err.message ? err.message : String(err) }; }
     if (runBtn) { runBtn.disabled = false; runBtn.textContent = prev || 'Update diagram'; }
+    if (srcTextarea.value !== text) return;
     if (res && res.ok) {
-      refreshSource(true);
+      dirty = false; styleRun();
     } else {
       srcStatus.textContent = '⚠ ' + ((res && res.message) || 'could not apply');
       srcStatus.title = srcStatus.textContent;
@@ -624,8 +621,7 @@ function buildDevice(doc, opts, { height, editable, resizable }) {
     if (!srcTextarea) return;
     const additions = Array.isArray(lines) ? lines : [lines];
     if (!additions.length) return;
-    const body = srcTextarea.value.replace(/\s+$/, '');
-    srcTextarea.value = body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${additions.join('\n')}` : additions.join('\n');
+    srcTextarea.value = appendSourceRules(srcTextarea.value, additions);
     paintGhost();
     dirty = true; styleRun();
     await doApply(true);
@@ -767,7 +763,7 @@ export async function renderSpytialGdls(root = document, opts = {}) {
           if (unsub) { unsub(); unsub = null; }
           handle = h;
           ui.setSourceProvider(() => {
-            try { return (handle && handle.getSource && handle.getSource()) || source; }
+            try { return handle?.getSource?.() ?? source; }
             catch (_) { return source; }
           });
           if (h && typeof h.onChange === 'function') {

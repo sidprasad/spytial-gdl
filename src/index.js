@@ -21,6 +21,7 @@ import { registerSpec, clearRegistry, mergeSpecsForClasses, mergeSpecStrings } f
 import { relationalize, DEFAULT_RELATION } from './relationalize.js';
 import { extractAnnotations } from './annotations.js';
 import { serializeToSpytialGdl } from './serialize.js';
+import { trackEditableSource } from './source-edits.js';
 import { sourceDiagnostics, sourceLayoutWarnings, engineDiagnostics } from './diagnostics.js';
 import { configureGraphView } from './graph-view.js';
 export { parseGdlSequence, isGdlSequence, SEQUENCE_POLICIES } from './sequence-parser.js';
@@ -378,14 +379,12 @@ function liveInstance(el, fallback) {
 }
 
 // Build the handle returned by renderSpytialGdlEditable.
-function buildEditableHandle(el, initialInstance, annotationLines, meta) {
+function buildEditableHandle(el, initialInstance, updateSource, meta) {
   const getValue = () => {
     const inst = liveInstance(el, initialInstance);
     return inst && typeof inst.reify === 'function' ? inst.reify() : { atoms: [], relations: [] };
   };
-  // The headline: re-get spytial-gdl notation for the current (edited) graph,
-  // with the original spatial @annotations re-appended verbatim.
-  const getSource = () => serializeToSpytialGdl(getValue(), { annotations: annotationLines });
+  const getSource = () => updateSource(getValue());
 
   // Subscribe to edits. Every mutation — toolbar, drag-to-connect, delete,
   // keyboard — flows through the data instance, which emits these four events;
@@ -397,14 +396,17 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
     const DATA_EVENTS = ['atomAdded', 'atomRemoved', 'relationTupleAdded', 'relationTupleRemoved'];
     let bound = null;
     let scheduled = false;
+    let disposed = false;
     const fire = () => {
       if (scheduled) return;
       scheduled = true;
       queueMicrotask(() => {
+        if (disposed) return;
         scheduled = false;
         let error = null;
         try { error = el.getCurrentConstraintError ? el.getCurrentConstraintError() : null; } catch (_) {}
-        cb({ source: getSource(), value: getValue(), error });
+        const value = getValue();
+        cb({ source: updateSource(value), value, error });
       });
     };
     const unbind = () => {
@@ -423,7 +425,7 @@ function buildEditableHandle(el, initialInstance, annotationLines, meta) {
     const onCleared = () => { bind(liveInstance(el, null)); fire(); };
     el.addEventListener('all-items-cleared', onCleared);
     bind(liveInstance(el, initialInstance));
-    return () => { unbind(); el.removeEventListener('all-items-cleared', onCleared); };
+    return () => { disposed = true; unbind(); el.removeEventListener('all-items-cleared', onCleared); };
   }
 
   return {
@@ -470,11 +472,10 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
   }
   await configureGraphView(el, true, opts.viewOptions);
 
-  // 0. same compilation as the read-only path. `annotationLines` comes back too,
-  //    so getSource() can re-append the annotations verbatim on the round-trip
-  //    (the compiled specYaml is a lossy form).
+  // 0. same compilation as the read-only path. Preserve the authored source
+  //    independently of the compiled spec and live graph data.
   const compiled = compileSpytialGdl(source, opts);
-  const { parsed, annotationLines, annotationErrors, parseErrors } = compiled;
+  const { parsed, annotationErrors, parseErrors } = compiled;
   const own = sourceDiagnostics(annotationErrors, parseErrors);
   if (!compiled.ok) {
     if (typeof el.clear === 'function') el.clear();
@@ -495,6 +496,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
 
   // 2. datum → input-capable data instance (the editor mutates it in place)
   const instance = new JSONDataInstance(datum);
+  const updateSource = trackEditableSource(String(source ?? ''), instance.reify());
 
   // 3. hand off data + spec; the element owns layout + live constraint enforcement
   el.setDataInstance(instance);
@@ -511,7 +513,7 @@ export async function renderSpytialGdlEditable(container, source, opts = {}) {
     el.renderLayoutWarnings(el.sourceLayout.warnings);
   }
 
-  return buildEditableHandle(el, instance, annotationLines, {
+  return buildEditableHandle(el, instance, updateSource, {
     parsed,
     annotationErrors,
     parseErrors,

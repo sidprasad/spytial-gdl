@@ -266,6 +266,7 @@
     <script type="module">
         import { renderSpytialGdl, renderSpytialGdlEditable, mountDemonstration, mountGdlSequence, isGdlSequence } from '../src/index.js';
         import { toHtmlWithDiagnostics, toCss } from '../src/highlight.js';
+        import { appendSourceRules } from '../src/source-edits.js';
         import { listExamples, loadExample, exampleInfo } from './examples.js';
 
         // Sources loaded from editable .gdl files, retained to recognize edits.
@@ -292,7 +293,7 @@
 
         // View ⇄ Edit state. In View, the textarea is the source of truth and we
         // render a read-only diagram. In Edit, the structured-input graph is the
-        // source of truth and the textarea mirrors its serialized notation.
+        // source of graph edits, which the textarea mirrors in its notation.
         let mode = 'view';
         let editHandle = null;   // handle from renderSpytialGdlEditable
         let editUnsub = null;    // its onChange unsubscribe
@@ -338,7 +339,7 @@
         }
         function setSource(text) {
             sourceRevision++;
-            sourceEl.value = text;
+            if (sourceEl.value !== text) sourceEl.value = text;
             showSourceDiagnostics([]);
             syncExampleSelection();
             syncSequenceControls();
@@ -398,8 +399,7 @@
         async function appendAnnotation(lines) {
             const additions = Array.isArray(lines) ? lines : [lines];
             if (!additions.length) return;
-            const body = sourceEl.value.replace(/\s+$/, '');
-            setSource(body ? `${body}\n${/\n\s*@[A-Za-z]/.test(body) ? '' : '\n'}${additions.join('\n')}` : additions.join('\n'));
+            setSource(appendSourceRules(sourceEl.value, additions));
             await apply({ preservePositions: true });
             toast(`Added ${additions.length} ${additions.length === 1 ? 'rule' : 'rules'}`);
         }
@@ -654,12 +654,12 @@
         }
 
         // Edit: hand the current notation to the structured-input editor and let
-        // it own the graph; mirror its serialized notation back into the textarea.
+        // it own the graph; mirror visual changes back into the notation.
         async function enterEdit() {
             if (mode === 'edit') return;
             if (isGdlSequence(sourceEl.value)) { setStatus('Edit the state blocks in the source, then Apply.', 'info'); return; }
             if (!sourceEl.value.trim()) { setStatus('Write a graph first, then switch to Edit.', 'error'); return; }
-            applyRequest++;
+            const request = ++applyRequest;
             sequence?.dispose(); sequence = null; sequenceHost.hidden = true;
             mode = 'edit';
             setModeButtons();
@@ -676,12 +676,13 @@
             try {
                 handle = await renderSpytialGdlEditable(inputGraphEl, sourceEl.value);
             } catch (err) {
+                if (request !== applyRequest) return;
                 console.error(err); setStatus('Edit error: ' + err.message, 'error'); return;
             }
+            if (request !== applyRequest || mode !== 'edit') return;
             showSourceDiagnostics(handle.diagnostics || []);
             if (handle.applied === false) { setStatus(handle.reason || 'Nothing to edit.', 'error'); return; }
             editHandle = handle;
-            // Live notation mirror: every edit re-serializes back into the textarea.
             editUnsub = handle.onChange(({ source, error }) => {
                 setSource(source);
                 writeHash();

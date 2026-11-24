@@ -54,10 +54,10 @@ function bracketLabel(s) {
   return `"${str.replace(/"/g, '')}"`;
 }
 
-// The `[label]:::sort` suffix for a node, or '' if its id is also its label and
-// it has the default sort. Classes aren't inline — they become `class …` lines.
-function decorate(atom) {
-  let s = '';
+// A node expression, with a `[label]:::sort` suffix when needed.
+// Classes are emitted separately as `class …` lines.
+export function formatNode(atom) {
+  let s = atom.id;
   if (atom.label != null && atom.label !== atom.id) s += `[${bracketLabel(atom.label)}]`;
   if (atom.type && atom.type !== DEFAULT_TYPE) s += `:::${atom.type}`;
   return s;
@@ -115,7 +115,7 @@ export function serializeToSpytialGdl(input, opts = {}) {
     const atom = atomById.get(id);
     if (atom && !declared.has(id) && hasDecoration(atom)) {
       declared.add(id);
-      return id + decorate(atom);
+      return formatNode(atom);
     }
     declared.add(id);
     return id;
@@ -135,7 +135,7 @@ export function serializeToSpytialGdl(input, opts = {}) {
   // inline above.) A plain isolated node emits as just its bare id.
   for (const a of atoms) {
     if (!declared.has(a.id)) {
-      lines.push(a.id + decorate(a));
+      lines.push(formatNode(a));
     }
   }
 
