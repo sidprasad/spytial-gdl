@@ -209,6 +209,10 @@ A -> C : right
 @orientation(selector=_links, directions=[below])
 ```
 
+**Update diagram** applies the text as written, preserving comments, spacing,
+and statement order. Visual edits update the affected graph statements in the
+source. The programmatic editor's `getSource()` returns that same text.
+
 ## Programmatic API
 
 Import the rendering API from the package with a bundler, or from the CDN

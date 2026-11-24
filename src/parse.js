@@ -58,7 +58,7 @@ const OTHER_MERMAID_HEADER = /^(?:[A-Za-z][\w-]*Diagram(?:-v\d+)?|gantt|pie|jour
 
 // A `%%` at bracket depth 0 starts a comment. Inside a `[label]` it is text
 // (`A["50%% off"]`), which a bare indexOf would cut the line at.
-function stripComments(line) {
+export function stripComments(line) {
   let depth = 0;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
@@ -188,8 +188,9 @@ function splitInlineLabel(leftRaw) {
     if (ch === ']' || ch === ')' || ch === '}') { if (depth > 0) depth--; continue; }
     if (depth === 0 && leftRaw.startsWith('--', i) && /\s/.test(leftRaw[i + 2])) {
       const node = leftRaw.slice(0, i).trim();
-      const label = leftRaw.slice(i + 2).trim();
-      if (node && label) return { node, label };
+      const tail = leftRaw.slice(i + 2);
+      const label = tail.trim();
+      if (node && label) return { node, label, labelStart: i + 2 + tail.length - tail.trimStart().length };
     }
   }
   return null;
@@ -206,8 +207,10 @@ function splitLabel(rightRaw) {
     else if (ch === ']' || ch === ')' || ch === '}') depth--;
     else if (ch === ':' && depth === 0 && /\s/.test(rightRaw[i - 1] || '')) {
       const node = rightRaw.slice(0, i).trim();
-      const label = rightRaw.slice(i + 1).trim().replace(/^["']|["']$/g, '');
-      return { node, label: label || null };
+      const tail = rightRaw.slice(i + 1);
+      const rawLabel = tail.trim();
+      const label = rawLabel.replace(/^["']|["']$/g, '');
+      return { node, label: label || null, rawLabel, labelStart: i + 1 + tail.length - tail.trimStart().length };
     }
   }
   return { node: rightRaw.trim(), label: null };
@@ -232,16 +235,25 @@ function parseEdgeLine(line) {
   // mermaid-style pipe label first: `A -->|label| B`.
   const piped = line.match(new RegExp(`^(.+?)\\s*(${ARROW_ALT})\\s*\\|([^|]+)\\|\\s*(.+)$`));
   if (piped) {
-    return { leftExpr: piped[1].trim(), rightExpr: piped[4].trim(), kind: piped[2], label: piped[3].trim() };
+    const rightExpr = piped[4].trim();
+    const rightStart = line.length - rightExpr.length;
+    const label = piped[3].trim();
+    return { leftExpr: piped[1].trim(), rightExpr, rightStart, kind: piped[2], label,
+      rawLabel: label, labelStart: line.lastIndexOf('|', rightStart - 1) - piped[3].trimStart().length };
   }
   const arrow = findArrow(line);
   if (!arrow) return null;
   const leftRaw = line.slice(0, arrow.i);
   const rightRaw = line.slice(arrow.i + arrow.tok.length);
-  const { node, label } = splitLabel(rightRaw); // ` : label` form
+  const { node, label, rawLabel, labelStart } = splitLabel(rightRaw); // ` : label` form
   const inline = arrow.tok === '-->' && label == null ? splitInlineLabel(leftRaw) : null;
   return { leftExpr: inline?.node ?? leftRaw.trim(), rightExpr: node,
-    kind: arrow.tok, label: inline?.label ?? label };
+    rightStart: line.length - rightRaw.trimStart().length,
+    kind: arrow.tok, label: inline?.label ?? label,
+    rawLabel: inline?.label ?? rawLabel,
+    labelStart: inline?.labelStart ?? (labelStart === undefined ? undefined : arrow.i + arrow.tok.length + labelStart),
+    quotedLabel: !inline && rawLabel?.match(/^(["']).*\1$/)?.[1],
+  };
 }
 
 // Returns { nodes, edges, classesPerNode, errors, labelLines, classLines }, where
@@ -253,7 +265,9 @@ function parseEdgeLine(line) {
 //                        or something legal but probably unintended (a node
 //                        given two labels, an edge written twice)
 // Rendering stays best-effort: a bad line is reported and skipped, never fatal.
-export function parseGraph(source) {
+// onStatement receives active graph statements with their original line number.
+// Edge text offsets are relative to the trimmed line with comments removed.
+export function parseGraph(source, { onStatement } = {}) {
   const { lines: rawLines, errors } = maskBlockComments(source);
 
   const nodes = new Map();
@@ -382,6 +396,7 @@ export function parseGraph(source) {
       const ids = classAssign[1].split(',').map(s => s.trim()).filter(Boolean);
       for (const id of ids) addClass(id, cls);
       if (!classLines.has(cls)) { classLines.set(cls, at); classTexts.set(cls, line); }
+      onStatement?.(at, { kind: 'class', ids, name: cls });
       return;
     }
     // Starts like a class line but doesn't fit `class id1,id2 name`.
@@ -430,6 +445,7 @@ export function parseGraph(source) {
         }
         if (label != null && !labelLines.has(label)) labelLines.set(label, at);
         edges.push({ source: left.id, target: right.id, kind: edge.kind, label, line: at });
+        onStatement?.(at, { kind: 'edge', left, right, label, syntax: edge });
         for (const [side, n] of [['source', left], ['target', right]]) {
           if (n.trailing) errors.push({ line: at, text: line, severity: 'error',
             message: `unexpected text after ${side} node "${n.id}": ${n.trailing}${typographyHint(line)}` });
@@ -448,6 +464,7 @@ export function parseGraph(source) {
       checkSort(node, at, line);
       warnShape(node, at, line);
       addNode(node, at, line);
+      onStatement?.(at, { kind: 'node', node });
       if (node.trailing) errors.push({ line: at, text: line, severity: 'error',
         message: `unexpected text after node "${node.id}": ${node.trailing}${typographyHint(line)}` });
       return;

@@ -581,10 +581,7 @@ function emitEntry(name, kwargs) {
 //                     `constraints:\n  - <entry>\n directives:\n  - <entry>`
 //   annotationLines — the raw `@...` blocks that compiled successfully, verbatim
 //                     and in source order (one entry per annotation; a multi-line
-//                     annotation keeps its newlines). The serializer re-appends
-//                     these to round-trip the notation: editing the graph's *data*
-//                     never touches the layout directives, and specYaml is a lossy
-//                     compiled form, so we keep the originals.
+//                     annotation keeps its newlines).
 //   annotationMeta  — one record per compiled annotation, parallel to
 //                     annotationLines: { line, name, selectors }, where
 //                     `selectors` is the selector/field strings it names. This is
