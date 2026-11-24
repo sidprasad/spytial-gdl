@@ -179,18 +179,23 @@ function collectBlocks(root, opts = {}) {
     }
     if (inside) continue;
 
-    const host = absorbWrapper(hostFor(el));
+    const blockHost = hostFor(el);
+    const host = absorbWrapper(blockHost);
     if (host.dataset && host.dataset.spytialProcessed) continue;
     if (found.has(host)) continue;
     // Entity-decoded by the DOM, so `-->` and `>` come through verbatim.
-    const code = el.querySelector && el.querySelector('code');
-    const setting = (name) => host.getAttribute(name) ?? el.getAttribute(name) ?? code?.getAttribute(name);
+    const pre = blockHost !== el ? blockHost : el.querySelector('pre');
+    const code = el.querySelector('code');
+    const setting = (name) => host.getAttribute(name) ?? el.getAttribute(name)
+      ?? pre?.getAttribute(name) ?? code?.getAttribute(name);
+    const resize = setting('data-resizable');
     const sequence = SEQUENCE_LANGS.some(lang => hasLang(el, lang) || hasLang(host, lang) || hasLang(code, lang)
       || setting('data-language') === lang || setting('data-lang') === lang
       || el.classList.contains(`highlight-${lang}`));
     found.set(host, {
       source: sourceFromBlock(el), editable: !sequence && isEditableBlock(el, host, opts), sequence,
       height: setting('data-height'),
+      resizable: resize === '' || resize === 'true',
       theme: setting('data-theme'),
     });
     // Claim the host now, not when it is finally swapped out. Rendering awaits
@@ -304,7 +309,7 @@ export async function ensureEngineLoaded(opts = {}) {
 //   setSourceText(t,f)   — push diagram→text into the panel (won't clobber unsaved
 //                          typing unless forced)
 //   refreshSource(f)     — re-pull from the provider into the panel
-function buildDevice(doc, opts, height, editable) {
+function buildDevice(doc, opts, { height, editable, resizable }) {
   const h = height != null && height !== '' ? height : (opts.height != null ? opts.height : 360);
   // A bare number (or numeric string like "320") means pixels; anything else
   // (e.g. "60vh") is used verbatim. Without this, `height: 320` is invalid CSS
@@ -338,7 +343,16 @@ function buildDevice(doc, opts, height, editable) {
 
   // ── diagram, full width ──
   const frame = doc.createElement('div');
-  frame.style.cssText = `width: 100%; height: ${hCss};`;
+  frame.className = 'spytial-gdl-frame';
+  frame.style.width = '100%';
+  frame.style.height = hCss;
+  if (resizable) {
+    // Keep the native handle below the canvas and preserve the requested
+    // initial canvas height, even on pages using border-box sizing.
+    frame.style.cssText += `box-sizing: content-box; padding-bottom: 16px; background: ${C.chrome};` +
+      ' overflow: hidden; resize: vertical;';
+    frame.style.minHeight = `min(160px, ${hCss})`;
+  }
   device.appendChild(frame);
 
   // ── source disclosure beneath the diagram ──
@@ -445,7 +459,7 @@ function buildDevice(doc, opts, height, editable) {
   // overflow:hidden keeps the graph clipped to its frame so it can't spill over
   // the conflict panel below (the editable element doesn't clip its own canvas).
   const graphStage = doc.createElement('div');
-  graphStage.style.cssText = `position: relative; width: 100%; overflow: hidden; height: ${hCss};`;
+  graphStage.style.cssText = 'position: relative; width: 100%; overflow: hidden; height: 100%;';
   const graphHost = doc.createElement('div');
   graphHost.className = 'spytial-gdl-rendered';
   graphHost.dataset.spytialProcessed = '1';
@@ -708,10 +722,11 @@ export async function renderSpytialGdls(root = document, opts = {}) {
     }, 400);
   };
 
-  for (const [host, { source, editable, sequence, height, theme: blockTheme }] of blocks) {
-    const theme = themeForBlock(doc, host, blockTheme, opts);
+  for (const [host, block] of blocks) {
+    const { source, editable, sequence } = block;
+    const theme = themeForBlock(doc, host, block.theme, opts);
     const blockOpts = { ...opts, theme };
-    const ui = buildDevice(doc, blockOpts, height, editable);
+    const ui = buildDevice(doc, blockOpts, block);
     host.replaceWith(ui.device);
 
     try {

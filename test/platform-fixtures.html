@@ -32,7 +32,7 @@
 <!-- 1. marked / markdown-it / kramdown (highlighter off) / Python-Markdown fenced_code / Eleventy -->
 <section data-platform="markdown-it / marked / kramdown / Python-Markdown">
 <h2>1. plain fenced output <code>&lt;pre&gt;&lt;code class="language-X"&gt;</code></h2>
-<pre><code class="language-spytial-gdl" data-theme="dark" data-height="420">A -&gt; B : left
+<pre><code class="language-spytial-gdl" data-theme="dark" data-height="420" data-resizable="true">A -&gt; B : left
 A -&gt; C : right
 
 @orientation(selector=_links, directions=[below])
@@ -71,7 +71,7 @@ A -&gt; C : right
 <!-- 5. Hugo (Chroma) -->
 <section data-platform="Hugo (Chroma)">
 <h2>5. Hugo <code>div.highlight &gt; pre.chroma &gt; code.language-X[data-lang]</code></h2>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-spytial-gdl" data-lang="spytial-gdl"><span class="line"><span class="cl">A -&gt; B : left
+<div class="highlight"><pre tabindex="0" class="chroma" data-height="24rem" data-resizable><code class="language-spytial-gdl" data-lang="spytial-gdl"><span class="line"><span class="cl">A -&gt; B : left
 </span></span><span class="line"><span class="cl">A -&gt; C : right
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">@orientation(selector=_links, directions=[below])</span></span></code></pre></div>
@@ -127,7 +127,7 @@ A -&gt; C : right
 <!-- 12. hand-authored container -->
 <section data-platform="hand-authored div">
 <h2>12. hand-authored <code>div.spytial-gdl</code></h2>
-<div class="spytial-gdl">A -&gt; B : left
+<div class="spytial-gdl" data-height="280" data-resizable="false">A -&gt; B : left
 A -&gt; C : right
 
 @orientation(selector=_links, directions=[below])
@@ -153,6 +153,7 @@ let failures = 0;
 for (const section of document.querySelectorAll('section[data-platform]')) {
   const name = section.dataset.platform;
   const graph = section.querySelector('webcola-cnd-graph');
+  const frame = section.querySelector('.spytial-gdl-frame');
   const root = graph && (graph.shadowRoot || graph);
   const labels = root ? [...root.querySelectorAll('svg text')].map((t) => t.textContent.trim()).filter(Boolean) : [];
 
@@ -165,10 +166,23 @@ for (const section of document.querySelectorAll('section[data-platform]')) {
     if (missing.length) why = `missing ${missing.join(', ')} — got ${JSON.stringify(labels)}`;
     else if (longest.length > 25) why = `a label swallowed the block: ${JSON.stringify(longest.slice(0, 60))}`;
     else if (name.startsWith('markdown-it') && graph.getAttribute('theme') !== 'dark') why = 'data-theme on code was lost';
-    else if (name.startsWith('markdown-it') && section.querySelector('.spytial-gdl-device > div').style.height !== '420px') why = 'data-height on code was lost';
+    else if (name.startsWith('markdown-it') && (frame.style.height !== '420px' || frame.style.resize !== 'vertical')) why = 'sizing attributes on code were lost';
+    else if (name.startsWith('Hugo') && (frame.style.height !== '24rem' || frame.style.resize !== 'vertical')) why = 'sizing attributes on wrapped pre were lost';
+    else if (name === 'hand-authored div' && (frame.style.height !== '280px' || getComputedStyle(frame).resize !== 'none')) why = 'explicit fixed sizing on div was lost';
+    else if (name.startsWith('Jekyll') && (frame.style.height !== '360px' || getComputedStyle(frame).resize !== 'none')) why = 'default fixed sizing changed';
     else if (root.querySelector('#graph-toolbar')?.dataset.presentation !== 'compact') why = 'compact core controls were not applied';
     else if (!root.querySelector('#zoom-in') || !root.querySelector('#zoom-out') || !root.querySelector('#zoom-fit')) why = 'core zoom and fit controls missing';
     else if (!root.querySelector('#graph-toolbar .spytial-gdl-source-toggle')) why = 'source control was not placed beside core controls';
+  }
+
+  if (!why && frame.style.resize === 'vertical') {
+    const canvas = root.querySelector('#svg');
+    const before = canvas.getBoundingClientRect();
+    const initialHeight = frame.style.height;
+    frame.style.height = `${parseFloat(getComputedStyle(frame).height) + 60}px`;
+    const after = canvas.getBoundingClientRect();
+    frame.style.height = initialHeight;
+    if (after.height !== before.height + 60 || after.width !== before.width) why = 'canvas did not follow the frame height';
   }
 
   const ok = !why;
